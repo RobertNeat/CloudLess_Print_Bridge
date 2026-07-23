@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { CameraCommandModule } from './camera-commands/camera-command.module';
+import { ConfigModule } from './config/config.module';
+import { HealthModule } from './health/health.module';
+import { CameraIngestModule } from './ingest/camera-ingest.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule,
+    CameraCommandModule,
+    CameraIngestModule,
+    HealthModule,
+  ],
 })
 export class AppModule {}

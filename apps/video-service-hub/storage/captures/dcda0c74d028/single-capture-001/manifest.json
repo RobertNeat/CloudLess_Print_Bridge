@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "cameraId": "dcda0c74d028",
+  "requestId": "single-capture-001",
+  "resolution": "VGA",
+  "captures": [
+    {
+      "sequence": 0,
+      "size": 42030,
+      "sha256": "7214e711079c6cda627567b6f95e4a24a67f42c08ee835796cacd480334bd391",
+      "fileName": "000000.jpg",
+      "storedAt": "2026-07-23T19:49:50.793Z"
+    }
+  ]
+}

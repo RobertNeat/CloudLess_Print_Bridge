@@ -1,98 +1,153 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Video Service Hub
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend pośredniczący między klientami systemu a kamerami M5Stack UnitCam S3.
+Serwis:
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- przekazuje zwalidowane komendy do REST API firmware;
+- odbiera i trwale zapisuje JPEG, części MJPEG, WAV oraz transmisje live;
+- udostępnia aktywny live MJPEG wielu odbiorcom;
+- prowadzi manifesty nagrań i odtwarza je po restarcie;
+- uruchamia lokalny broker MQTT albo łączy się z brokerem zewnętrznym;
+- zbiera ostatnią telemetrię i stan obecności kamer.
 
-## Description
+Implementacja odpowiada kontraktowi firmware znajdującemu się w
+`firmware/m5-stack-unitcam-s3`.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Uruchomienie
 
-## Project setup
+Z katalogu głównego monorepo:
 
-```bash
-$ pnpm install
+```powershell
+pnpm install
+pnpm --filter @cloudless/video-service-hub start:dev
 ```
 
-## Compile and run the project
+Domyślnie HTTP działa na `0.0.0.0:3000`, MQTT na `0.0.0.0:1883`, a pliki
+trafiają do `./storage` względem katalogu roboczego procesu. W konfiguracji
+kamery `videoServiceIp` musi wskazywać adres LAN hosta serwisu.
 
-```bash
-# development
-$ pnpm run start
+## Organizacja
 
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+```text
+src/
+├── camera-commands/  # walidacja i proxy komend do firmware
+├── common/           # walidacja identyfikatorów i blokady per zasób
+├── config/           # jedna, walidowana konfiguracja runtime
+├── health/           # stan storage i MQTT
+├── ingest/           # kontroler binarnych uploadów i live preview
+├── mqtt/             # broker/adapter, obserwator i telemetry store
+└── storage/          # atomowy zapis, manifesty, limity i live fan-out
 ```
 
-## Run tests
+`/test/*` z projektu PoC nie jest publicznym API tego serwisu. Symulowanie
+awarii, kasowanie całego storage i resetowanie telemetrii bez autoryzacji
+pozostają odpowiedzialnością testów.
 
-```bash
-# unit tests
-$ pnpm run test
+## API
 
-# e2e tests
-$ pnpm run test:e2e
+### Komendy
 
-# test coverage
-$ pnpm run test:cov
+```http
+POST /api/v1/cameras/:cameraId/commands/:command
+Content-Type: application/json
+
+{
+  "cameraBaseUrl": "http://192.168.1.231",
+  "requestId": "recording-001",
+  "resolution": "VGA",
+  "durationMs": 30000
+}
 ```
 
-## Deployment
+Obsługiwane komendy:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- `capture`
+- `periodic-capture`
+- `timed-recording`
+- `start-recording`
+- `stop-recording`
+- `start-live`
+- `start-dynamic-live`
+- `stop-live`
+- `record-audio`
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Parametry są sprawdzane zgodnie z limitami firmware przed połączeniem z kamerą.
+Status odpowiedzi firmware jest przekazywany klientowi.
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+### Ingest z firmware
+
+| Metoda | Trasa | Typ |
+| --- | --- | --- |
+| `POST` | `/api/v1/cameras/:cameraId/captures` | `image/jpeg` |
+| `POST` | `/api/v1/cameras/:cameraId/recordings/:requestId/parts/:partNumber` | `multipart/x-mixed-replace` |
+| `POST` | `/api/v1/cameras/:cameraId/audio` | `audio/wav` |
+| `POST` | `/api/v1/cameras/:cameraId/live` | strumień `multipart/x-mixed-replace` |
+| `GET` | `/api/v1/cameras/:cameraId/live?requestId=...` | aktywny live MJPEG |
+
+Nagłówki wymagane przez te trasy są zgodne z aktualnym firmware. Capture
+akceptuje dodatkowo opcjonalny `X-Capture-Sequence`. Gdy urządzenie go wysyła,
+retry tego samego zdjęcia jest w pełni idempotentny. Bez tego nagłówka serwis
+nadaje kolejną sekwencję, co zachowuje wszystkie klatki z obecnego firmware,
+ale nie pozwala odróżnić ponowienia od dwóch identycznych zdjęć. To ograniczenie
+obecnego protokołu urządzenia, nie storage.
+
+### Odczyt stanu
+
+| Metoda | Trasa | Zastosowanie |
+| --- | --- | --- |
+| `GET` | `/health` | gotowość storage i połączenia MQTT |
+| `GET` | `/api/v1/cameras` | kamery wykryte przez telemetrię |
+| `GET` | `/api/v1/cameras/:cameraId/telemetry` | ostatnia wiadomość każdego kanału |
+
+## Storage
+
+```text
+storage/
+├── captures/{cameraId}/{requestId}/{sequence}.jpg
+├── captures/{cameraId}/{requestId}/manifest.json
+├── recordings/{cameraId}/{requestId}/part-{partNumber}.mjpeg
+├── recordings/{cameraId}/{requestId}/manifest.json
+├── audio/{cameraId}/{requestId}.wav
+├── live/{cameraId}/{requestId}.mjpeg
+└── .tmp/
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Upload jest najpierw zapisywany i hashowany w `.tmp`, a dopiero kompletny plik
+jest publikowany. Części nagrania, audio i capture z podaną sekwencją są
+idempotentne: identyczny retry zwraca sukces, inna zawartość pod tym samym
+kluczem zwraca `409`. Manifest nagrania staje się kompletny wyłącznie po
+otrzymaniu wszystkich kolejnych części.
 
-## Resources
+## Konfiguracja
 
-Check out a few resources that may come in handy when working with NestJS:
+| Zmienna | Domyślnie | Znaczenie |
+| --- | ---: | --- |
+| `HOST` | `0.0.0.0` | adres nasłuchu HTTP |
+| `PORT` | `3000` | port HTTP |
+| `STORAGE_PATH` | `./storage` | katalog danych |
+| `CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout proxy do kamery |
+| `MQTT_PORT` | `1883` | port brokera embedded (`0` w testach) |
+| `MQTT_URL` | — | broker zewnętrzny; wyłącza embedded |
+| `MQTT_USERNAME`, `MQTT_PASSWORD` | — | dane brokera zewnętrznego |
+| `MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia |
+| `MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
+| `MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
+| `CAPTURE_MAX_BYTES` | `20971520` | limit JPEG |
+| `RECORDING_PART_MAX_BYTES` | `16777216` | limit części MJPEG |
+| `AUDIO_MAX_BYTES` | `10485760` | limit WAV |
+| `LIVE_MAX_BYTES` | `1073741824` | limit pojedynczego live |
+| `LIVE_VIEWER_BUFFER_BYTES` | `2097152` | bufor wolnego odbiorcy live |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Serwis jest przeznaczony do zaufanej sieci lokalnej. Komendy przyjmują adres
+kamery od klienta, więc przed wystawieniem API poza LAN trzeba dodać
+uwierzytelnianie/autoryzację oraz rejestr dozwolonych kamer.
 
-## Support
+## Weryfikacja
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```powershell
+pnpm --filter @cloudless/video-service-hub format
+pnpm --filter @cloudless/video-service-hub lint
+pnpm --filter @cloudless/video-service-hub build
+pnpm --filter @cloudless/video-service-hub test --runInBand
+pnpm --filter @cloudless/video-service-hub test:e2e --runInBand
+```

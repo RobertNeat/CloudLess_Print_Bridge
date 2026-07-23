@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "cameraId": "dcda0c74d028",
+  "requestId": "start-stop-recording-002",
+  "resolution": "VGA",
+  "totalParts": 1,
+  "requestedDurationSeconds": 4.142,
+  "totalFrames": 33,
+  "receivedParts": [
+    0
+  ],
+  "complete": true,
+  "createdAt": "2026-07-23T19:54:01.670Z",
+  "updatedAt": "2026-07-23T19:54:01.671Z",
+  "parts": {
+    "0": {
+      "partNumber": 0,
+      "size": 322850,
+      "sha256": "b6d693dfc583d3f8fe159f4510361074f29df1cd4c7c7aa5a6b636cacb483309",
+      "fileName": "part-0000.mjpeg",
+      "storedAt": "2026-07-23T19:54:01.671Z"
+    }
+  }
+}

@@ -1,8 +1,18 @@
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { SERVICE_CONFIG } from './config/config.module';
+import type { ServiceConfig } from './config/service-config';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  app.enableShutdownHooks();
+  const config = app.get<ServiceConfig>(SERVICE_CONFIG);
+  await app.listen(config.http.port, config.http.host);
+  Logger.log(
+    `Video Service Hub listening on http://${config.http.host}:${config.http.port}`,
+    'Bootstrap',
+  );
 }
-bootstrap();
+
+void bootstrap();
