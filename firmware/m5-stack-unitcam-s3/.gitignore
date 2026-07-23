@@ -1,0 +1,33 @@
+# Local configuration, credentials, and generated LittleFS payloads
+.env
+.env.*
+/firmware/include/wifi_credentials.h
+/firmware/data/*.gz
+/firmware/data/*.json
+/firmware/data/*.json.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.code-workspace
+compile_commands.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime logs
+log/
+*.log
+
+# Temporary and patch-recovery files
+*.tmp
+*.orig
+*.rej
+*~

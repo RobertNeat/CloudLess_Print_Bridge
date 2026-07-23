@@ -1,0 +1,39 @@
+# Local configuration
+.env
+*.local
+
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+
+# IDE and editor files
+.vscode/
+.idea/
+*.code-workspace
+compile_commands.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime logs
+log/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Temporary and patch-recovery files
+*.tmp
+*.orig
+*.rej
+*~

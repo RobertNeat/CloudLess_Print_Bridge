@@ -1,0 +1,59 @@
+{
+  "get_mac": {
+    "msg": "ok",
+    "mac": "12:34:56:78:90:12"
+  },
+  "check_sdcard": {
+    "msg": "ok",
+    "info": "SD Card Not Valid"
+  },
+  "led_on": {
+    "msg": "ok"
+  },
+  "led_off": {
+    "msg": "ok"
+  },
+  "get_config": {
+    "wifiSsid": "Example Wi-Fi",
+    "wifiPass": "",
+    "cameraMacAddress": "12:34:56:78:90:12",
+    "unitCamIp": "192.168.1.231",
+    "gatewayIp": "192.168.1.1",
+    "subnetMask": "255.255.255.0",
+    "dnsIp": "192.168.1.1",
+    "videoServiceIp": "192.168.1.100",
+    "videoServicePort": 3000,
+    "mqttPort": 1883,
+    "heartbeatIntervalSeconds": 15,
+    "mode": "station",
+    "currentIp": "192.168.1.231"
+  },
+  "set_config": {
+    "msg": "ok",
+    "restarting": true
+  },
+  "camera_runtime": {
+    "temperature": 52.3,
+    "framesize": 8,
+      "streaming": false,
+      "cameraPowered": false,
+    "dynamic": false,
+    "fps": 0,
+    "maxFps": 25
+  },
+  "reset_config": {
+    "msg": "ok"
+  },
+  "get_wifi_list": {
+    "wifiList": [
+      "tjrtjrtjrtjj",
+      "啊??",
+      "  小米共享WiFi_12341234",
+      "$%^%$^%$#^",
+      "0987098790-LLLdgfsdg",
+      "gggdgdgd",
+      "R  s s s ss  s",
+      "C**99986___dfidung???"
+    ]
+  }
+}

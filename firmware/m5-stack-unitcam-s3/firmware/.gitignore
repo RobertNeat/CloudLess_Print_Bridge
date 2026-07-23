@@ -1,0 +1,31 @@
+# PlatformIO build output
+.pio/
+
+# Local configuration and generated LittleFS payloads
+.env
+data/*.gz
+data/*.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.code-workspace
+compile_commands.json
+*.swp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime logs
+log/
+*.log
+
+# Temporary and patch-recovery files
+*.tmp
+*.orig
+*.rej
+*~
+
+# src/mooncake
