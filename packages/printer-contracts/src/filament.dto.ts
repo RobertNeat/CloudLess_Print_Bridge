@@ -27,9 +27,3 @@ export interface ResolvedFilamentDefinitionDto {
   nozzleTemperatureMin: number;
   nozzleTemperatureMax: number;
 }
-
-export interface FilamentCatalogDto {
-  types: FilamentTypeDefinitionDto[];
-  metaTypes: FilamentMetaTypeDefinitionDto[];
-  resolved: ResolvedFilamentDefinitionDto[];
-}

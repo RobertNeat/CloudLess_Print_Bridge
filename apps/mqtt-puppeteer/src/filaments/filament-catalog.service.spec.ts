@@ -21,13 +21,4 @@ describe('FilamentCatalogService', () => {
       nozzleTemperatureMax: 270,
     });
   });
-
-  it('returns defensive catalog copies', () => {
-    const service = new FilamentCatalogService(config);
-    const catalog = service.getCatalog();
-
-    catalog.resolved[0].trayColor = '00000000';
-
-    expect(service.getCatalog().resolved[0].trayColor).toBe('FFFFFFFF');
-  });
 });

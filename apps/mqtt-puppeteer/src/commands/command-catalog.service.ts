@@ -24,6 +24,8 @@ import type {
   CommandParameters,
   JsonCommandDefinition,
 } from './command.types';
+import { applyOperationSequence } from '../operations/operation-payload';
+import { OperationTrackerService } from '../operations/operation-tracker.service';
 
 @Injectable()
 export class CommandCatalogService {
@@ -34,6 +36,7 @@ export class CommandCatalogService {
     private readonly mqtt: MqttTransportService,
     @Inject(PRINTER_COMMAND_PROFILE)
     private readonly profile: PrinterCommandProfile,
+    private readonly operations: OperationTrackerService,
   ) {
     const builtIn = [...profile.getCommands()];
     const external = config.commands.catalogPath
@@ -77,10 +80,37 @@ export class CommandCatalogService {
     return definition.build(parameters);
   }
 
-  async execute(id: string, input: unknown) {
+  preview(id: string, input: unknown, operationId?: string) {
     const payload = this.build(id, input);
-    const result = await this.mqtt.publish(payload);
-    return { ...result, commandId: id };
+    return {
+      ...(operationId ? { operationId } : {}),
+      commandId: id,
+      payload: operationId
+        ? applyOperationSequence(payload, operationId)
+        : payload,
+    };
+  }
+
+  async execute(id: string, input: unknown, operationId: string) {
+    this.operations.begin({
+      operationId,
+      sequenceId: operationId,
+      commandId: id,
+    });
+    try {
+      const payload = this.build(id, input);
+      const result = await this.mqtt.publish(payload, {
+        operationId,
+        commandId: id,
+      });
+      return { ...result, commandId: id };
+    } catch (error) {
+      this.operations.reject(
+        operationId,
+        error instanceof Error ? error.message : String(error),
+      );
+      throw error;
+    }
   }
 }
 

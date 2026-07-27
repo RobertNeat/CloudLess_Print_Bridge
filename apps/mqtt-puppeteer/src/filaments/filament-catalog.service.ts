@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
-  FilamentCatalogDto,
   FilamentMetaTypeDefinitionDto,
   FilamentTypeDefinitionDto,
   ResolvedFilamentDefinitionDto,
@@ -59,16 +58,20 @@ export class FilamentCatalogService {
     );
   }
 
-  getCatalog(): FilamentCatalogDto {
-    return {
-      types: cloneJson([...this.types.values()]),
-      metaTypes: cloneJson([...this.metaTypes.values()]),
-      resolved: cloneJson([...this.resolved.values()]),
-    };
-  }
-
   listResolved(): ResolvedFilamentDefinitionDto[] {
     return cloneJson([...this.resolved.values()]);
+  }
+
+  listResolvedByManufacturer(
+    manufacturer: string,
+  ): ResolvedFilamentDefinitionDto[] {
+    const normalized = manufacturer.trim().toLocaleLowerCase();
+    return cloneJson(
+      [...this.resolved.values()].filter(
+        (definition) =>
+          definition.filamentBrand.toLocaleLowerCase() === normalized,
+      ),
+    );
   }
 
   getResolved(id: string): ResolvedFilamentDefinitionDto {
@@ -77,6 +80,15 @@ export class FilamentCatalogService {
       throw new NotFoundException(`Unknown filament definition: ${id}`);
     }
     return cloneJson(definition);
+  }
+
+  findResolvedByTrayInfoIdx(
+    trayInfoIdx: string,
+  ): ResolvedFilamentDefinitionDto | undefined {
+    const definition = [...this.resolved.values()].find(
+      (candidate) => candidate.trayInfoIdx === trayInfoIdx,
+    );
+    return definition ? cloneJson(definition) : undefined;
   }
 }
 

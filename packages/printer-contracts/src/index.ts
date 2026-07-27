@@ -1,4 +1,9 @@
 export type {
+  AmsFilamentDto,
+  AmsSlotDto,
+  AmsSystemDto,
+  AmsUnitDto,
+  ExternalSpoolDto,
   PrinterDomainModel,
   PrinterDomainModelDto,
   PrinterFansDto,
@@ -6,7 +11,11 @@ export type {
   PrinterJobStatus,
   PrinterTemperatureDto,
   PrinterTemperaturesDto,
-} from './printer-domain-model.dto.js';
+} from "./printer-domain-model.dto.js";
+export type {
+  PrinterOperationResultDto,
+  PrinterOperationTerminalStatus,
+} from "./printer-operation.dto.js";
 export type {
   AmsTopologyDto,
   FilamentSourceKind,
@@ -17,10 +26,9 @@ export type {
   PrintSpeedMode,
   SetFilamentParametersDto,
   SetPrintSpeedParametersDto,
-} from './printer-command.dto.js';
+} from "./printer-command.dto.js";
 export type {
-  FilamentCatalogDto,
   FilamentMetaTypeDefinitionDto,
   FilamentTypeDefinitionDto,
   ResolvedFilamentDefinitionDto,
-} from './filament.dto.js';
+} from "./filament.dto.js";

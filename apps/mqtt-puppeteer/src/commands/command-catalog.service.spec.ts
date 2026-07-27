@@ -4,6 +4,7 @@ import { FilamentCatalogService } from '../filaments/filament-catalog.service';
 import type { MqttTransportService } from '../mqtt-transport/mqtt-transport.service';
 import { BambuLabA1CommandProfile } from '../printer-profiles/bambu-lab-a1/bambu-lab-a1-command.profile';
 import { CommandCatalogService } from './command-catalog.service';
+import type { OperationTrackerService } from '../operations/operation-tracker.service';
 
 describe('CommandCatalogService', () => {
   const config = {
@@ -23,8 +24,15 @@ describe('CommandCatalogService', () => {
   const mqtt = { publish: publishMock } as unknown as MqttTransportService;
   const filaments = new FilamentCatalogService(config);
   const profile = new BambuLabA1CommandProfile(config, filaments);
+  const beginOperationMock = jest.fn();
+  const rejectOperationMock = jest.fn();
+  const operations = {
+    begin: beginOperationMock,
+    reject: rejectOperationMock,
+  } as unknown as OperationTrackerService;
 
-  const createService = () => new CommandCatalogService(config, mqtt, profile);
+  const createService = () =>
+    new CommandCatalogService(config, mqtt, profile, operations);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -45,6 +53,22 @@ describe('CommandCatalogService', () => {
     );
   });
 
+  it('builds the shared command preview response', () => {
+    const service = createService();
+
+    expect(service.preview('move-absolute', { x: 125, z: 20 })).toEqual({
+      commandId: 'move-absolute',
+      payload: {
+        print: {
+          sequence_id: '0',
+          command: 'gcode_line',
+          param: 'G90\nG1 X125 Z20 F3000\n',
+        },
+      },
+    });
+    expect(publishMock).not.toHaveBeenCalled();
+  });
+
   it('rejects unsafe coordinates before publishing', () => {
     const service = createService();
 
@@ -54,22 +78,46 @@ describe('CommandCatalogService', () => {
     expect(publishMock).not.toHaveBeenCalled();
   });
 
+  it('rejects a tracked operation when command validation fails', async () => {
+    const service = createService();
+
+    await expect(
+      service.execute('move-absolute', { z: 10 }, 'operation-invalid'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(beginOperationMock).toHaveBeenCalledWith({
+      operationId: 'operation-invalid',
+      sequenceId: 'operation-invalid',
+      commandId: 'move-absolute',
+    });
+    expect(rejectOperationMock).toHaveBeenCalledWith(
+      'operation-invalid',
+      expect.stringContaining('z must be at least 20'),
+    );
+    expect(publishMock).not.toHaveBeenCalled();
+  });
+
   it('publishes a named command only after rendering it', async () => {
     const service = createService();
 
     await expect(
-      service.execute('set-bed-temperature', { celsius: 50 }),
+      service.execute('set-bed-temperature', { celsius: 50 }, 'operation-1'),
     ).resolves.toMatchObject({
       published: true,
       commandId: 'set-bed-temperature',
     });
-    expect(publishMock).toHaveBeenCalledWith({
-      print: {
-        sequence_id: '0',
-        command: 'gcode_line',
-        param: 'M140 S50\n',
+    expect(publishMock).toHaveBeenCalledWith(
+      {
+        print: {
+          sequence_id: '0',
+          command: 'gcode_line',
+          param: 'M140 S50\n',
+        },
       },
-    });
+      {
+        operationId: 'operation-1',
+        commandId: 'set-bed-temperature',
+      },
+    );
   });
 
   it('maps universal print actions and speed modes to A1 payloads', () => {

@@ -1,456 +1,165 @@
-# Endpointy komunikacyjne mqtt-puppeteer
+# Endpointy mqtt-puppeteer
 
-Dokument opisuje wszystkie publiczne punkty komunikacji zaimplementowane w
-serwisie: REST oraz Socket.IO.
-
-Domyślny adres HTTP:
-
-```text
-http://localhost:3000
-```
-
-Port i interfejs można zmienić zmiennymi `PORT` oraz `HOST`.
+Domyślny adres HTTP to `http://localhost:3000`, a namespace Socket.IO to
+`http://localhost:3000/printer`.
 
 ## Wspólne zasady
 
-- Requesty przyjmujące dane oczekują `Content-Type: application/json`.
-- Publikacja komendy wymaga aktywnego połączenia MQTT.
-- Odpowiedź `202 Accepted` potwierdza publikację do brokera, nie wykonanie
-  polecenia przez drukarkę.
-- Stan raw jest pełnym stanem złożonym przez deep merge wielu raportów.
-- `mqtt.report` i `/mqtt/reports/latest` zawierają pojedynczy raport, a nie
-  pełny stan.
-- Model domenowy ma współdzielony kontrakt
-  `PrinterDomainModelDto` z pakietu `@cloudless/printer-contracts`.
+- Body operacji przyjmujących parametry musi być obiektem JSON.
+- `202 Accepted` potwierdza publikację MQTT, nie wykonanie przez drukarkę.
+- `400 Bad Request` oznacza błędny payload lub parametry.
+- `404 Not Found` oznacza nieznaną trasę, komendę albo definicję.
+- `503 Service Unavailable` oznacza brak połączenia MQTT lub błąd publikacji.
+- Stan `merged` powstaje przez deep merge poprawnych raportów MQTT.
+- Stan `domain` jest zgodny z `PrinterDomainModelDto`.
+- Każdy POST otrzymuje generowany przez serwis `operationId`.
+- Dla komend `operationId` zastępuje protokołowe `sequence_id`.
+- Odpowiedzi błędów również zawierają `operationId`.
 
-## REST — konfiguracja i transport MQTT
+## 1. Service
 
-### `GET /mqtt/config`
+### `GET /service/config`
 
-Zwraca publiczną konfigurację połączenia. Hasło nigdy nie jest zwracane.
+Zwraca publiczną konfigurację transportu i `operationTimeoutMs`. Hasło nigdy
+nie jest zwracane.
 
-Kod sukcesu: `200 OK`.
+### `GET /service/status`
 
-Przykładowa odpowiedź:
+Zwraca pola `connected`, `configured`, `lastError`, `subscribedTopic`
+i `commandTopic`.
 
-```json
-{
-  "host": "192.168.1.103",
-  "port": 8883,
-  "username": "bblp",
-  "printerSerial": "03919D581204433",
-  "reportTopic": "device/03919D581204433/report",
-  "commandTopic": "device/03919D581204433/request",
-  "rejectUnauthorized": false,
-  "connectTimeoutMs": 10000,
-  "reconnectPeriodMs": 4000,
-  "keepaliveSeconds": 60,
-  "passwordConfigured": true
-}
-```
+### `GET /service/reports/latest`
 
-Pola opcjonalne, które nie zostały skonfigurowane, mogą być pominięte podczas
-serializacji JSON.
+Zwraca ostatni pojedynczy raport wraz z `topic` i `receivedAt`, albo `null`
+przed odebraniem pierwszego raportu.
 
-### `GET /mqtt/status`
+## 2. Device config
 
-Zwraca aktualny stan transportu MQTT.
+### `GET /device_config/profile`
 
-Kod sukcesu: `200 OK`.
-
-```json
-{
-  "connected": true,
-  "configured": true,
-  "lastError": null,
-  "subscribedTopic": "device/03919D581204433/report",
-  "commandTopic": "device/03919D581204433/request"
-}
-```
-
-`configured: false` oznacza, że aplikacja działa w trybie offline z powodu
-braku wymaganej konfiguracji. Szczegóły znajdują się wtedy w `lastError`.
-
-### `GET /mqtt/reports/latest`
-
-Zwraca ostatni pojedynczy komunikat odebrany z topicu raportowego.
-
-Kod sukcesu: `200 OK`.
-
-Przed pierwszym raportem odpowiedzią jest:
-
-```json
-null
-```
-
-Po odebraniu raportu:
-
-```json
-{
-  "topic": "device/03919D581204433/report",
-  "receivedAt": "2026-07-23T10:15:30.000Z",
-  "payload": {
-    "print": {
-      "nozzle_temper": 220
-    }
-  }
-}
-```
-
-Poprawny JSON jest zwracany jako sparsowana wartość. Niepoprawny JSON jest
-zwracany jako tekst UTF-8 i nie aktualizuje stanu drukarki.
-
-### `POST /mqtt/commands/raw`
-
-Publikuje przekazany obiekt bez używania katalogu nazwanych komend.
-
-Kod sukcesu: `202 Accepted`.
-
-Request:
-
-```json
-{
-  "print": {
-    "sequence_id": "0",
-    "command": "gcode_line",
-    "param": "G28\n"
-  }
-}
-```
-
-Odpowiedź:
-
-```json
-{
-  "published": true,
-  "topic": "device/03919D581204433/request",
-  "qos": 0,
-  "payload": {
-    "print": {
-      "sequence_id": "0",
-      "command": "gcode_line",
-      "param": "G28\n"
-    }
-  }
-}
-```
-
-Możliwe błędy:
-
-- `400 Bad Request` — body nie jest obiektem JSON;
-- `503 Service Unavailable` — MQTT nie jest połączone lub publikacja nie
-  powiodła się.
-
-### `POST /mqtt/command`
-
-Publikuje przekazany obiekt JSON do skonfigurowanego topicu komend drukarki.
-Endpoint nie korzysta z katalogu nazwanych komend i nie wykonuje transformacji
-payloadu.
-
-Kod sukcesu: `202 Accepted`.
-
-Request:
-
-```json
-{
-  "print": {
-    "sequence_id": "0",
-    "command": "pause",
-    "param": ""
-  }
-}
-```
-
-Odpowiedź:
-
-```json
-{
-  "published": true,
-  "topic": "device/03919D581204433/request",
-  "qos": 0,
-  "payload": {
-    "print": {
-      "sequence_id": "0",
-      "command": "pause",
-      "param": ""
-    }
-  }
-}
-```
-
-Możliwe błędy:
-
-- `400 Bad Request` — body nie jest obiektem JSON;
-- `503 Service Unavailable` — klient MQTT nie jest połączony albo publikacja
-  zakończyła się błędem.
-
-### `POST /mqtt/request`
-
-Publikuje request JSON bezpośrednio do skonfigurowanego topicu komend
-drukarki. Endpoint przyjmuje kompletny payload protokołu urządzenia.
-
-Kod sukcesu: `202 Accepted`.
-
-Request:
-
-```json
-{
-  "pushing": {
-    "sequence_id": "0",
-    "command": "pushall",
-    "version": 1,
-    "push_target": 1
-  }
-}
-```
-
-Odpowiedź:
-
-```json
-{
-  "published": true,
-  "topic": "device/03919D581204433/request",
-  "qos": 0,
-  "payload": {
-    "pushing": {
-      "sequence_id": "0",
-      "command": "pushall",
-      "version": 1,
-      "push_target": 1
-    }
-  }
-}
-```
-
-Możliwe błędy:
-
-- `400 Bad Request` — body nie jest obiektem JSON;
-- `503 Service Unavailable` — klient MQTT nie jest połączony albo publikacja
-  zakończyła się błędem.
-
-## REST — stan drukarki
-
-### `GET /printer/state`
-
-Zwraca jednocześnie metadane aktualizacji, pełny stan raw i model domenowy.
-
-Kod sukcesu: `200 OK`.
-
-```json
-{
-  "updatedAt": "2026-07-23T10:15:30.000Z",
-  "raw": {
-    "print": {
-      "nozzle_temper": 220,
-      "gcode_state": "RUNNING"
-    }
-  },
-  "domain": {
-    "temperatures": {
-      "nozzle": {
-        "current": 220
-      }
-    },
-    "job": {
-      "status": "running"
-    }
-  }
-}
-```
-
-### `GET /printer/state/raw`
-
-Zwraca wyłącznie pełny stan protokołowy po deep merge.
-
-Kod sukcesu: `200 OK`.
-
-Bez raportów i bez `PRINTER_STATE_TEMPLATE_PATH` zwraca `{}`.
-
-### `GET /printer/state/domain`
-
-Zwraca wyłącznie model biznesowy zgodny z
-`PrinterDomainModelDto` z `@cloudless/printer-contracts`.
-
-Kod sukcesu: `200 OK`.
-
-```json
-{
-  "temperatures": {
-    "nozzle": {
-      "current": 220,
-      "target": 220
-    },
-    "bed": {
-      "current": 60,
-      "target": 60
-    }
-  },
-  "job": {
-    "status": "running",
-    "progressPercent": 74,
-    "remainingSeconds": 480,
-    "currentLayer": 111,
-    "totalLayers": 161,
-    "fileName": "model.gcode.3mf"
-  },
-  "fans": {
-    "heatbreakPercent": 67,
-    "coolingPercent": 73
-  },
-  "lightOn": false,
-  "speedPercent": 100
-}
-```
-
-Pola, których drukarka jeszcze nie zaraportowała, są pomijane.
-
-### `GET /json_model`
-
-Zwraca kompletny stan protokołowy drukarki utworzony przez deep merge
-wszystkich poprawnych raportów MQTT odebranych od uruchomienia procesu.
-
-Kod sukcesu: `200 OK`.
-
-```json
-{
-  "print": {
-    "nozzle_temper": 220,
-    "bed_temper": 60,
-    "gcode_state": "RUNNING",
-    "online": {
-      "rfid": true
-    }
-  }
-}
-```
-
-Endpoint zwraca kopię stanu. Bez raportów i bez skonfigurowanego template'u
-zwraca `{}`.
-
-### `GET /domain_model`
-
-Zwraca aktualny model biznesowy drukarki zgodny z
-`PrinterDomainModelDto` z pakietu `@cloudless/printer-contracts`.
-
-Kod sukcesu: `200 OK`.
-
-```json
-{
-  "temperatures": {
-    "nozzle": {
-      "current": 220
-    },
-    "bed": {
-      "current": 60
-    }
-  },
-  "job": {
-    "status": "running",
-    "progressPercent": 74
-  }
-}
-```
-
-Pola, których nie można jeszcze wyznaczyć z odebranych raportów, są pomijane.
-
-## REST — katalog komend
-
-### `GET /commands`
-
-Zwraca metadane aktywnego katalogu komend.
-
-Kod sukcesu: `200 OK`.
-
-```json
-[
-  {
-    "id": "set-bed-temperature",
-    "description": "Set the build plate target temperature",
-    "parameters": {
-      "celsius": {
-        "type": "number",
-        "required": true,
-        "minimum": 0,
-        "maximum": 120
-      }
-    },
-    "source": "built-in:bambu-lab-a1-tested-command-patterns"
-  }
-]
-```
-
-Lista zależy od `COMMAND_CATALOG_PATH` i `COMMAND_CATALOG_MODE`.
-
-Wbudowany profil A1 udostępnia między innymi:
-
-- `pause-print`, `resume-print`, `cancel-print`;
-- `set-print-speed`;
-- `load-filament`, `unload-filament`, `set-filament`;
-- komendy temperatury, wentylatora, światła, ruchu i ekstrudera.
-
-### `GET /commands/profile`
-
-Zwraca aktywny adapter komend i obsługiwaną topologię filamentów.
-
-Kod sukcesu: `200 OK`.
+Zwraca identyfikator aktywnego profilu oraz topologię AMS:
 
 ```json
 {
   "id": "bambu-lab-a1",
   "topology": {
-    "unitCount": 2,
+    "unitCount": 1,
     "slotsPerUnit": 4,
     "externalSpool": true
   }
 }
 ```
 
-### Uniwersalne komendy zarządzania drukiem
+### `GET /device_config/state/merged`
 
-```http
-POST /commands/pause-print
-POST /commands/resume-print
-POST /commands/cancel-print
-```
+Zwraca wyłącznie pełny stan protokołowy złożony przez deep merge. Nie zawiera
+opakowania z modelem domenowym ani czasu aktualizacji.
 
-Każda z nich przyjmuje pusty obiekt `{}`.
+### `GET /device_config/state/domain`
 
-Prędkość jest przekazywana jako stabilna wartość domenowa, a profil drukarki
-odpowiada za jej odwzorowanie na protokół:
+Zwraca wyłącznie pełny `PrinterDomainModelDto`. Nie zawiera surowych pól
+protokołu.
 
-```http
-POST /commands/set-print-speed
-```
+AMS ma jawny kontrakt domenowy:
 
 ```json
 {
-  "mode": "sport"
+  "ams": {
+    "units": [
+      {
+        "id": "ams-unit-0",
+        "position": 0,
+        "humidityPercent": 42,
+        "temperatureCelsius": 24.5,
+        "slots": [
+          {
+            "id": "ams-unit-0-slot-2",
+            "unitId": "ams-unit-0",
+            "position": 2,
+            "occupied": true,
+            "active": true,
+            "filament": {
+              "id": "generic-petg",
+              "displayName": "Generic PETG",
+              "type": "PETG",
+              "brand": "Generic"
+            },
+            "color": "AABBCCDD",
+            "remainingPercent": 80,
+            "nozzleTemperatureMin": 220,
+            "nozzleTemperatureMax": 270
+          }
+        ]
+      }
+    ],
+    "externalSpool": {
+      "id": "external-spool",
+      "occupied": false,
+      "active": false
+    },
+    "activeSourceId": "ams-unit-0-slot-2"
+  }
 }
 ```
 
-Dozwolone wartości: `silent`, `standard`, `sport`, `ludicrous`.
+Mapper przyjmuje tylko skończone liczby i niepuste teksty liczbowe. Odrzuca
+`null`, pusty tekst, wartości logiczne, liczby nieskończone oraz wartości poza
+zakresem domenowym temperatur, procentów, wentylatorów i warstw.
 
-### Uniwersalne komendy filamentu
+## 3. Print job
 
-Załadowanie filamentu z AMS:
+Wszystkie operacje zwracają `202 Accepted`.
 
-```http
-POST /commands/load-filament
+### `POST /print_job/pause`
+
+Wstrzymuje aktualny druk. Body nie jest wymagane.
+
+### `POST /print_job/resume`
+
+Wznawia aktualny druk. Body nie jest wymagane.
+
+### `POST /print_job/cancel`
+
+Anuluje aktualny druk. Body nie jest wymagane.
+
+### `POST /print_job/speed`
+
+```json
+{ "mode": "sport" }
 ```
+
+Dozwolone tryby: `silent`, `standard`, `sport`, `ludicrous`.
+
+## 4. Filament
+
+### `GET /filament/definitions`
+
+Zwraca pojedynczą listę scalonych definicji filamentu gotowych do użycia
+przez komendy.
+
+### `GET /filament/manufacturers/:manufacturer/definitions`
+
+Zwraca tę samą postać listy, ograniczoną do producenta. Porównanie nazwy
+producenta nie rozróżnia wielkości liter.
+
+### `GET /filament/definitions/:id`
+
+Zwraca jedną scaloną definicję albo `404 Not Found`.
+
+### `POST /filament/load`
+
+Ładowanie z AMS:
 
 ```json
 {
   "sourceKind": "ams",
-  "amsUnitId": 1,
+  "amsUnitId": 0,
   "slotId": 2,
   "filamentId": "generic-petg"
 }
 ```
 
-Numer urządzenia i slotu są indeksowane od zera. Profil sprawdza je względem
-topologii zwracanej przez `GET /commands/profile`.
-
-Załadowanie ze szpuli zewnętrznej:
+Ładowanie ze szpuli zewnętrznej:
 
 ```json
 {
@@ -459,25 +168,15 @@ Załadowanie ze szpuli zewnętrznej:
 }
 ```
 
-`load-filament` wymaga `filamentId` albo `targetTemperature`. Jeśli podano
-profil filamentu, domyślną temperaturą docelową jest jego maksymalna
-temperatura dyszy.
+Wymagane jest `filamentId` albo `targetTemperature`.
 
-Rozładowanie aktualnie używanego filamentu:
+### `POST /filament/unload`
 
-```http
-POST /commands/unload-filament
-```
+Rozładowuje aktualnie używany filament. Body nie jest wymagane.
 
-```json
-{}
-```
+### `POST /filament/define`
 
-Przypisanie definicji do slotu:
-
-```http
-POST /commands/set-filament
-```
+Przypisuje definicję do slotu AMS lub szpuli zewnętrznej:
 
 ```json
 {
@@ -489,40 +188,39 @@ POST /commands/set-filament
 }
 ```
 
-`trayColor` musi mieć format `RRGGBBAA`. Opcjonalne
-`nozzleTemperatureMin` i `nozzleTemperatureMax` nadpisują profil, ale minimum
-nie może przekraczać maksimum.
+`trayColor` ma format `RRGGBBAA`. Opcjonalne temperatury minimalna
+i maksymalna mogą nadpisać wartości definicji.
 
-### `POST /commands/:id/preview`
+## 5. Movement
 
-Waliduje parametry i renderuje payload bez publikowania go do MQTT. Endpoint
-jest dostępny również w trybie offline.
+### `POST /movement/absolute`
 
-Kod sukcesu: `201 Created`.
-
-Request:
-
-```http
-POST /commands/move-absolute/preview
-Content-Type: application/json
-```
+Waliduje i publikuje ruch jednej lub wielu osi w trybie absolutnym:
 
 ```json
 {
   "x": 125,
   "y": 125,
-  "z": 20
+  "z": 20,
+  "feedrate": 3000
 }
 ```
 
-Odpowiedź:
+Co najmniej jedna z osi jest wymagana. Profil A1 ogranicza X/Y do `0..256`,
+Z do `20..240`, a feedrate do `1..30000`.
+
+### `POST /movement/absolute/simulate`
+
+Wykonuje tę samą walidację i buduje identyczny payload, ale nie publikuje go
+do MQTT. Zwraca `200 OK`:
 
 ```json
 {
+  "operationId": "a1b2c3d4-...",
   "commandId": "move-absolute",
   "payload": {
     "print": {
-      "sequence_id": "0",
+      "sequence_id": "a1b2c3d4-...",
       "command": "gcode_line",
       "param": "G90\nG1 X125 Y125 Z20 F3000\n"
     }
@@ -530,182 +228,38 @@ Odpowiedź:
 }
 ```
 
-Możliwe błędy:
+### `POST /movement/home`
 
-- `400 Bad Request` — brak wymaganego parametru, nieprawidłowy typ, nieznany
-  parametr albo wartość poza zakresem;
-- `404 Not Found` — nieznane `id` komendy.
+Ustawia pozycję domową wszystkich osi. Body nie jest wymagane.
+
+### `POST /movement/extrude-relative`
+
+```json
+{
+  "millimeters": 10,
+  "feedrate": 600
+}
+```
+
+Ujemne `millimeters` oznacza retrakcję. Profil A1 dopuszcza zakres
+`-50..50`.
+
+## 6. Commands
+
+### `GET /commands`
+
+Zwraca listę wszystkich zaimportowanych definicji wraz z parametrami,
+uwagami bezpieczeństwa i źródłem.
 
 ### `POST /commands/:id`
 
-Waliduje parametry, buduje payload i publikuje go do MQTT.
+Waliduje parametry, buduje payload przez profil i publikuje go do MQTT.
+Endpointy z grup `print_job`, `filament` i `movement` delegują do tej samej
+logiki.
 
-Kod sukcesu: `202 Accepted`.
+### `POST /commands/raw`
 
-Request jest identyczny jak dla `preview`.
-
-```json
-{
-  "published": true,
-  "topic": "device/03919D581204433/request",
-  "qos": 0,
-  "payload": {
-    "print": {
-      "sequence_id": "0",
-      "command": "gcode_line",
-      "param": "G90\nG1 X125 Y125 Z20 F3000\n"
-    }
-  },
-  "commandId": "move-absolute"
-}
-```
-
-Możliwe błędy:
-
-- `400 Bad Request` — błędne parametry;
-- `404 Not Found` — nieznana komenda;
-- `503 Service Unavailable` — MQTT nie jest połączone lub publikacja nie
-  powiodła się.
-
-## REST — definicje filamentów
-
-### `GET /filaments`
-
-Zwraca rozwiązane definicje gotowe do prezentacji na frontendzie i użycia
-przez `filamentId`.
-
-Kod sukcesu: `200 OK`.
-
-```json
-[
-  {
-    "id": "generic-petg",
-    "displayName": "Generic PETG",
-    "filamentTypeId": "petg",
-    "filamentBrand": "Generic",
-    "trayInfoIdx": "GFG99",
-    "trayType": "PETG",
-    "trayColor": "FFFFFFFF",
-    "nozzleTemperatureMin": 220,
-    "nozzleTemperatureMax": 270
-  }
-]
-```
-
-### `GET /filaments/catalog`
-
-Zwraca pełny katalog:
-
-- `types` — bazowe materiały z `trayType`, kolorem i temperaturami;
-- `metaTypes` — mapowanie typu i marki na `trayInfoIdx`;
-- `resolved` — połączone definicje używane przez komendy.
-
-### `GET /filaments/:id`
-
-Zwraca jedną rozwiązaną definicję. Nieznany identyfikator powoduje
-`404 Not Found`.
-
-## Socket.IO
-
-Namespace:
-
-```text
-http://localhost:3000/printer
-```
-
-Po połączeniu klient od razu otrzymuje `mqtt.status`, oba warianty stanu oraz
-ostatni `mqtt.report`, jeśli raport był wcześniej dostępny.
-
-### Zdarzenia serwer → klient
-
-#### `mqtt.status`
-
-Wysyłane po połączeniu klienta oraz po zmianie stanu MQTT.
-
-Payload jest identyczny z odpowiedzią `GET /mqtt/status`.
-
-#### `mqtt.report`
-
-Wysyłane dla każdego raportu MQTT oraz przy połączeniu nowego klienta, jeżeli
-istnieje ostatni raport.
-
-Payload jest identyczny z odpowiedzią `GET /mqtt/reports/latest` po odebraniu
-raportu.
-
-#### `printer.state.raw`
-
-Wysyłane po każdej poprawnej aktualizacji oraz przy połączeniu klienta.
-
-```json
-{
-  "updatedAt": "2026-07-23T10:15:30.000Z",
-  "state": {
-    "print": {
-      "nozzle_temper": 220
-    }
-  }
-}
-```
-
-#### `printer.state.domain`
-
-Wysyłane razem z `printer.state.raw`.
-
-```json
-{
-  "updatedAt": "2026-07-23T10:15:30.000Z",
-  "state": {
-    "temperatures": {
-      "nozzle": {
-        "current": 220
-      }
-    }
-  }
-}
-```
-
-Pole `state` jest zgodne z `PrinterDomainModelDto`.
-
-#### `printer.command.accepted`
-
-Wysyłane tylko do klienta, który przesłał komendę, po udanej publikacji MQTT.
-Payload odpowiada rezultatowi `POST /commands/:id` albo
-`POST /mqtt/commands/raw`.
-
-Nie jest to potwierdzenie wykonania komendy przez urządzenie.
-
-#### `exception`
-
-Standardowe zdarzenie błędu NestJS Socket.IO. Może informować o:
-
-- brakującym lub nieprawidłowym `id`;
-- błędnych parametrach;
-- nieznanej komendzie;
-- braku połączenia MQTT;
-- błędzie publikacji.
-
-### Zdarzenia klient → serwer
-
-#### `printer.command`
-
-Uruchamia nazwaną komendę z aktywnego katalogu.
-
-```json
-{
-  "id": "set-light",
-  "parameters": {
-    "enabled": true
-  }
-}
-```
-
-Po sukcesie klient otrzymuje `printer.command.accepted`. Handler Socket.IO
-zwraca również ten sam rezultat jako odpowiedź dla klienta używającego
-acknowledgement callback.
-
-#### `mqtt.command.raw`
-
-Publikuje surowy obiekt JSON z pominięciem katalogu komend.
+Jedyny endpoint REST publikujący surowy obiekt z pominięciem katalogu:
 
 ```json
 {
@@ -717,17 +271,40 @@ Publikuje surowy obiekt JSON z pominięciem katalogu komend.
 }
 ```
 
-Po sukcesie klient otrzymuje `printer.command.accepted`.
+Istniejące `sequence_id` jest zastępowane przez `operationId`. Jeżeli obiekt
+komendy nie ma tego pola, serwis je dodaje.
 
-## Interpretacja potwierdzeń drukarki
+## Socket.IO
 
-Transport MQTT potwierdza jedynie, że broker przyjął publikację. Raport
-zawierający odpowiedź drukarki będzie dostępny przez:
+### Serwer → klient
 
-- `mqtt.report`;
-- `GET /mqtt/reports/latest`;
-- zaktualizowany `printer.state.raw`;
-- zaktualizowany `printer.state.domain`.
+| Zdarzenie | Dane |
+| --- | --- |
+| `service.status` | odpowiednik `GET /service/status` |
+| `service.report` | odpowiednik `GET /service/reports/latest` po raporcie |
+| `device_config.state.merged` | `{ updatedAt, state }` ze stanem scalonym |
+| `device_config.state.domain` | `{ updatedAt, state }` z modelem domenowym |
+| `service.mqtt.publish` | status `published` lub `failed` każdej próby publikacji |
+| `service.operation.result` | końcowy status `acknowledged`, `rejected` albo `timed_out` |
+| `service.error` | wyjątek REST albo asynchroniczny błąd MQTT |
 
-Znaczenie pól akceptacji lub błędu urządzenia zależy od protokołu konkretnego
-modelu drukarki i powinno być interpretowane przez właściwy profil domenowy.
+Po połączeniu klient od razu otrzymuje status i oba warianty stanu. Ostatni
+raport jest wysyłany, jeżeli już istnieje.
+
+`service.mqtt.publish` zawiera `operationId`, opcjonalny `commandId`,
+`occurredAt`, `topic`, `qos`, opcjonalny `payload` oraz — dla statusu
+`failed` — pole `error`. Zdarzenie jest emitowane centralnie przez transport,
+dlatego obejmuje każdą publikację z endpointów REST, w tym komendy raw.
+
+`service.operation.result` jest emitowane raz dla operacji. Raport urządzenia
+z odpowiadającym `sequence_id` kończy ją jako `acknowledged` albo `rejected`.
+Brak odpowiedzi przez `OPERATION_TIMEOUT_MS` kończy ją jako `timed_out`.
+
+`service.error` zawiera opcjonalny `operationId`, źródło `http` albo `mqtt`,
+czas, nazwę i komunikat błędu. Dla błędów HTTP zawiera również kod statusu,
+metodę i ścieżkę.
+
+### Klient → serwer
+
+Brak. Socket.IO jest kanałem wyłącznie odbiorczym. Komendy i symulacje są
+wywoływane przez REST.

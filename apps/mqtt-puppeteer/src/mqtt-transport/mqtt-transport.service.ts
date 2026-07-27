@@ -15,12 +15,20 @@ import {
   type MqttConnectionStatus,
   type MqttReport,
 } from '../events/bridge-events.service';
+import { applyOperationSequence } from '../operations/operation-payload';
+import { OperationTrackerService } from '../operations/operation-tracker.service';
 
 export interface PublishResult {
   published: true;
+  operationId: string;
   topic: string;
   qos: 0;
   payload: JsonObject;
+}
+
+export interface PublishContext {
+  operationId: string;
+  commandId?: string;
 }
 
 @Injectable()
@@ -34,6 +42,7 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly events: BridgeEventsService,
+    private readonly operations: OperationTrackerService,
   ) {}
 
   onModuleInit(): void {
@@ -79,24 +88,41 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
       reconnectPeriodMs: mqtt.reconnectPeriodMs,
       keepaliveSeconds: mqtt.keepaliveSeconds,
       passwordConfigured: Boolean(mqtt.password),
+      operationTimeoutMs: this.config.operations.timeoutMs,
     };
   }
 
-  async publish(payload: unknown): Promise<PublishResult> {
+  async publish(
+    payload: unknown,
+    context: PublishContext,
+  ): Promise<PublishResult> {
+    this.operations.begin({
+      operationId: context.operationId,
+      sequenceId: context.operationId,
+      commandId: context.commandId,
+    });
     if (!isJsonObject(payload)) {
-      throw new BadRequestException(
-        'MQTT command payload must be a JSON object',
-      );
+      const message = 'MQTT command payload must be a JSON object';
+      this.emitPublicationFailure(context, message);
+      this.operations.reject(context.operationId, message);
+      throw new BadRequestException(message);
     }
+    const operationPayload = applyOperationSequence(
+      payload,
+      context.operationId,
+    );
     if (!this.client || !this.connected || !this.config.mqtt.commandTopic) {
-      throw new ServiceUnavailableException('MQTT client is not connected');
+      const message = 'MQTT client is not connected';
+      this.emitPublicationFailure(context, message, operationPayload);
+      this.operations.reject(context.operationId, message);
+      throw new ServiceUnavailableException(message);
     }
 
     const topic = this.config.mqtt.commandTopic;
     await new Promise<void>((resolve, reject) => {
       this.client?.publish(
         topic,
-        JSON.stringify(payload),
+        JSON.stringify(operationPayload),
         { qos: 0 },
         (error?: Error) => {
           if (error) reject(error);
@@ -106,12 +132,35 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
     }).catch((error: unknown) => {
       this.lastError = error instanceof Error ? error.message : String(error);
       this.emitStatus();
+      this.emitPublicationFailure(
+        context,
+        this.lastError,
+        operationPayload,
+        topic,
+      );
+      this.operations.reject(context.operationId, this.lastError);
       throw new ServiceUnavailableException(
         `MQTT publish failed: ${this.lastError}`,
       );
     });
 
-    return { published: true, topic, qos: 0, payload };
+    const result: PublishResult = {
+      published: true,
+      operationId: context.operationId,
+      topic,
+      qos: 0,
+      payload: operationPayload,
+    };
+    this.events.mqttPublications$.next({
+      status: 'published',
+      operationId: context.operationId,
+      commandId: context.commandId,
+      occurredAt: new Date().toISOString(),
+      topic,
+      qos: 0,
+      payload: operationPayload,
+    });
+    return result;
   }
 
   private isConfigured(): boolean {
@@ -143,6 +192,7 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
     this.client.on('error', (error) => {
       this.lastError = error.message;
       this.logger.error(`MQTT error: ${error.message}`);
+      this.events.emitMqttError(error);
       this.emitStatus();
     });
     this.client.on('close', () => {
@@ -166,6 +216,7 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
       if (error) {
         this.lastError = error.message;
         this.logger.error(`MQTT subscribe failed: ${error.message}`);
+        this.events.emitMqttError(error);
       } else {
         this.logger.log(`Subscribed to MQTT topic: ${topic}`);
       }
@@ -180,7 +231,9 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
     try {
       parsed = JSON.parse(text) as unknown;
     } catch {
-      this.logger.warn('Received a non-JSON MQTT report');
+      const error = new Error('Received a non-JSON MQTT report');
+      this.logger.warn(error.message);
+      this.events.emitMqttError(error);
     }
 
     this.latestReport = {
@@ -193,5 +246,23 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
 
   private emitStatus(): void {
     this.events.mqttStatus$.next(this.getStatus());
+  }
+
+  private emitPublicationFailure(
+    context: PublishContext,
+    error: string,
+    payload?: JsonObject,
+    topic: string | null = this.config.mqtt.commandTopic ?? null,
+  ): void {
+    this.events.mqttPublications$.next({
+      status: 'failed',
+      operationId: context.operationId,
+      commandId: context.commandId,
+      occurredAt: new Date().toISOString(),
+      topic,
+      qos: 0,
+      payload,
+      error,
+    });
   }
 }

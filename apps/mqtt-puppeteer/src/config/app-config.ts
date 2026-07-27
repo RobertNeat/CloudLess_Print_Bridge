@@ -30,6 +30,9 @@ export interface AppConfig {
     slotsPerUnit: number;
     externalSpool: boolean;
   };
+  operations: {
+    timeoutMs: number;
+  };
   stateTemplatePath?: string;
 }
 
@@ -79,6 +82,14 @@ export function loadAppConfig(
       amsUnitCount: integer(environment.AMS_UNIT_COUNT, 1, 0, 64),
       slotsPerUnit: integer(environment.AMS_SLOTS_PER_UNIT, 4, 1, 256),
       externalSpool: boolean(environment.EXTERNAL_SPOOL_ENABLED, true),
+    },
+    operations: {
+      timeoutMs: integer(
+        environment.OPERATION_TIMEOUT_MS,
+        30_000,
+        100,
+        600_000,
+      ),
     },
     stateTemplatePath: value(environment.PRINTER_STATE_TEMPLATE_PATH),
   };

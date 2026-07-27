@@ -1,23 +1,13 @@
 import {
-  ConnectedSocket,
-  MessageBody,
   OnGatewayConnection,
-  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { Subscription } from 'rxjs';
-import { CommandCatalogService } from '../commands/command-catalog.service';
 import { BridgeEventsService } from '../events/bridge-events.service';
 import { MqttTransportService } from '../mqtt-transport/mqtt-transport.service';
 import { PrinterStateService } from '../printer-state/printer-state.service';
-
-interface NamedCommandMessage {
-  id?: unknown;
-  parameters?: unknown;
-}
 
 @WebSocketGateway({
   namespace: 'printer',
@@ -33,88 +23,63 @@ export class PrinterGateway implements OnGatewayConnection {
     private readonly events: BridgeEventsService,
     private readonly mqtt: MqttTransportService,
     private readonly state: PrinterStateService,
-    private readonly commands: CommandCatalogService,
   ) {}
 
   afterInit(): void {
     this.subscriptions.add(
       this.events.mqttStatus$.subscribe((status) =>
-        this.server.emit('mqtt.status', status),
+        this.server.emit('service.status', status),
       ),
     );
     this.subscriptions.add(
       this.events.mqttReports$.subscribe((report) =>
-        this.server.emit('mqtt.report', report),
+        this.server.emit('service.report', report),
       ),
     );
     this.subscriptions.add(
-      this.events.printerState$.subscribe((snapshot) => {
-        this.server.emit('printer.state.raw', {
-          updatedAt: snapshot.updatedAt,
-          state: snapshot.raw,
-        });
-        this.server.emit('printer.state.domain', {
-          updatedAt: snapshot.updatedAt,
-          state: snapshot.domain,
-        });
-      }),
+      this.events.printerState$.subscribe((snapshot) =>
+        this.emitPrinterState(this.server, snapshot),
+      ),
+    );
+    this.subscriptions.add(
+      this.events.mqttPublications$.subscribe((publication) =>
+        this.server.emit('service.mqtt.publish', publication),
+      ),
+    );
+    this.subscriptions.add(
+      this.events.serviceErrors$.subscribe((error) =>
+        this.server.emit('service.error', error),
+      ),
+    );
+    this.subscriptions.add(
+      this.events.operationResults$.subscribe((result) =>
+        this.server.emit('service.operation.result', result),
+      ),
     );
   }
 
   handleConnection(client: Socket): void {
-    client.emit('mqtt.status', this.mqtt.getStatus());
+    client.emit('service.status', this.mqtt.getStatus());
     const latest = this.mqtt.getLatestReport();
-    if (latest) client.emit('mqtt.report', latest);
-    const snapshot = this.state.getSnapshot();
-    client.emit('printer.state.raw', {
-      updatedAt: snapshot.updatedAt,
-      state: snapshot.raw,
-    });
-    client.emit('printer.state.domain', {
-      updatedAt: snapshot.updatedAt,
-      state: snapshot.domain,
-    });
-  }
-
-  @SubscribeMessage('printer.command')
-  async executeNamed(
-    @MessageBody() message: NamedCommandMessage,
-    @ConnectedSocket() client: Socket,
-  ) {
-    if (!message || typeof message.id !== 'string') {
-      throw new WsException('printer.command requires a string id');
-    }
-    try {
-      const result = await this.commands.execute(
-        message.id,
-        message.parameters ?? {},
-      );
-      client.emit('printer.command.accepted', result);
-      return result;
-    } catch (error) {
-      throw new WsException(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-
-  @SubscribeMessage('mqtt.command.raw')
-  async executeRaw(
-    @MessageBody() payload: unknown,
-    @ConnectedSocket() client: Socket,
-  ) {
-    try {
-      const result = await this.mqtt.publish(payload);
-      client.emit('printer.command.accepted', result);
-      return result;
-    } catch (error) {
-      throw new WsException(
-        error instanceof Error ? error.message : String(error),
-      );
-    }
+    if (latest) client.emit('service.report', latest);
+    this.emitPrinterState(client, this.state.getSnapshot());
   }
 
   onModuleDestroy(): void {
     this.subscriptions.unsubscribe();
+  }
+
+  private emitPrinterState(
+    target: Pick<Socket, 'emit'>,
+    snapshot: ReturnType<PrinterStateService['getSnapshot']>,
+  ): void {
+    target.emit('device_config.state.merged', {
+      updatedAt: snapshot.updatedAt,
+      state: snapshot.raw,
+    });
+    target.emit('device_config.state.domain', {
+      updatedAt: snapshot.updatedAt,
+      state: snapshot.domain,
+    });
   }
 }

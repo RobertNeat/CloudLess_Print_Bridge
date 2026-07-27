@@ -18,16 +18,20 @@ flowchart LR
     REST["Klienci REST"]
     SOCKET["Klienci Socket.IO"]
     COMMANDS["CommandsModule"]
+    DOMAINS["Domenowe moduły operacji"]
     FILAMENTS["FilamentsModule"]
     PROFILE["PrinterCommandProfile"]
     REALTIME["RealtimeModule"]
     MQTT["MqttTransportModule"]
     EVENTS["BridgeEventsModule"]
     STATE["PrinterStateModule"]
+    OPERATIONS["OperationTrackerService"]
     CONTRACTS["@cloudless/printer-contracts"]
     PRINTER["Drukarka / broker MQTT"]
 
     REST --> COMMANDS
+    REST --> DOMAINS
+    DOMAINS --> COMMANDS
     REST --> FILAMENTS
     REST --> MQTT
     REST --> STATE
@@ -35,11 +39,12 @@ flowchart LR
     COMMANDS --> MQTT
     COMMANDS --> PROFILE
     PROFILE --> FILAMENTS
-    REALTIME --> COMMANDS
     REALTIME --> MQTT
     REALTIME --> STATE
     PRINTER <--> MQTT
     MQTT --> EVENTS
+    MQTT --> OPERATIONS
+    OPERATIONS --> EVENTS
     EVENTS --> STATE
     EVENTS --> REALTIME
     STATE --> EVENTS
@@ -75,7 +80,7 @@ Transport nie mapuje modelu biznesowego, nie wykonuje deep merge i nie zna
 Socket.IO. Raporty oraz status publikuje do `BridgeEventsService`.
 
 Brak pełnej konfiguracji nie zatrzymuje aplikacji. Transport pozostaje wtedy
-offline, dzięki czemu nadal działają odczyty, katalog i preview komend.
+offline, dzięki czemu nadal działają odczyty, katalog i symulacja ruchu.
 
 ### `BridgeEventsModule`
 
@@ -130,7 +135,10 @@ Aktualny provider `BambuLabA1Mapper`:
 - przelicza pozostały czas z minut na sekundy;
 - mapuje postęp i warstwy;
 - przelicza skalę wentylatorów `0..15` na procenty;
-- mapuje światło, prędkość, AMS i zewnętrzną szpulę.
+- mapuje światło i prędkość;
+- odrzuca puste, logiczne, nieskończone i pozazakresowe wartości liczbowe;
+- buduje jawne `AmsUnitDto`, `AmsSlotDto` i `ExternalSpoolDto` zamiast
+  kopiowania obiektów protokołu.
 
 Dla innego protokołu należy dostarczyć nową implementację
 `PrinterDomainModelMapper` i zmienić provider w `PrinterStateModule`. Deep
@@ -144,7 +152,7 @@ Katalog komend jest osobną warstwą aplikacyjną:
 2. odrzuca nieznane parametry;
 3. waliduje typ, wymaganie, enum, wzorzec i zakres;
 4. deleguje budowanie do aktywnego profilu drukarki;
-5. przekazuje payload do `MqttTransportService`.
+5. rejestruje operację i przekazuje payload do `MqttTransportService`.
 
 Identyfikatory i parametry są kontraktem domenowym frontendu. Provider
 `PRINTER_COMMAND_PROFILE` tłumaczy je na indywidualne pola protokołu
@@ -188,33 +196,41 @@ Payload może korzystać z placeholderów `{{parameter}}`. Pełny placeholder
 zachowuje typ JSON, a placeholder wewnątrz tekstu jest interpolowany jako
 string.
 
-`preview` korzysta z tej samej walidacji i tego samego buildera co wykonanie,
-ale nie wywołuje transportu.
+Symulacja ruchu korzysta z tej samej walidacji i tego samego buildera co
+wykonanie, ale nie wywołuje transportu.
+
+Globalny interceptor REST generuje `operationId`. Transport umieszcza go
+w `sequence_id`, a `OperationTrackerService` koreluje raport urządzenia
+i emituje dokładnie jeden wynik końcowy: `acknowledged`, `rejected` albo
+`timed_out`.
 
 ### `RealtimeModule`
 
 Adapter Socket.IO pod namespace `/printer`. Nie tworzy klienta MQTT i nie
 przetwarza raportów. Subskrybuje wewnętrzny bus i tłumaczy zdarzenia na:
 
-- `mqtt.status`;
-- `mqtt.report`;
-- `printer.state.raw`;
-- `printer.state.domain`.
+- `service.status`;
+- `service.report`;
+- `device_config.state.merged`;
+- `device_config.state.domain`;
+- `service.mqtt.publish`;
+- `service.operation.result`;
+- `service.error`.
 
-Komendy przychodzące przez Socket.IO są delegowane do `CommandCatalogService`
-albo bezpośrednio do transportu w przypadku świadomie użytej komendy raw.
+Gateway nie przyjmuje komend. Frontend używa REST do operacji, a Socket.IO
+pozostaje odbiorczym projektorem zdarzeń serwisu i urządzenia.
 
 ### Kontrolery REST
 
 Kontrolery są cienkimi adapterami:
 
-- `MqttTransportController` — konfiguracja, status, ostatni raport i raw
-  publish;
-- `PrinterStateController` — snapshot, raw i domain;
-- `RootPrinterStateController` — samodzielne endpointy `/json_model` i
-  `/domain_model`;
-- `CommandsController` — lista, preview i wykonanie nazwanych komend.
-- `FilamentsController` — typy, metatypy i rozwiązane profile filamentów.
+- `MqttTransportController` — konfiguracja, status i ostatni raport;
+- `PrinterStateController` — osobne stany merged i domain;
+- `CommandsController` — lista, wykonanie nazwanej komendy i raw publish;
+- `DeviceConfigController`, `PrintJobController`,
+  `FilamentOperationsController` i `MovementController` — każdy we własnym
+  pliku oraz module domenowym;
+- `FilamentsController` — scalone definicje filamentów.
 
 Pełny kontrakt znajduje się w [endpoints.md](./endpoints.md).
 
@@ -238,9 +254,8 @@ filamentem, `AmsTopologyDto` oraz definicje katalogu filamentów.
 Pakiet jest niezależny od NestJS, MQTT i Socket.IO. Backend używa go podczas
 mapowania i emisji zdarzeń, a przyszły frontend może użyć go dla:
 
-- typowania odpowiedzi `GET /printer/state/domain`;
-- pola `domain` w `GET /printer/state`;
-- `state` zdarzenia `printer.state.domain`;
+- typowania odpowiedzi `GET /device_config/state/domain`;
+- `state` zdarzenia `device_config.state.domain`;
 - store'u stanu i komponentów UI.
 
 Kontrakt biznesowy nie zawiera nazw pól MQTT BambuLab. Zmiana protokołu
@@ -265,9 +280,9 @@ sequenceDiagram
     State->>Mapper: map(raw)
     Mapper-->>State: PrinterDomainModelDto
     State->>Events: printerState$
-    Events-->>Socket: printer.state.raw
-    Events-->>Socket: printer.state.domain
-    Events-->>Socket: mqtt.report
+    Events-->>Socket: device_config.state.merged
+    Events-->>Socket: device_config.state.domain
+    Events-->>Socket: service.report
 ```
 
 Niepoprawny JSON pozostaje dostępny jako ostatni raport tekstowy, ale nie
@@ -277,19 +292,23 @@ zmienia stanu raw ani modelu domenowego.
 
 ```mermaid
 sequenceDiagram
-    actor Client as Klient REST / Socket.IO
+    actor Client as Klient REST
+    participant Socket as Socket.IO
     participant Catalog as CommandCatalogService
     participant MQTT as MqttTransportService
     participant Printer as Drukarka / broker
 
-    Client->>Catalog: id komendy + parametry
+    Client->>Catalog: operationId + id komendy + parametry
     Catalog->>Catalog: Walidacja parametrów
     Catalog->>Catalog: Budowanie payloadu
-    Catalog->>MQTT: publish(payload)
-    MQTT->>Printer: Publikacja na request topic
+    Catalog->>MQTT: publish(payload, operationId)
+    MQTT->>Printer: payload z sequence_id=operationId
     Printer-->>MQTT: MQTT publish acknowledgement
     MQTT-->>Catalog: PublishResult
-    Catalog-->>Client: 202 / printer.command.accepted
+    Catalog-->>Client: 202 Accepted
+    MQTT-->>Socket: service.mqtt.publish
+    Printer-->>MQTT: raport z sequence_id
+    MQTT-->>Socket: service.operation.result
 ```
 
 Odpowiedź drukarki wraca niezależnym przepływem raportowym. Publish

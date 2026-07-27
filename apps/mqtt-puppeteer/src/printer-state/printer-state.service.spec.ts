@@ -1,18 +1,25 @@
 import type { AppConfig } from '../config/app-config';
 import { BridgeEventsService } from '../events/bridge-events.service';
+import { FilamentCatalogService } from '../filaments/filament-catalog.service';
 import { BambuLabA1Mapper } from './bambu-lab-a1.mapper';
 import { PrinterStateService } from './printer-state.service';
 
 describe('PrinterStateService', () => {
-  const config = { stateTemplatePath: undefined } as AppConfig;
+  const config = {
+    stateTemplatePath: undefined,
+    filaments: { catalogPath: undefined, catalogMode: 'replace' },
+    filamentSystem: {
+      amsUnitCount: 1,
+      slotsPerUnit: 4,
+      externalSpool: true,
+    },
+  } as AppConfig;
+  const createMapper = () =>
+    new BambuLabA1Mapper(config, new FilamentCatalogService(config));
 
   it('deep-merges partial reports and refreshes the domain projection', () => {
     const events = new BridgeEventsService();
-    const service = new PrinterStateService(
-      config,
-      new BambuLabA1Mapper(),
-      events,
-    );
+    const service = new PrinterStateService(config, createMapper(), events);
     service.onModuleInit();
 
     events.mqttReports$.next({
@@ -48,7 +55,7 @@ describe('PrinterStateService', () => {
   it('ignores non-object reports', () => {
     const service = new PrinterStateService(
       config,
-      new BambuLabA1Mapper(),
+      createMapper(),
       new BridgeEventsService(),
     );
 
@@ -59,7 +66,7 @@ describe('PrinterStateService', () => {
   it('returns defensive copies', () => {
     const service = new PrinterStateService(
       config,
-      new BambuLabA1Mapper(),
+      createMapper(),
       new BridgeEventsService(),
     );
     service.applyReport({ print: { mc_percent: 10 } });

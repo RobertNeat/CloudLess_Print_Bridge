@@ -33,14 +33,57 @@ export interface PrinterFansDto {
   chamberPercent?: number;
 }
 
+export interface AmsFilamentDto {
+  id?: string;
+  displayName?: string;
+  type?: string;
+  brand?: string;
+}
+
+export interface AmsSlotDto {
+  id: string;
+  unitId: string;
+  position: number;
+  occupied: boolean;
+  active: boolean;
+  filament?: AmsFilamentDto;
+  color?: string;
+  remainingPercent?: number;
+  nozzleTemperatureMin?: number;
+  nozzleTemperatureMax?: number;
+}
+
+export interface AmsUnitDto {
+  id: string;
+  position: number;
+  humidityPercent?: number;
+  temperatureCelsius?: number;
+  slots: AmsSlotDto[];
+}
+
+export interface ExternalSpoolDto {
+  id: 'external-spool';
+  occupied: boolean;
+  active: boolean;
+  filament?: AmsFilamentDto;
+  color?: string;
+  nozzleTemperatureMin?: number;
+  nozzleTemperatureMax?: number;
+}
+
+export interface AmsSystemDto {
+  units: AmsUnitDto[];
+  externalSpool?: ExternalSpoolDto;
+  activeSourceId?: string;
+}
+
 export interface PrinterDomainModelDto {
   temperatures?: PrinterTemperaturesDto;
   job?: PrinterJobDto;
   fans?: PrinterFansDto;
   lightOn?: boolean;
   speedPercent?: number;
-  amsSlots?: Record<string, unknown>[];
-  externalSpool?: Record<string, unknown>;
+  ams?: AmsSystemDto;
 }
 
 /**
