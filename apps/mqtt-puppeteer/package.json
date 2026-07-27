@@ -1,7 +1,7 @@
 {
   "name": "@cloudless/mqtt-puppeteer",
   "version": "0.0.1",
-  "description": "",
+  "description": "Extensible local MQTT/TLS bridge for 3D printers",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -23,8 +23,13 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.28",
+    "@nestjs/websockets": "^11.1.28",
+    "@cloudless/printer-contracts": "workspace:*",
+    "mqtt": "^5.15.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -1,98 +1,199 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# mqtt-puppeteer
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Lokalny bridge NestJS do drukarki 3D. Aplikacja łączy się z brokerem drukarki
+przez MQTT/TLS, scala częściowe raporty do kompletnego stanu procesu oraz
+udostępnia REST i Socket.IO dla innych aplikacji.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Projekt zawiera wymienny profil komend BambuLab A1 oraz niezależne od
+transportu kontrakty używane przez backend i przyszły frontend.
 
-## Description
+Szczegółowa dokumentacja:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [wszystkie endpointy REST i zdarzenia Socket.IO](./docs/endpoints.md);
+- [architektura i przepływy danych](./docs/architecture.md).
 
-## Project setup
+## Granice modułów
 
-```bash
-$ pnpm install
+- `mqtt-transport` zna wyłącznie MQTT: połączenie, topics, raporty i publikację.
+- `printer-state` zna wyłącznie JSON raportu, deep merge i model domenowy.
+- `commands` buduje payloady z wymiennego katalogu i przekazuje je do transportu.
+- `realtime` jest adapterem Socket.IO nad publicznymi zdarzeniami aplikacji.
+- `events` rozdziela producentów i konsumentów zdarzeń przez RxJS.
+
+Socket.IO nie jest połączeniem do drukarki. Drukarka komunikuje się z bridge'em
+przez MQTT, a Socket.IO służy klientom bridge'a (np. frontendowi).
+
+## Konfiguracja
+
+Minimalny `.env` w katalogu głównym monorepo:
+
+```env
+MQTT_HOST=192.168.1.103
+MQTT_PORT=8883
+MQTT_USERNAME=bblp
+BAMBU_MQTT_PASSWORD=your_lan_access_code
+PRINTER_SN=03919D581204433
+PORT=3000
 ```
 
-## Compile and run the project
+Topics domyślnie mają postać `device/${PRINTER_SN}/report` i
+`device/${PRINTER_SN}/request`. Można je zastąpić przez `MQTT_REPORT_TOPIC` i
+`MQTT_COMMAND_TOPIC`, dzięki czemu transport nie jest przywiązany do BambuLab.
 
-```bash
-# development
-$ pnpm run start
+Pozostałe opcje:
 
-# watch mode
-$ pnpm run start:dev
+| Zmienna | Domyślnie | Znaczenie |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | host HTTP |
+| `MQTT_REJECT_UNAUTHORIZED` | `false` | weryfikacja certyfikatu TLS |
+| `MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout połączenia |
+| `MQTT_RECONNECT_PERIOD_MS` | `4000` | odstęp reconnect |
+| `MQTT_KEEPALIVE_SECONDS` | `60` | keepalive MQTT |
+| `PRINTER_STATE_TEMPLATE_PATH` | brak | opcjonalny początkowy obiekt JSON |
+| `COMMAND_CATALOG_PATH` | brak | zewnętrzny katalog komend JSON |
+| `COMMAND_CATALOG_MODE` | `replace` | `replace` albo `extend` |
+| `FILAMENT_CATALOG_PATH` | brak | zewnętrzny katalog typów i metatypów |
+| `FILAMENT_CATALOG_MODE` | `replace` | `replace` albo `extend` |
+| `AMS_UNIT_COUNT` | `1` | liczba urządzeń AMS |
+| `AMS_SLOTS_PER_UNIT` | `4` | liczba slotów w jednym AMS |
+| `EXTERNAL_SPOOL_ENABLED` | `true` | dostępność zewnętrznej szpuli |
 
-# production mode
-$ pnpm run start:prod
+Bez pełnej konfiguracji MQTT aplikacja uruchamia REST i Socket.IO w trybie
+offline. Umożliwia to przeglądanie i podgląd komend bez przypadkowej publikacji.
+
+## REST
+
+| Metoda | Endpoint | Opis |
+| --- | --- | --- |
+| `GET` | `/mqtt/config` | konfiguracja publiczna bez hasła |
+| `GET` | `/mqtt/status` | status połączenia |
+| `GET` | `/mqtt/reports/latest` | ostatni pojedynczy raport |
+| `POST` | `/mqtt/commands/raw` | publikacja surowego obiektu JSON |
+| `POST` | `/mqtt/command` | publikacja komendy JSON do drukarki |
+| `POST` | `/mqtt/request` | publikacja requestu JSON do drukarki |
+| `GET` | `/printer/state` | raw, domain i czas aktualizacji |
+| `GET` | `/printer/state/raw` | pełny stan po deep merge |
+| `GET` | `/printer/state/domain` | model domenowy |
+| `GET` | `/json_model` | pełny stan protokołowy po deep merge |
+| `GET` | `/domain_model` | model biznesowy drukarki |
+| `GET` | `/commands` | aktywny katalog komend |
+| `GET` | `/commands/profile` | profil drukarki i topologia filamentów |
+| `POST` | `/commands/:id/preview` | renderowanie bez publikacji |
+| `POST` | `/commands/:id` | renderowanie i publikacja (`202`) |
+| `GET` | `/filaments` | rozwiązane definicje filamentów |
+| `GET` | `/filaments/catalog` | typy, metatypy i wynikowe definicje |
+| `GET` | `/filaments/:id` | jedna wynikowa definicja |
+
+Przykład:
+
+```http
+POST /commands/move-absolute/preview
+Content-Type: application/json
+
+{ "x": 125, "y": 125, "z": 20 }
 ```
 
-## Run tests
+## Wymiana katalogu komend
 
-```bash
-# unit tests
-$ pnpm run test
+`COMMAND_CATALOG_PATH` wskazuje plik zawierający tablicę definicji. Tryb
+`replace` całkowicie zastępuje profil A1, a `extend` dodaje lub nadpisuje
+komendy po `id`. Placeholder obejmujący całą wartość zachowuje typ parametru;
+placeholder będący fragmentem stringa jest interpolowany jako tekst.
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```json
+[
+  {
+    "id": "fetch-status",
+    "description": "Status command for another printer",
+    "parameters": {
+      "requestId": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "payload": {
+      "status": {
+        "command": "fetch",
+        "request_id": "{{requestId}}"
+      }
+    }
+  }
+]
 ```
 
-## Deployment
+Definicje parametrów obsługują `type` (`number`, `string`, `boolean`),
+`required`, `default`, `minimum`, `maximum`, `integer`, `values`, `pattern`
+i `description`. Nieznane parametry są odrzucane. Dla drukarki o zupełnie innym raporcie należy także
+podmienić provider `PRINTER_DOMAIN_MAPPER`; logika stanu i transport pozostają
+bez zmian.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Filamenty i topologia AMS
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Frontend posługuje się stabilnym modelem źródła filamentu:
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```json
+{
+  "sourceKind": "ams",
+  "amsUnitId": 1,
+  "slotId": 2,
+  "filamentId": "generic-petg"
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Profil drukarki mapuje tę lokalizację na własne identyfikatory protokołu.
+Topologia nie zakłada jednego AMS: liczba urządzeń i slotów jest
+konfigurowalna, a szpula zewnętrzna jest osobnym rodzajem źródła.
 
-## Resources
+Definicje filamentów składają się z:
 
-Check out a few resources that may come in handy when working with NestJS:
+- typu materiału (`tray_type`, kolor domyślny i temperatury);
+- metatypu marki (`filamentBrand`, `tray_info_idx` i opcjonalne nadpisania);
+- rozwiązanej definicji używanej przez komendę `set-filament`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Wbudowane definicje znajdują się w kodzie projektu. Aplikacja nie czyta
+`MQTT_WIKI` w runtime. Cały katalog można zastąpić lub rozszerzyć przez
+`FILAMENT_CATALOG_PATH`.
 
-## Support
+## Socket.IO
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Namespace: `/printer`.
 
-## Stay in touch
+Zdarzenia serwer → klient:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- `mqtt.status`
+- `mqtt.report` (pojedynczy raport)
+- `printer.state.raw` (pełny deep merge)
+- `printer.state.domain`
+- `printer.command.accepted`
+- `exception`
 
-## License
+Zdarzenia klient → serwer:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `printer.command`: `{ "id": "set-light", "parameters": { "enabled": true } }`
+- `mqtt.command.raw`: dowolny obiekt JSON
+
+Potwierdzenie `printer.command.accepted` oznacza udaną publikację MQTT, nie
+wykonanie komendy przez drukarkę. Akceptację/odpowiedź urządzenia należy
+interpretować z `mqtt.report` lub z kolejnego stanu.
+
+## Stan
+
+Stan zaczyna się od `{}` albo od pliku `PRINTER_STATE_TEMPLATE_PATH`. Każdy
+raport będący obiektem jest scalany rekurencyjnie:
+
+- obiekty są scalane,
+- tablice i skalary są zastępowane,
+- brakujące pola są zachowywane,
+- klucze `__proto__`, `constructor` i `prototype` są ignorowane.
+
+Po każdej aktualizacji mapper A1 tworzy model domenowy. Odczyty zwracają kopie,
+więc klient nie może zmienić stanu przechowywanego w procesie.
+
+## Uruchomienie
+
+```bash
+pnpm --filter @cloudless/mqtt-puppeteer start:dev
+pnpm --filter @cloudless/mqtt-puppeteer test
+pnpm --filter @cloudless/mqtt-puppeteer test:e2e
+pnpm --filter @cloudless/mqtt-puppeteer build
+```
