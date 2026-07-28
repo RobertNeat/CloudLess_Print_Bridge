@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from './config/config.module';
+import { FtpsModule } from './ftps/ftps.module';
+import { RemoteFilesModule } from './remote-files/remote-files.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [ConfigModule, FtpsModule, RemoteFilesModule],
 })
 export class AppModule {}

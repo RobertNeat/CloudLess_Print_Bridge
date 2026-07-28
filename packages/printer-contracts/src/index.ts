@@ -32,3 +32,13 @@ export type {
   FilamentTypeDefinitionDto,
   ResolvedFilamentDefinitionDto,
 } from "./filament.dto.js";
+export type {
+  CreateRemoteDirectoryRequestDto,
+  DeleteRemoteFilesByNameRequestDto,
+  MoveRemoteEntryRequestDto,
+  RemoteEntryDto,
+  RemoteEntryType,
+  RemoteFileBatchDeleteResultDto,
+  RemoteFileLocationExtensionDto,
+  RemoteStorageConnectionDto,
+} from "./remote-storage.dto.js";
