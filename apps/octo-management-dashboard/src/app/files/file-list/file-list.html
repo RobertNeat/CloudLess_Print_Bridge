@@ -1,0 +1,57 @@
+<section class="browser-panel">
+  <header class="browser-header">
+    <nav class="breadcrumbs" aria-label="Ścieżka folderu">
+      <span class="home-crumb"><i class="pi pi-home"></i><span>Home</span></span>
+      @for (crumb of breadcrumbs(); track $index) {
+        <i class="pi pi-chevron-right" aria-hidden="true"></i
+        ><span [class.current-crumb]="$last">{{ crumb }}</span>
+      }
+    </nav>
+    <label class="search-box">
+      <i class="pi pi-search" aria-hidden="true"></i>
+      <input
+        pInputText
+        [(ngModel)]="query"
+        placeholder="Szukaj w folderze"
+        aria-label="Szukaj w folderze"
+      />
+    </label>
+  </header>
+  <div class="list-summary">
+    <span>{{ visibleFiles().length }} plików</span>
+    <button
+      type="button"
+      class="sort-button"
+      [attr.aria-label]="sortAscending ? 'Sortuj malejąco' : 'Sortuj rosnąco'"
+      (click)="sortAscending = !sortAscending"
+    >
+      <i [class]="sortAscending ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"></i>
+      Nazwa
+    </button>
+  </div>
+  <div class="file-list">
+    @for (file of visibleFiles(); track file.id) {
+      <button
+        type="button"
+        class="file-row"
+        [class.file-row--selected]="selectedFileId() === file.id"
+        (click)="fileSelected.emit(file)"
+      >
+        <span class="file-type" [attr.data-kind]="file.kind"
+          ><i [class]="fileIcon(file)" aria-hidden="true"></i
+          ><small>{{ file.extension }}</small></span
+        >
+        <span class="file-copy"
+          ><strong>{{ file.name }}</strong
+          ><small>{{ file.size }} · {{ file.modifiedAt }}</small></span
+        >
+        <i class="pi pi-ellipsis-v row-menu" aria-hidden="true"></i>
+      </button>
+    } @empty {
+      <div class="empty-list">
+        <i class="pi pi-search"></i><strong>Brak pasujących plików</strong
+        ><span>Zmień wyszukiwaną frazę.</span>
+      </div>
+    }
+  </div>
+</section>

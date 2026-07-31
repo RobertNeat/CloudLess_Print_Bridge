@@ -1,6 +1,6 @@
 <div class="app-shell">
   <header class="app-header">
-    <p-menubar [model]="menuItems" aria-label="Main navigation">
+    <p-menubar [model]="menuItems" aria-label="Główna nawigacja">
       <ng-template #start>
         <p-select
           inputId="dashboard-select"
@@ -14,14 +14,12 @@
         >
           <ng-template #selectedItem let-dashboard>
             <div class="dashboard-option">
-              <i [class]="dashboard.icon" aria-hidden="true"></i>
-              <span>{{ dashboard.label }}</span>
+              <i [class]="dashboard.icon" aria-hidden="true"></i><span>{{ dashboard.label }}</span>
             </div>
           </ng-template>
           <ng-template #item let-dashboard>
             <div class="dashboard-option">
-              <i [class]="dashboard.icon" aria-hidden="true"></i>
-              <span>{{ dashboard.label }}</span>
+              <i [class]="dashboard.icon" aria-hidden="true"></i><span>{{ dashboard.label }}</span>
             </div>
           </ng-template>
         </p-select>
@@ -34,11 +32,11 @@
             data-testid="layout-edit-toggle"
             severity="secondary"
             [text]="true"
-            [outlined]="layout.editing()"
+            [outlined]="activeDashboardId() === 'management' && layout.editing()"
             [rounded]="true"
             icon="pi pi-cog"
-            aria-label="Ustawienia układu dashboardu"
-            pTooltip="Ustawienia układu dashboardu"
+            [attr.aria-label]="layoutButtonLabel()"
+            [pTooltip]="layoutButtonLabel()"
             tooltipPosition="bottom"
             (onClick)="layoutMenu.toggle($event)"
           />
@@ -66,8 +64,5 @@
       </ng-template>
     </p-menubar>
   </header>
-
-  <main class="app-content">
-    <router-outlet />
-  </main>
+  <main class="app-content"><router-outlet /></main>
 </div>

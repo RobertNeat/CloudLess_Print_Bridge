@@ -1,0 +1,64 @@
+<aside class="tree-panel">
+  <section class="pinned-section">
+    <div class="section-heading">
+      <span>Przypięte</span>
+      <i class="pi pi-star-fill" aria-hidden="true"></i>
+    </div>
+    <div class="pinned-list">
+      @for (location of pinnedLocations(); track location.id) {
+        <button
+          type="button"
+          class="pinned-item"
+          [class.pinned-item--active]="selectedPath() === location.path"
+          (click)="select(location.path)"
+        >
+          <i [class]="location.icon" aria-hidden="true"></i>
+          <span
+            ><strong>{{ location.label }}</strong
+            ><small>{{ location.path }}</small></span
+          >
+          <i class="pi pi-chevron-right" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+  </section>
+  <section class="files-section">
+    <div class="section-heading">
+      <span>Pliki</span><span class="section-count">{{ nodes().length }}</span>
+    </div>
+    <nav class="file-tree" aria-label="Drzewo plików">
+      @for (node of nodes(); track node.id) {
+        <ng-container
+          [ngTemplateOutlet]="treeNode"
+          [ngTemplateOutletContext]="{ $implicit: node, depth: 0 }"
+        />
+      }
+    </nav>
+  </section>
+</aside>
+
+<ng-template #treeNode let-node let-depth="depth">
+  <button
+    type="button"
+    class="tree-node"
+    [class.tree-node--active]="selectedPath() === node.path"
+    [style.--tree-depth]="depth"
+    (click)="select(node.path)"
+  >
+    @if (node.type === 'folder') {
+      <i class="pi pi-chevron-down tree-chevron" aria-hidden="true"></i
+      ><i class="pi pi-folder tree-icon" aria-hidden="true"></i>
+    } @else {
+      <span class="tree-indent"></span><i class="pi pi-file tree-icon" aria-hidden="true"></i>
+    }
+    <span class="tree-label">{{ node.name }}</span>
+  </button>
+  @if (node.children?.length) {
+    @for (child of node.children; track child.id) {
+      <ng-container
+        [ngTemplateOutlet]="treeNode"
+        [ngTemplateOutletContext]="{ $implicit: child, depth: depth + 1 }"
+      />
+    }
+  }
+</ng-template>

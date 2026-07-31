@@ -1,0 +1,35 @@
+<section class="files-dashboard" [attr.data-layout]="layout.layout()">
+  @if (dashboard(); as data) {
+    <div class="panel panel--tree">
+      <app-file-tree
+        [pinnedLocations]="data.pinnedLocations"
+        [nodes]="data.tree"
+        [selectedPath]="selectedFolderPath()"
+        (pathSelected)="selectFolder($event)"
+      />
+    </div>
+    <div class="panel panel--browser">
+      <app-file-list
+        [files]="visibleFiles()"
+        [path]="selectedFolderPath()"
+        [selectedFileId]="selectedFile()?.id ?? null"
+        (fileSelected)="selectedFile.set($event)"
+      />
+    </div>
+    <div class="panel panel--details">
+      <app-file-details
+        [file]="selectedFile()"
+        [uploadPath]="selectedFolderPath() || data.uploadPath"
+      />
+    </div>
+  } @else if (loadingError()) {
+    <div class="dashboard-state">
+      <i class="pi pi-exclamation-triangle"></i
+      ><strong>Nie udało się wczytać danych plików.</strong>
+    </div>
+  } @else {
+    <div class="dashboard-state">
+      <i class="pi pi-spin pi-spinner"></i><span>Ładowanie plików…</span>
+    </div>
+  }
+</section>

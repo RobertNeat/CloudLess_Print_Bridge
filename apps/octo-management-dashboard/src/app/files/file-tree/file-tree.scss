@@ -1,0 +1,142 @@
+:host {
+  display: block;
+  min-width: 0;
+  height: 100%;
+}
+.tree-panel {
+  height: 100%;
+  overflow: auto;
+  background: var(--app-surface-card);
+  scrollbar-width: thin;
+}
+.pinned-section,
+.files-section {
+  padding: 1rem;
+}
+.pinned-section {
+  border-bottom: 1px solid var(--app-surface-border);
+}
+.files-section {
+  padding-inline: 0.65rem;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0.35rem 0.75rem;
+  color: var(--app-text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.section-heading > i {
+  color: #f59e0b;
+  font-size: 0.72rem;
+}
+.section-count {
+  min-width: 1.45rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  background: var(--semantic-surface-interactive);
+  text-align: center;
+  letter-spacing: 0;
+}
+.pinned-list {
+  display: grid;
+  gap: 0.4rem;
+}
+.pinned-item {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  padding: 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: var(--app-text-color);
+  text-align: left;
+  cursor: pointer;
+  gap: 0.55rem;
+}
+.pinned-item:hover,
+.pinned-item--active {
+  border-color: color-mix(in srgb, var(--app-primary-color) 22%, transparent);
+  background: var(--app-primary-subtle);
+}
+.pinned-item > i:first-child {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: var(--semantic-surface-interactive);
+  color: var(--app-primary-color);
+  place-items: center;
+}
+.pinned-item > i:last-child {
+  color: var(--app-text-muted);
+  font-size: 0.65rem;
+}
+.pinned-item span {
+  min-width: 0;
+}
+.pinned-item strong,
+.pinned-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pinned-item strong {
+  font-size: 0.82rem;
+}
+.pinned-item small {
+  margin-top: 0.15rem;
+  color: var(--app-text-muted);
+  font-size: 0.68rem;
+}
+.file-tree {
+  display: grid;
+}
+.tree-node {
+  --tree-depth: 0;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  padding: 0.43rem 0.5rem 0.43rem calc(0.5rem + var(--tree-depth) * 0.85rem);
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--app-text-color);
+  text-align: left;
+  cursor: pointer;
+  gap: 0.38rem;
+}
+.tree-node:hover {
+  background: var(--semantic-surface-interactive);
+}
+.tree-node--active {
+  background: var(--app-primary-subtle);
+  color: var(--app-primary-color);
+  font-weight: 650;
+}
+.tree-chevron,
+.tree-indent {
+  width: 0.7rem;
+  flex: 0 0 0.7rem;
+  font-size: 0.52rem;
+}
+.tree-icon {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--app-primary-color) 76%, #f59e0b);
+  font-size: 0.82rem;
+}
+.tree-label {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

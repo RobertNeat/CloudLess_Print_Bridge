@@ -1,0 +1,107 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.files-dashboard {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(13rem, 1.05fr) minmax(22rem, 2.25fr) minmax(17rem, 1.35fr);
+  overflow: hidden;
+  background: var(--app-surface-ground);
+}
+.panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--app-surface-border);
+}
+.panel:last-child {
+  border-right: 0;
+}
+.panel--tree {
+  order: 1;
+}
+.panel--browser {
+  order: 2;
+}
+.panel--details {
+  order: 3;
+}
+.files-dashboard[data-layout='browser-wide'] {
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(28rem, 3fr) minmax(16rem, 1.1fr);
+}
+.files-dashboard[data-layout='details-wide'] {
+  grid-template-columns: minmax(12rem, 0.85fr) minmax(20rem, 1.6fr) minmax(22rem, 2fr);
+}
+.files-dashboard[data-layout='reversed'] {
+  grid-template-columns: minmax(17rem, 1.35fr) minmax(22rem, 2.25fr) minmax(13rem, 1.05fr);
+}
+.files-dashboard[data-layout='reversed'] .panel--details {
+  order: 1;
+}
+.files-dashboard[data-layout='reversed'] .panel--browser {
+  order: 2;
+}
+.files-dashboard[data-layout='reversed'] .panel--tree {
+  order: 3;
+  border-right: 0;
+}
+.dashboard-state {
+  display: flex;
+  height: 100%;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text-muted);
+  gap: 0.65rem;
+}
+@media (max-width: 900px) {
+  .files-dashboard,
+  .files-dashboard[data-layout] {
+    grid-template-columns: minmax(12rem, 0.8fr) minmax(22rem, 2fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: auto;
+  }
+  .panel--tree,
+  .files-dashboard[data-layout='reversed'] .panel--tree {
+    order: 1;
+  }
+  .panel--browser,
+  .files-dashboard[data-layout='reversed'] .panel--browser {
+    order: 2;
+    border-right: 0;
+  }
+  .panel--details,
+  .files-dashboard[data-layout='reversed'] .panel--details {
+    order: 3;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--app-surface-border);
+    border-right: 0;
+  }
+}
+@media (max-width: 620px) {
+  .files-dashboard,
+  .files-dashboard[data-layout] {
+    display: flex;
+    overflow: auto;
+    flex-direction: column;
+  }
+  .panel {
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-surface-border);
+  }
+  .panel--tree {
+    height: 19rem;
+  }
+  .panel--browser {
+    height: 30rem;
+  }
+  .panel--details {
+    min-height: 32rem;
+  }
+}

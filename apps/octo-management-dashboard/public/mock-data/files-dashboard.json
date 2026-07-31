@@ -1,0 +1,45 @@
+{
+  "pinnedLocations": [
+    { "id": "pinned-models", "label": "Modele MD5", "path": "/home/images/md5", "icon": "pi pi-box" },
+    { "id": "pinned-cache", "label": "Pamięć podręczna", "path": "/home/cache", "icon": "pi pi-database" },
+    { "id": "pinned-logs", "label": "Logi drukarki", "path": "/home/logger", "icon": "pi pi-file-edit" }
+  ],
+  "tree": [
+    { "id": "timelapse", "name": "TIMELAPSE", "type": "folder", "path": "/home/timelapse", "children": [
+      { "id": "timelapse-a", "name": "CAM-012-index.avi", "type": "file", "path": "/home/timelapse/CAM-012-index.avi", "kind": "archive" }
+    ]},
+    { "id": "recorder", "name": "RECORDER", "type": "folder", "path": "/home/recorder", "children": [
+      { "id": "recorder-a", "name": "CAM-012-index.bin", "type": "file", "path": "/home/recorder/CAM-012-index.bin", "kind": "binary" },
+      { "id": "recorder-b", "name": "CAM-042-index.bin", "type": "file", "path": "/home/recorder/CAM-042-index.bin", "kind": "binary" }
+    ]},
+    { "id": "model", "name": "MODEL", "type": "folder", "path": "/home/model" },
+    { "id": "logger", "name": "LOGGER", "type": "folder", "path": "/home/logger", "children": [
+      { "id": "logger-a", "name": "01234-index.log", "type": "file", "path": "/home/logger/01234-index.log", "kind": "log" },
+      { "id": "logger-b", "name": "01294-index.log", "type": "file", "path": "/home/logger/01294-index.log", "kind": "log" }
+    ]},
+    { "id": "image", "name": "IMAGE", "type": "folder", "path": "/home/images", "children": [
+      { "id": "md5", "name": "MD5", "type": "folder", "path": "/home/images/md5", "children": [
+        { "id": "md5-a", "name": "053493.md5", "type": "file", "path": "/home/images/md5/053493.md5", "kind": "binary" },
+        { "id": "md5-b", "name": "1C1802.md5", "type": "file", "path": "/home/images/md5/1C1802.md5", "kind": "binary" }
+      ]},
+      { "id": "hms", "name": "HMS", "type": "folder", "path": "/home/images/hms", "children": [
+        { "id": "hms-a", "name": "F0A-B02-C03.png", "type": "file", "path": "/home/images/hms/F0A-B02-C03.png", "kind": "image" }
+      ]}
+    ]},
+    { "id": "cache", "name": "CACHE", "type": "folder", "path": "/home/cache", "children": [
+      { "id": "cache-a", "name": "FILEA-plate-1.gcode", "type": "file", "path": "/home/cache/FILEA-plate-1.gcode", "kind": "gcode" },
+      { "id": "cache-b", "name": "FILEB.gcode.3mf", "type": "file", "path": "/home/cache/FILEB.gcode.3mf", "kind": "gcode" }
+    ]}
+  ],
+  "files": [
+    { "id": "file-053493", "name": "053493.md5", "path": "/home/images/md5/053493.md5", "kind": "binary", "extension": "md5", "size": "18,6 MB", "modifiedAt": "dzisiaj, 12:42", "metadata": { "layers": 348, "filamentDensity": "1,24 g/cm³", "filamentDiameter": "1,75 mm", "dimensions": "184 × 126 × 92 mm", "filamentLength": "42,8 m", "filamentCost": "12,40 zł", "estimatedTime": "3 godz. 18 min", "printingTimeModel": "A1 / standard" } },
+    { "id": "file-1c1802", "name": "1C1802.md5", "path": "/home/images/md5/1C1802.md5", "kind": "binary", "extension": "md5", "size": "22,1 MB", "modifiedAt": "dzisiaj, 11:08", "metadata": { "layers": 412, "filamentDensity": "1,24 g/cm³", "filamentDiameter": "1,75 mm", "dimensions": "202 × 148 × 116 mm", "filamentLength": "57,2 m", "filamentCost": "16,20 zł", "estimatedTime": "4 godz. 05 min", "printingTimeModel": "A1 / standard" } },
+    { "id": "file-270515", "name": "270515.md5", "path": "/home/images/md5/270515.md5", "kind": "binary", "extension": "md5", "size": "9,8 MB", "modifiedAt": "wczoraj, 18:20", "metadata": { "layers": 205, "filamentDensity": "1,20 g/cm³", "filamentDiameter": "1,75 mm", "dimensions": "98 × 82 × 64 mm", "filamentLength": "20,5 m", "filamentCost": "6,90 zł", "estimatedTime": "1 godz. 47 min", "printingTimeModel": "A1 / sport" } },
+    { "id": "file-381726", "name": "381726.md5", "path": "/home/images/md5/381726.md5", "kind": "binary", "extension": "md5", "size": "31,4 MB", "modifiedAt": "28 lip, 09:54", "metadata": { "layers": 502, "filamentDensity": "1,24 g/cm³", "filamentDiameter": "1,75 mm", "dimensions": "225 × 184 × 138 mm", "filamentLength": "78,9 m", "filamentCost": "22,80 zł", "estimatedTime": "5 godz. 36 min", "printingTimeModel": "A1 / standard" } },
+    { "id": "file-492647", "name": "492647.md5", "path": "/home/images/md5/492647.md5", "kind": "binary", "extension": "md5", "size": "14,2 MB", "modifiedAt": "27 lip, 16:12", "metadata": { "layers": 276, "filamentDensity": "1,24 g/cm³", "filamentDiameter": "1,75 mm", "dimensions": "142 × 104 × 81 mm", "filamentLength": "32,4 m", "filamentCost": "9,70 zł", "estimatedTime": "2 godz. 31 min", "printingTimeModel": "A1 / silent" } },
+    { "id": "cache-file-a", "name": "FILEA-plate-1.gcode", "path": "/home/cache/FILEA-plate-1.gcode", "kind": "gcode", "extension": "gcode", "size": "42,5 MB", "modifiedAt": "dzisiaj, 10:15", "metadata": { "layers": 388, "filamentDiameter": "1,75 mm", "estimatedTime": "3 godz. 41 min" } },
+    { "id": "log-file-a", "name": "01234-index.log", "path": "/home/logger/01234-index.log", "kind": "log", "extension": "log", "size": "842 KB", "modifiedAt": "dzisiaj, 09:02", "metadata": {} }
+  ],
+  "initialFolderPath": "/home/images/md5",
+  "uploadPath": "/home/images/md5"
+}
