@@ -1,0 +1,283 @@
+<section class="printer-card" [attr.aria-labelledby]="titleId()">
+  <header class="printer-card__header">
+    <h1 [id]="titleId()">{{ labels().title }}</h1>
+  </header>
+
+  <div
+    class="printer-navigation"
+    [class.is-configuring]="configurationOpen()"
+    [style]="canvasStyle()"
+  >
+    <img
+      class="printer-navigation__image"
+      [src]="viewport().imageUrl"
+      [alt]="viewport().imageAlt"
+    />
+    <svg
+      class="printer-navigation__canvas"
+      [attr.viewBox]="canvasViewBox()"
+      preserveAspectRatio="xMidYMid meet"
+      role="application"
+      [attr.aria-label]="labels().canvasAriaLabel"
+      [attr.tabindex]="configurationOpen() ? 0 : -1"
+      (keydown)="onCanvasKeydown($event)"
+      (pointerdown)="onCanvasPointerDown($event)"
+      (pointermove)="onCanvasPointerMove($event)"
+      (pointerup)="endDrag($event)"
+      (pointercancel)="endDrag($event)"
+    >
+      @for (view of axisViews(); track view.axis) {
+        <g class="axis-geometry" [style.--axis-color]="axisColor()">
+          <line
+            [attr.x1]="view.negative.x"
+            [attr.y1]="view.negative.y"
+            [attr.x2]="view.positive.x"
+            [attr.y2]="view.positive.y"
+          />
+
+          @if (configurationOpen()) {
+            <circle
+              class="axis-point"
+              [class.axis-point--active]="
+                activePoint()?.axis === view.axis && activePoint()?.direction === 'negative'
+              "
+              [class.axis-point--dragged]="
+                draggingPoint() &&
+                activePoint()?.axis === view.axis &&
+                activePoint()?.direction === 'negative'
+              "
+              [attr.cx]="view.negative.x"
+              [attr.cy]="view.negative.y"
+              [attr.aria-label]="pointAriaLabel(view.axis, 'negative')"
+              tabindex="0"
+              r="14"
+              (focus)="selectPoint($event, view.axis, 'negative')"
+              (pointerdown)="startDrag($event, view.axis, 'negative')"
+            />
+            <circle
+              class="axis-point"
+              [class.axis-point--active]="
+                activePoint()?.axis === view.axis && activePoint()?.direction === 'positive'
+              "
+              [class.axis-point--dragged]="
+                draggingPoint() &&
+                activePoint()?.axis === view.axis &&
+                activePoint()?.direction === 'positive'
+              "
+              [attr.cx]="view.positive.x"
+              [attr.cy]="view.positive.y"
+              [attr.aria-label]="pointAriaLabel(view.axis, 'positive')"
+              tabindex="0"
+              r="14"
+              (focus)="selectPoint($event, view.axis, 'positive')"
+              (pointerdown)="startDrag($event, view.axis, 'positive')"
+            />
+          }
+        </g>
+      }
+
+      @if (previewLine(); as preview) {
+        <g class="axis-preview" [style.--axis-color]="axisColor()">
+          <line
+            [attr.x1]="preview.start.x"
+            [attr.y1]="preview.start.y"
+            [attr.x2]="preview.end.x"
+            [attr.y2]="preview.end.y"
+          />
+          <circle [attr.cx]="preview.start.x" [attr.cy]="preview.start.y" r="14" />
+        </g>
+      }
+
+      @if (configurationOpen() && draftHotendPoint(); as point) {
+        <circle
+          class="hotend-point"
+          [attr.cx]="point.x"
+          [attr.cy]="point.y"
+          [attr.aria-label]="labels().hotendPointLabel"
+          r="14"
+        />
+      }
+    </svg>
+
+    @if (activePointHint(); as hint) {
+      <div class="active-point-hint" role="status" aria-live="polite">
+        {{ hint }}
+      </div>
+    }
+
+    <button
+      pButton
+      type="button"
+      class="settings-button"
+      [class.settings-button--active]="configurationOpen()"
+      [disabled]="configurationPanelVisible()"
+      [attr.aria-expanded]="configurationOpen()"
+      [attr.aria-label]="
+        configurationOpen() ? labels().backToConfigurationAriaLabel : labels().settingsAriaLabel
+      "
+      (click)="toggleConfiguration(); $event.stopPropagation()"
+    >
+      <i class="pi pi-cog" aria-hidden="true"></i>
+    </button>
+
+    @if (!configurationOpen()) {
+      <aside
+        [class]="'position-panel position-panel--' + positionPanelPlacement()"
+        aria-live="polite"
+      >
+        <strong>{{ labels().position }}</strong>
+        @for (axis of axes; track axis) {
+          <span
+            >{{ labels().axis }} {{ axis }}: <b>{{ coordinates()[axis] }}</b></span
+          >
+        }
+      </aside>
+
+      <div class="printer-navigation__controls">
+        @for (view of axisViews(); track view.axis) {
+          <div
+            class="axis-control"
+            [style]="pointStyle(view.negative, view.angle)"
+            [attr.data-axis]="view.axis"
+            data-direction="negative"
+          >
+            <p-splitbutton
+              size="small"
+              severity="secondary"
+              [label]="movementLabel('negative')"
+              [model]="movementMenu(view.axis, 'negative')"
+              [appendTo]="'body'"
+              [expandAriaLabel]="labels().alternativeStepAriaLabel(view.axis, 'negative')"
+              (onClick)="changeCoordinate(view.axis, mainDelta('negative'))"
+            />
+          </div>
+
+          <span class="axis-label" [style]="pointStyle(view.midpoint, view.angle)">
+            {{ labels().axis }} {{ view.axis }}
+          </span>
+
+          <div
+            class="axis-control"
+            [style]="pointStyle(view.positive, view.angle)"
+            [attr.data-axis]="view.axis"
+            data-direction="positive"
+          >
+            <p-splitbutton
+              size="small"
+              severity="secondary"
+              [label]="movementLabel('positive')"
+              [model]="movementMenu(view.axis, 'positive')"
+              [appendTo]="'body'"
+              [expandAriaLabel]="labels().alternativeStepAriaLabel(view.axis, 'positive')"
+              (onClick)="changeCoordinate(view.axis, mainDelta('positive'))"
+            />
+          </div>
+        }
+
+        @if (hotendPoint(); as point) {
+          <div class="hotend-control" [style]="pointStyle(point, 0)">
+            <span class="hotend-label">{{ labels().hotend }}</span>
+            <div class="hotend-actions">
+              <p-splitbutton
+                size="small"
+                severity="secondary"
+                icon="pi pi-arrow-up"
+                dropdownIcon="pi pi-chevron-right"
+                styleClass="hotend-splitbutton"
+                [label]="hotendLabel('up')"
+                [model]="hotendMenu('up')"
+                [appendTo]="'body'"
+                [expandAriaLabel]="labels().hotendStepAriaLabel('up')"
+                (onClick)="emitHotendAction('up')"
+              />
+              <p-splitbutton
+                size="small"
+                severity="secondary"
+                icon="pi pi-arrow-down"
+                dropdownIcon="pi pi-chevron-right"
+                styleClass="hotend-splitbutton"
+                [label]="hotendLabel('down')"
+                [model]="hotendMenu('down')"
+                [appendTo]="'body'"
+                [expandAriaLabel]="labels().hotendStepAriaLabel('down')"
+                (onClick)="emitHotendAction('down')"
+              />
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (configurationPanelVisible()) {
+      <aside class="configuration-panel" (pointerdown)="$event.stopPropagation()">
+        <h2>{{ labels().configurationTitle }}</h2>
+        <p>{{ instruction() }}</p>
+
+        <div class="configuration-list">
+          @for (axis of axes; track axis) {
+            <button pButton type="button" class="configuration-row" (click)="configureAxis(axis)">
+              <span>{{ labels().setAxis(axis) }}</span>
+              <small>{{ axisStatus(axis) }}</small>
+              <i class="pi pi-chevron-right" aria-hidden="true"></i>
+            </button>
+          }
+          <button pButton type="button" class="configuration-row" (click)="configureHotend()">
+            <span>{{ labels().setHotend }}</span>
+            <small>{{ draftHotendPoint() ? labels().configured : labels().incomplete }}</small>
+            <i class="pi pi-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <label class="configuration-field">
+          <span>{{ labels().mainStep }}</span>
+          <p-select
+            size="small"
+            [options]="stepOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="draftMainStep()"
+            (ngModelChange)="draftMainStep.set($event)"
+          />
+        </label>
+
+        <label class="configuration-field">
+          <span>{{ labels().positionPanel }}</span>
+          <p-select
+            size="small"
+            [options]="positionOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="draftPositionPanelPlacement()"
+            (ngModelChange)="draftPositionPanelPlacement.set($event)"
+          />
+        </label>
+
+        <div class="configuration-panel__actions">
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            class="reset-axes-button"
+            (click)="resetAxes()"
+          >
+            {{ labels().resetAxes }}
+          </button>
+          <div class="configuration-panel__confirmation">
+            <button pButton type="button" severity="secondary" (click)="cancelConfiguration()">
+              {{ labels().cancel }}
+            </button>
+            <button
+              pButton
+              type="button"
+              icon="pi pi-check"
+              [disabled]="!configurationComplete()"
+              (click)="saveConfiguration()"
+            >
+              {{ labels().save }}
+            </button>
+          </div>
+        </div>
+      </aside>
+    }
+  </div>
+</section>

@@ -11,6 +11,18 @@
   --app-text-muted: var(--p-surface-600);
   --app-grid-line: color-mix(in srgb, var(--p-surface-300) 34%, transparent);
   --app-shadow-sm: 0 12px 36px color-mix(in srgb, var(--p-surface-900) 8%, transparent);
+  --semantic-surface-canvas: var(--app-surface-ground);
+  --semantic-surface-raised: var(--app-surface-card);
+  --semantic-surface-overlay: var(--app-surface-card);
+  --semantic-surface-interactive: var(--p-surface-100);
+  --semantic-surface-hover: var(--p-surface-200);
+  --semantic-border-subtle: var(--app-surface-border);
+  --semantic-border-default: var(--app-surface-border);
+  --semantic-border-strong: var(--p-surface-300);
+  --semantic-text-primary: var(--app-text-color);
+  --semantic-text-secondary: var(--p-surface-700);
+  --semantic-text-muted: var(--app-text-muted);
+  --semantic-focus-ring: var(--app-primary-color);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
 }
@@ -24,6 +36,44 @@
   --app-text-muted: var(--p-surface-400);
   --app-grid-line: color-mix(in srgb, var(--p-surface-500) 22%, transparent);
   --app-shadow-sm: 0 12px 36px rgb(0 0 0 / 24%);
+  --semantic-surface-canvas: var(--p-surface-950);
+  --semantic-surface-raised: var(--p-surface-900);
+  --semantic-surface-overlay: var(--p-surface-800);
+  --semantic-surface-interactive: var(--p-surface-800);
+  --semantic-surface-hover: var(--p-surface-700);
+  --semantic-border-subtle: var(--p-surface-700);
+  --semantic-border-default: var(--p-surface-600);
+  --semantic-border-strong: var(--p-surface-500);
+  --semantic-text-primary: var(--p-surface-0);
+  --semantic-text-secondary: var(--p-surface-200);
+  --semantic-text-muted: var(--p-surface-300);
+  --semantic-focus-ring: var(--p-primary-400);
+}
+
+.app-dark app-printer-navigation {
+  .settings-button {
+    border-color: var(--p-surface-500);
+    background: var(--p-surface-800);
+    color: var(--p-surface-200);
+  }
+
+  .configuration-row {
+    background: var(--p-surface-800);
+    color: var(--p-surface-100);
+
+    &:hover {
+      background: var(--p-surface-700);
+    }
+
+    small,
+    i {
+      color: var(--p-surface-300);
+    }
+  }
+
+  .configuration-field {
+    color: var(--p-surface-100);
+  }
 }
 
 *,

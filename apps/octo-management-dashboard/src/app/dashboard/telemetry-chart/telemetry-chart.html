@@ -1,0 +1,17 @@
+<section class="chart">
+  <header>
+    <div>
+      <h2>{{ chart().title }}</h2>
+      <p>{{ chart().subtitle }}</p>
+    </div>
+  </header>
+  <div class="chart__canvas">
+    <canvas
+      baseChart
+      type="line"
+      [data]="data()"
+      [options]="options()"
+      [plugins]="plugins"
+    ></canvas>
+  </div>
+</section>

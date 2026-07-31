@@ -1,6 +1,5 @@
 :host,
-.dashboard,
-gridster {
+.dashboard {
   display: block;
   width: 100%;
   height: 100%;
@@ -8,7 +7,9 @@ gridster {
 }
 
 .dashboard {
+  display: flex;
   overflow: hidden;
+  flex-direction: column;
   background:
     linear-gradient(var(--app-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--app-grid-line) 1px, transparent 1px),
@@ -17,5 +18,26 @@ gridster {
 }
 
 gridster {
+  display: block;
+  min-height: 0;
+  flex: 1;
   background: transparent;
 }
+
+:host ::ng-deep gridster-item { overflow: visible; border: 1px solid var(--app-surface-border); border-radius: .85rem; background: color-mix(in srgb, var(--app-surface-card) 96%, transparent); box-shadow: var(--app-shadow-sm); }
+.widget-card { position: relative; width: 100%; height: 100%; min-height: 0; padding: .75rem; overflow: hidden; border-radius: inherit; }
+.dashboard--editing ::ng-deep gridster-item { border-color: color-mix(in srgb, var(--app-primary-color) 70%, var(--app-surface-border)); box-shadow: 0 0 0 2px var(--app-primary-subtle); }
+.dashboard--editing ::ng-deep gridster-item { cursor: move; touch-action: none; user-select: none; }
+.dashboard--editing .widget-card { pointer-events: none; }
+.widget-edit-shield { position: absolute; z-index: 20; inset: 0; display: grid; border-radius: inherit; background: color-mix(in srgb, var(--app-primary-color) 4%, transparent); place-items: center; }
+.widget-edit-shield span { display: inline-flex; align-items: center; padding: .38rem .65rem; border: 1px solid color-mix(in srgb, var(--app-primary-color) 65%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--app-surface-card) 92%, transparent); color: var(--app-primary-color); box-shadow: 0 4px 14px rgb(0 0 0 / 18%); font-size: .68rem; font-weight: 650; gap: .4rem; }
+:host ::ng-deep .dashboard--editing .gridster-item-resizable-handler { z-index: 30; }
+:host ::ng-deep .dashboard--editing :is(.handle-n, .handle-s) { height: 12px; }
+:host ::ng-deep .dashboard--editing :is(.handle-e, .handle-w) { width: 12px; }
+:host ::ng-deep .dashboard--editing :is(.handle-ne, .handle-nw, .handle-se, .handle-sw) { width: 16px; height: 16px; border: 2px solid var(--app-primary-color); border-radius: 50%; background: var(--app-surface-card); }
+:host ::ng-deep .dashboard--editing .handle-ne { top: -6px; right: -6px; }
+:host ::ng-deep .dashboard--editing .handle-nw { top: -6px; left: -6px; }
+:host ::ng-deep .dashboard--editing .handle-se { right: -6px; bottom: -6px; }
+:host ::ng-deep .dashboard--editing .handle-sw { bottom: -6px; left: -6px; }
+.dashboard-state { display: flex; height: 100%; align-items: center; justify-content: center; color: var(--app-text-muted); gap: .65rem; }
+@media (max-width: 620px) { .widget-card { padding: .55rem; } }

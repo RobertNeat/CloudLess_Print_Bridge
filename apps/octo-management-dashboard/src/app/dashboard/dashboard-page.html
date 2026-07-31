@@ -1,7 +1,39 @@
-<section class="dashboard">
-  <gridster [options]="gridsterOptions">
-    @for (widget of widgets; track widget) {
-      <gridster-item [item]="widget" />
-    }
-  </gridster>
+<section class="dashboard" [class.dashboard--editing]="layout.editing()">
+  @if (dashboard(); as data) {
+    <gridster [options]="gridsterOptions()">
+      @for (widget of widgets(); track widget.id + ':' + widgetRenderVersion()) {
+        <gridster-item [item]="widget" [attr.data-widget-id]="widget.id">
+          <article class="widget-card">
+            @if (layout.editing()) {
+              <div class="widget-edit-shield" aria-hidden="true">
+                <span><i class="pi pi-arrows-alt"></i> Przeciągnij, aby przenieść</span>
+              </div>
+            }
+            @switch (widget.type) {
+              @case ('print-job') { <app-current-print-job [job]="data.printJob" (pauseRequested)="setPrintStatus('paused')" (resumeRequested)="setPrintStatus('printing')" (cancelRequested)="setPrintStatus('cancelled')" /> }
+              @case ('quick-controls') { <app-printer-quick-controls [lightEnabled]="data.controls.lightEnabled" (lightEnabledChange)="updateControl('lightEnabled', $event)" [fansEnabled]="data.controls.fansEnabled" (fansEnabledChange)="updateControl('fansEnabled', $event)" [fanSpeed]="data.controls.fanSpeed" (fanSpeedChange)="updateControl('fanSpeed', $event)" [printSpeed]="data.controls.printSpeed" (printSpeedChange)="updateControl('printSpeed', $event)" /> }
+              @case ('temperatures') { <app-printer-temperatures [temperatures]="data.temperatures" /> }
+              @case ('printer-navigation') {
+                <app-printer-navigation
+                  [coordinates]="data.coordinates"
+                  (coordinatesChange)="updateCoordinates($event)"
+                  [initialAxisPoints]="data.navigation.axisPoints"
+                  [initialHotendPoint]="data.navigation.hotendPoint"
+                  [steps]="data.navigation.steps"
+                  [viewport]="data.navigation.viewport"
+                  (configurationSaved)="updateNavigationConfiguration($event)"
+                />
+              }
+              @case ('live-preview') { <app-live-preview [preview]="data.livePreview" (resolutionChanged)="updatePreview({ resolution: $event })" (activeChanged)="updatePreview({ active: $event })" /> }
+              @default { @if (chart(widget); as chartData) { <app-telemetry-chart [chart]="chartData" /> } }
+            }
+          </article>
+        </gridster-item>
+      }
+    </gridster>
+  } @else if (loadingError()) {
+    <div class="dashboard-state"><i class="pi pi-exclamation-triangle"></i><strong>Nie udało się wczytać danych dashboardu.</strong></div>
+  } @else {
+    <div class="dashboard-state"><i class="pi pi-spin pi-spinner"></i><span>Ładowanie dashboardu…</span></div>
+  }
 </section>

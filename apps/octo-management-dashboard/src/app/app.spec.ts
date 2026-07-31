@@ -38,6 +38,6 @@ describe('App', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('#dashboard-select')).toBeTruthy();
-    expect(compiled.querySelectorAll('p-button')).toHaveLength(2);
+    expect(compiled.querySelectorAll('p-button')).toHaveLength(3);
   });
 });

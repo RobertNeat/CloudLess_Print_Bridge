@@ -29,6 +29,19 @@
 
       <ng-template #end>
         <div class="header-actions">
+          <p-menu #layoutMenu [model]="layoutMenuItems()" [popup]="true" appendTo="body" />
+          <p-button
+            data-testid="layout-edit-toggle"
+            severity="secondary"
+            [text]="true"
+            [outlined]="layout.editing()"
+            [rounded]="true"
+            icon="pi pi-cog"
+            aria-label="Ustawienia układu dashboardu"
+            pTooltip="Ustawienia układu dashboardu"
+            tooltipPosition="bottom"
+            (onClick)="layoutMenu.toggle($event)"
+          />
           <p-button
             severity="secondary"
             [text]="true"

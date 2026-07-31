@@ -1,0 +1,17 @@
+<section class="controls" aria-label="Szybkie sterowanie drukarką">
+  <button type="button" class="control" [class.control--active]="lightEnabled()" [attr.aria-pressed]="lightEnabled()" (click)="toggleLight()">
+    <span class="icon icon--light"><i class="pi pi-lightbulb"></i></span><span><small>Oświetlenie</small><strong>{{ lightEnabled() ? 'Włączone' : 'Wyłączone' }}</strong></span><i class="state-dot"></i>
+  </button>
+  <button #fanTrigger type="button" class="control" [class.control--active]="fansEnabled()" (click)="fanPopover.toggle($event, fanTrigger)">
+    <span class="icon"><i class="pi pi-cog"></i></span><span><small>Wentylatory</small><strong>{{ fansEnabled() ? fanSpeed() + '%' : 'Wyłączone' }}</strong></span><i class="pi pi-chevron-down chevron"></i>
+  </button>
+  <button #speedTrigger type="button" class="control" (click)="speedPopover.toggle($event, speedTrigger)">
+    <span class="icon"><i class="pi pi-gauge"></i></span><span><small>Prędkość druku</small><strong>{{ speedLabels[printSpeed()] }}</strong></span><i class="pi pi-chevron-down chevron"></i>
+  </button>
+</section>
+<p-popover #fanPopover styleClass="printer-control-popover">
+  <div class="popover-panel"><div class="popover-row"><strong>Wentylatory</strong><button type="button" class="power" [class.power--on]="fansEnabled()" (click)="toggleFans()">{{ fansEnabled() ? 'Włączone' : 'Wyłączone' }}</button></div><div class="popover-row"><span>Prędkość</span><strong>{{ fanSpeed() }}%</strong></div><p-slider [ngModel]="fanSpeed()" (ngModelChange)="setFanSpeed($event)" [step]="10" /></div>
+</p-popover>
+<p-popover #speedPopover styleClass="printer-control-popover">
+  <div class="speed-list" role="radiogroup" aria-label="Tryb prędkości druku">@for (mode of speedModes; track mode) { <button type="button" role="radio" [attr.aria-checked]="printSpeed() === mode" [class.selected]="printSpeed() === mode" (click)="printSpeed.set(mode); speedPopover.hide()"><i class="pi pi-bolt"></i>{{ speedLabels[mode] }}</button> }</div>
+</p-popover>

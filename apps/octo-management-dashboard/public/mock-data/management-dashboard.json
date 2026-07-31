@@ -1,0 +1,94 @@
+{
+  "printJob": { "name": "Obudowa sterownika v4", "thumbnailUrl": "/images/print-part-thumbnail.svg", "thumbnailAlt": "Podgląd drukowanej obudowy", "progress": 68, "currentLayer": 170, "totalLayers": 250, "estimatedPrintTime": "1 godz. 42 min", "status": "printing" },
+  "controls": { "lightEnabled": true, "fansEnabled": true, "fanSpeed": 60, "printSpeed": "standard" },
+  "temperatures": { "chamber": null, "bed": 60, "nozzle": 215 },
+  "coordinates": { "X": 128, "Y": 96, "Z": 42 },
+  "navigation": {
+    "axisPoints": {
+      "X": { "negative": { "x": 205, "y": 392 }, "positive": { "x": 790, "y": 392 } },
+      "Y": { "negative": { "x": 300, "y": 850 }, "positive": { "x": 700, "y": 760 } },
+      "Z": { "negative": { "x": 780, "y": 650 }, "positive": { "x": 780, "y": 185 } }
+    },
+    "hotendPoint": { "x": 500, "y": 540 },
+    "steps": [1, 5, 10],
+    "viewport": {
+      "imageUrl": "/images/A1_less_datails.png",
+      "imageAlt": "Drukarka 3D Bambu Lab A1",
+      "width": 680,
+      "height": 680,
+      "viewBox": { "minX": 0, "minY": 0, "width": 1000, "height": 1000 }
+    }
+  },
+  "livePreview": { "cameraName": "Kamera drukarki", "resolution": "1280 × 720", "availableResolutions": ["640 × 360", "1280 × 720", "1920 × 1080"], "active": true, "latencyMs": 86 },
+  "widgets": [
+    { "id": "current-print", "type": "print-job", "x": 0, "y": 0, "cols": 6, "rows": 2, "minItemCols": 4, "minItemRows": 2 },
+    { "id": "live-preview", "type": "live-preview", "x": 6, "y": 0, "cols": 6, "rows": 7, "minItemCols": 4, "minItemRows": 3 },
+    { "id": "quick-controls", "type": "quick-controls", "x": 0, "y": 2, "cols": 6, "rows": 1, "minItemCols": 4 },
+    { "id": "temperatures", "type": "temperatures", "x": 0, "y": 3, "cols": 6, "rows": 1, "minItemCols": 4 },
+    { "id": "navigation", "type": "printer-navigation", "x": 0, "y": 4, "cols": 6, "rows": 6, "minItemCols": 3, "minItemRows": 3 },
+    { "id": "progress", "type": "progress-chart", "x": 0, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
+    { "id": "temperature", "type": "temperature-chart", "x": 4, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
+    { "id": "fan", "type": "fan-chart", "x": 8, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 }
+  ],
+  "charts": {
+    "progress": {
+      "kind": "progress",
+      "title": "Postęp wydruku",
+      "subtitle": "Postęp zadania w czasie",
+      "xAxisLabel": "Czas [min]",
+      "yAxisLabel": "Postęp [%]",
+      "yMin": 0,
+      "yMax": 100,
+      "yStepSize": 10,
+      "valueSuffix": "%",
+      "labels": ["0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60"],
+      "datasets": [
+        {
+          "label": "Postęp",
+          "data": [0, 2, 5, 9, 14, 20, 27, 35, 43, 51, 58, 64, 68],
+          "borderColor": "#0ea5e9",
+          "backgroundColor": "transparent",
+          "fill": false,
+          "tension": 0.25
+        }
+      ]
+    },
+    "temperature": {
+      "kind": "temperature",
+      "title": "Temperatura bieżąca vs docelowa",
+      "subtitle": "Komora, dysza i stół grzewczy",
+      "xAxisLabel": "Czas [min]",
+      "yAxisLabel": "Temperatura [°C]",
+      "yMin": 0,
+      "yMax": 250,
+      "yStepSize": 50,
+      "valueSuffix": "°C",
+      "labels": ["0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60"],
+      "datasets": [
+        { "label": "Komora — zadana", "data": [35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35], "borderColor": "#2563eb", "borderDash": [6, 4], "pointStyle": "rectRot" },
+        { "label": "Komora — aktualna", "data": [23, 24, 26, 28, 30, 31, 32, 33, 34, 35, 35, 35, 35], "borderColor": "#60a5fa", "backgroundColor": "rgba(96, 165, 250, .12)", "fill": "-1" },
+        { "label": "Dysza — zadana", "data": [215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215], "borderColor": "#e11d48", "borderDash": [6, 4], "pointStyle": "rectRot" },
+        { "label": "Dysza — aktualna", "data": [24, 82, 164, 207, 216, 214, 215, 216, 214, 215, 215, 214, 215], "borderColor": "#fb7185", "backgroundColor": "rgba(251, 113, 133, .11)", "fill": "-1" },
+        { "label": "Stół grzewczy — zadana", "data": [60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60], "borderColor": "#d97706", "borderDash": [6, 4], "pointStyle": "rectRot" },
+        { "label": "Stół grzewczy — aktualna", "data": [23, 29, 39, 50, 58, 61, 60, 59, 60, 60, 61, 60, 60], "borderColor": "#fbbf24", "backgroundColor": "rgba(251, 191, 36, .11)", "fill": "-1" }
+      ]
+    },
+    "fan": {
+      "kind": "fan",
+      "title": "Prędkość wentylatorów",
+      "subtitle": "Aux, chłodzenie modelu i komora",
+      "xAxisLabel": "Czas [min]",
+      "yAxisLabel": "Fan speed [%]",
+      "yMin": 0,
+      "yMax": 100,
+      "yStepSize": 10,
+      "valueSuffix": "%",
+      "labels": ["0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60"],
+      "datasets": [
+        { "label": "Aux fan", "data": [0, 0, 20, 20, 55, 55, 80, 80, 35, 35, 60, 60, 40], "borderColor": "#06b6d4", "gradientColors": ["#0891b2", "#67e8f9"], "stepped": "middle" },
+        { "label": "Part cooling fan", "data": [0, 25, 25, 45, 45, 70, 70, 50, 50, 75, 75, 55, 55], "borderColor": "#8b5cf6", "gradientColors": ["#7c3aed", "#c4b5fd"], "stepped": "middle" },
+        { "label": "Chamber fan", "data": [10, 10, 20, 20, 30, 30, 45, 45, 60, 60, 40, 40, 25], "borderColor": "#22c55e", "gradientColors": ["#16a34a", "#86efac"], "stepped": "middle" }
+      ]
+    }
+  }
+}

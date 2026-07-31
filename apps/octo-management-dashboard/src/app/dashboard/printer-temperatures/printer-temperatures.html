@@ -1,0 +1,3 @@
+<section class="temperatures" aria-label="Temperatury drukarki">
+  @for (reading of readings(); track reading.label) { <article [class]="'temperature temperature--' + reading.color" [class.temperature--disabled]="reading.value === null"><span class="temperature__icon"><i [class]="reading.icon"></i></span><span><small>{{ reading.label }}</small><strong>{{ reading.value === null ? '—' : reading.value + '°C' }}</strong></span></article> }
+</section>
