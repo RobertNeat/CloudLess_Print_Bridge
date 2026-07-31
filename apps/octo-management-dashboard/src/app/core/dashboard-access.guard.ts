@@ -1,0 +1,17 @@
+import { inject } from '@angular/core';
+import type { CanActivateFn } from '@angular/router';
+import { Router } from '@angular/router';
+import { DashboardCatalogService, type DashboardId } from './dashboard-catalog.service';
+
+export const dashboardAccessGuard: CanActivateFn = (route) => {
+  const catalog = inject(DashboardCatalogService);
+  const router = inject(Router);
+  const dashboardId = route.data['dashboardId'] as DashboardId;
+
+  if (catalog.isAvailable(dashboardId)) {
+    return true;
+  }
+
+  const fallback = catalog.availableDashboards()[0]?.id ?? 'management';
+  return router.createUrlTree(['/', fallback]);
+};

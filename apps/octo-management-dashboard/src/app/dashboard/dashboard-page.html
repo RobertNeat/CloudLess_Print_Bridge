@@ -1,0 +1,7 @@
+<section class="dashboard">
+  <gridster [options]="gridsterOptions">
+    @for (widget of widgets; track widget) {
+      <gridster-item [item]="widget" />
+    }
+  </gridster>
+</section>

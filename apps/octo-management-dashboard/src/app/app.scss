@@ -1,0 +1,72 @@
+:host {
+  display: block;
+  height: 100dvh;
+}
+
+.app-shell {
+  display: flex;
+  height: 100dvh;
+  min-width: 320px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-surface-ground);
+  color: var(--app-text-color);
+}
+
+.app-header {
+  position: relative;
+  z-index: 100;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+:host ::ng-deep .p-menubar {
+  width: 100%;
+  min-height: 3.75rem;
+  padding: 0.5rem clamp(0.5rem, 1.25vw, 1rem);
+  border: 0;
+  border-bottom: 1px solid var(--app-surface-border);
+  border-radius: 0;
+  background: var(--app-surface-card);
+  box-shadow: none;
+}
+
+:host ::ng-deep .p-menubar-root-list,
+:host ::ng-deep .p-menubar-button {
+  display: none;
+}
+
+.header-actions,
+.dashboard-option {
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-select {
+  width: min(15rem, 56vw);
+}
+
+.dashboard-option {
+  gap: 0.625rem;
+}
+
+.dashboard-option i {
+  color: var(--app-primary-color);
+}
+
+.header-actions {
+  gap: 0.25rem;
+}
+
+.app-content {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+}
+
+@media (max-width: 480px) {
+  .dashboard-select {
+    width: min(12rem, 58vw);
+  }
+}

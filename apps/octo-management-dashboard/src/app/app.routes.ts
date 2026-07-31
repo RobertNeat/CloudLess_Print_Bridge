@@ -1,3 +1,26 @@
-import { Routes } from '@angular/router';
+import type { Routes } from '@angular/router';
+import { dashboardAccessGuard } from './core/dashboard-access.guard';
+import { DashboardPage } from './dashboard/dashboard-page';
 
-export const routes: Routes = [];
+export const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'management' },
+  {
+    path: 'management',
+    component: DashboardPage,
+    canActivate: [dashboardAccessGuard],
+    data: { dashboardId: 'management' },
+  },
+  {
+    path: 'files',
+    component: DashboardPage,
+    canActivate: [dashboardAccessGuard],
+    data: { dashboardId: 'files' },
+  },
+  {
+    path: 'videos',
+    component: DashboardPage,
+    canActivate: [dashboardAccessGuard],
+    data: { dashboardId: 'videos' },
+  },
+  { path: '**', redirectTo: 'management' },
+];
