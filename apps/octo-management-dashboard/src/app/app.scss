@@ -58,6 +58,10 @@
   gap: 0.25rem;
 }
 
+app-video-search {
+  margin-right: 0.4rem;
+}
+
 .app-content {
   width: 100%;
   min-height: 0;
@@ -67,6 +71,10 @@
 
 @media (max-width: 480px) {
   .dashboard-select {
-    width: min(12rem, 58vw);
+    width: min(8.5rem, 37vw);
+  }
+
+  app-video-search {
+    margin-right: 0;
   }
 }

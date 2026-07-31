@@ -2,6 +2,7 @@ import type { Routes } from '@angular/router';
 import { dashboardAccessGuard } from './core/dashboard-access.guard';
 import { DashboardPage } from './dashboard/dashboard-page';
 import { FilesDashboardPage } from './files/files-dashboard-page';
+import { VideosDashboardPage } from './videos/videos-dashboard-page';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'management' },
@@ -19,7 +20,7 @@ export const routes: Routes = [
   },
   {
     path: 'videos',
-    component: DashboardPage,
+    component: VideosDashboardPage,
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'videos' },
   },

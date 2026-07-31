@@ -1,0 +1,59 @@
+<div class="video-search" role="search" aria-label="Wyszukiwanie nagrań">
+  <div class="filter-control">
+    <p-button
+      icon="pi pi-calendar"
+      severity="secondary"
+      [text]="true"
+      [rounded]="true"
+      [outlined]="!!filters.date()"
+      ariaLabel="Filtruj po dacie"
+      (onClick)="toggle('date')"
+    />
+    @if (openFilter() === 'date') {
+      <div class="filter-popover filter-popover--date">
+        <label for="video-date-filter">Data nagrania</label>
+        <input id="video-date-filter" type="date" [ngModel]="filters.date()" (ngModelChange)="filters.date.set($event)" />
+      </div>
+    }
+  </div>
+
+  <div class="filter-control">
+    <p-button
+      icon="pi pi-video"
+      severity="secondary"
+      [text]="true"
+      [rounded]="true"
+      [outlined]="!!filters.sourceId()"
+      ariaLabel="Filtruj po źródle kamery"
+      (onClick)="toggle('source')"
+    />
+    @if (openFilter() === 'source') {
+      <div class="filter-popover filter-popover--source">
+        <label for="video-source-filter">Źródło kamery</label>
+        <p-select
+          inputId="video-source-filter"
+          [options]="filters.sources()"
+          [ngModel]="filters.sourceId()"
+          (ngModelChange)="filters.sourceId.set($event ?? '')"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Wszystkie kamery"
+          [showClear]="true"
+          appendTo="body"
+        />
+      </div>
+    }
+  </div>
+
+  <span class="search-input">
+    <i class="pi pi-search" aria-hidden="true"></i>
+    <input
+      pInputText
+      type="search"
+      [ngModel]="filters.query()"
+      (ngModelChange)="filters.query.set($event)"
+      placeholder="Szukaj pliku"
+      aria-label="Szukaj pliku multimedialnego"
+    />
+  </span>
+</div>

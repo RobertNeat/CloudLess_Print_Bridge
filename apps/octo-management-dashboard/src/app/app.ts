@@ -18,6 +18,7 @@ import {
 } from './core/files-dashboard-layout.service';
 import { I18nService } from './core/i18n.service';
 import { ThemeService } from './core/theme.service';
+import { VideoSearch } from './videos/video-search/video-search';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +30,7 @@ import { ThemeService } from './core/theme.service';
     RouterOutlet,
     SelectModule,
     TooltipModule,
+    VideoSearch,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -102,6 +104,8 @@ export class App {
       ? 'Ustawienia kolumn dashboardu plików'
       : 'Ustawienia układu dashboardu',
   );
+
+  protected readonly showsLayoutSettings = computed(() => this.activeDashboardId() !== 'videos');
 
   protected t(key: Parameters<I18nService['t']>[0]): string {
     return this.i18n.t(key);

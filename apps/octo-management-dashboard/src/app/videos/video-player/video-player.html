@@ -1,0 +1,13 @@
+<section class="player">
+  <div class="video-frame">
+    <div class="player-actions">
+      <p-select [options]="player().availableResolutions" [ngModel]="player().resolution" (ngModelChange)="resolutionChanged.emit($event)" ariaLabel="Rozdzielczość transmisji" />
+      <p-button [icon]="player().active ? 'pi pi-stop' : 'pi pi-play'" [label]="player().active ? 'Zatrzymaj' : 'Uruchom'" [severity]="player().active ? 'danger' : 'primary'" (onClick)="activeChanged.emit(!player().active)" />
+    </div>
+    @if (player().active) {
+      <img [src]="player().previewUrl" alt="Podgląd transmisji z wybranej kamery" />
+    } @else {
+      <div class="stream-ended"><span><i class="pi pi-video"></i></span><strong>Transmisja zatrzymana</strong><small>Uruchom podgląd, aby połączyć się z kamerą</small></div>
+    }
+  </div>
+</section>

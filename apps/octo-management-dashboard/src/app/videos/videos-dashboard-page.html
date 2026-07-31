@@ -1,0 +1,24 @@
+<section class="videos-dashboard">
+  @if (dashboard(); as data) {
+    <div class="live-area">
+      <app-camera-panel
+        [metrics]="data.metrics"
+        [sources]="data.sources"
+        [selectedSourceId]="data.player.selectedSourceId"
+        (sourceSelected)="updatePlayer({ selectedSourceId: $event })"
+      />
+      <app-video-player
+        [player]="data.player"
+        (activeChanged)="updatePlayer({ active: $event })"
+        (resolutionChanged)="updatePlayer({ resolution: $event })"
+      />
+    </div>
+    <div class="media-area">
+      <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
+    </div>
+  } @else if (loadingError()) {
+    <div class="dashboard-state"><i class="pi pi-exclamation-triangle"></i><strong>Nie udało się wczytać danych dashboardu wideo.</strong></div>
+  } @else {
+    <div class="dashboard-state"><i class="pi pi-spin pi-spinner"></i><span>Ładowanie dashboardu…</span></div>
+  }
+</section>

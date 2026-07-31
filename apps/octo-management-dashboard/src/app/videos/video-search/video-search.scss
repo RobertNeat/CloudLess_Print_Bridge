@@ -1,0 +1,11 @@
+:host { display: block; }
+.video-search { display: flex; min-width: 0; align-items: center; gap: .2rem; }
+.filter-control { position: relative; }
+.filter-popover { position: absolute; z-index: 150; top: calc(100% + .65rem); right: 0; width: 15rem; padding: .75rem; border: 1px solid var(--app-surface-border); border-radius: .75rem; background: var(--app-surface-card); box-shadow: var(--app-shadow-sm); }
+.filter-popover label { display: block; margin-bottom: .45rem; color: var(--app-text-muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+.filter-popover input, .filter-popover p-select { width: 100%; }
+.filter-popover input { padding: .6rem .7rem; border: 1px solid var(--app-surface-border); border-radius: .5rem; background: var(--app-surface-card); color: var(--app-text-color); }
+.search-input { position: relative; display: flex; align-items: center; }
+.search-input i { position: absolute; left: .7rem; color: var(--app-text-muted); pointer-events: none; }
+.search-input input { width: clamp(9rem, 19vw, 17rem); padding-left: 2.1rem; }
+@media (max-width: 820px) { .search-input input { width: 2.6rem; padding-right: 0; } .search-input input:focus { position: absolute; z-index: 5; right: 0; width: min(13rem, 72vw); background: var(--app-surface-card); } }
