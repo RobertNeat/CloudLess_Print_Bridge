@@ -1,3 +1,35 @@
-<section class="temperatures" aria-label="Temperatury drukarki">
-  @for (reading of readings(); track reading.label) { <article [class]="'temperature temperature--' + reading.color" [class.temperature--disabled]="reading.value === null"><span class="temperature__icon"><i [class]="reading.icon"></i></span><span><small>{{ reading.label }}</small><strong>{{ reading.value === null ? '—' : reading.value + '°C' }}</strong></span></article> }
+<section class="temperatures" [attr.aria-label]="i18n.t('temperatures.aria')">
+  @for (reading of readings(); track reading.sensor) {
+    <button
+      type="button"
+      [class]="'temperature temperature--' + reading.color"
+      [class.temperature--disabled]="reading.value === null"
+      [disabled]="reading.value === null"
+      [attr.aria-label]="i18n.t('temperatures.edit', { name: reading.label })"
+      (click)="openEditor($event, reading, temperaturePopover)"
+    >
+      <span class="temperature__icon"><i [class]="reading.icon" aria-hidden="true"></i></span>
+      <span><small>{{ reading.label }}</small><strong>{{ reading.value === null ? '—' : reading.value + '°C' }}</strong></span>
+    </button>
+  }
 </section>
+
+<p-popover #temperaturePopover styleClass="temperature-popover">
+  @if (selected(); as reading) {
+    <form class="temperature-editor" (submit)="$event.preventDefault(); save(temperaturePopover)">
+      <label class="temperature-editor__title" for="temperature-value">{{ i18n.t('temperatures.edit', { name: reading.label }) }}</label>
+      <p-inputnumber
+        inputId="temperature-value"
+        [ngModel]="draftValue()"
+        (ngModelChange)="draftValue.set($event)"
+        name="temperature"
+        suffix=" °C"
+        [min]="0"
+        [max]="400"
+        [showButtons]="true"
+        [autofocus]="true"
+      />
+      <button pButton type="submit" size="small" icon="pi pi-check" [label]="i18n.t('temperatures.save')"></button>
+    </form>
+  }
+</p-popover>

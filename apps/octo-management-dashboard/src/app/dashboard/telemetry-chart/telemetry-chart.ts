@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import type {
   ChartConfiguration,
   ChartDataset,
@@ -7,6 +8,8 @@ import type {
   TooltipItem,
 } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
+import { I18nService } from '../../core/i18n.service';
+import { ThemeService } from '../../core/theme.service';
 import type { TelemetryChartData, TelemetryChartDataset } from '../dashboard.models';
 
 const hoverGuidePlugin: Plugin<'line'> = {
@@ -37,16 +40,27 @@ const hoverGuidePlugin: Plugin<'line'> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TelemetryChart {
+  private readonly document = inject(DOCUMENT);
+  protected readonly i18n = inject(I18nService);
+  private readonly theme = inject(ThemeService);
   readonly chart = input.required<TelemetryChartData>();
   protected readonly plugins: Plugin<'line'>[] = [hoverGuidePlugin];
 
-  protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => ({
-    labels: this.chart().labels,
-    datasets: this.chart().datasets.map((dataset) => this.prepareDataset(dataset)),
-  }));
+  protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
+    this.i18n.language();
+    return {
+      labels: this.chart().labels,
+      datasets: this.chart().datasets.map((dataset) => this.prepareDataset(dataset)),
+    };
+  });
 
   protected readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
     const chart = this.chart();
+    this.theme.theme();
+    this.i18n.language();
+    const textColor = this.cssColor('--semantic-chart-text', 'currentColor');
+    const borderColor = this.cssColor('--semantic-chart-border', 'currentColor');
+    const gridColor = this.cssColor('--semantic-chart-grid', 'transparent');
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -68,7 +82,7 @@ export class TelemetryChart {
             boxHeight: 9,
             padding: 10,
             usePointStyle: true,
-            color: '#94a3b8',
+            color: textColor,
             font: { size: 9 },
           },
         },
@@ -77,7 +91,7 @@ export class TelemetryChart {
           position: 'nearest',
           callbacks: {
             title: (items: TooltipItem<'line'>[]) =>
-              items.length ? `Czas: ${items[0].label} min` : '',
+              items.length ? this.i18n.t('chart.timeTooltip', { value: items[0].label }) : '',
             label: (item: TooltipItem<'line'>) =>
               `${item.dataset.label}: ${item.formattedValue}${chart.valueSuffix}`,
           },
@@ -86,11 +100,11 @@ export class TelemetryChart {
       scales: {
         x: {
           grid: { display: false },
-          border: { color: 'rgba(148, 163, 184, .28)' },
+          border: { color: borderColor },
           ticks: {
             autoSkip: true,
             maxTicksLimit: 7,
-            color: '#94a3b8',
+            color: textColor,
             font: { size: 9 },
             callback(value) {
               return `${this.getLabelForValue(Number(value))} min`;
@@ -98,26 +112,26 @@ export class TelemetryChart {
           },
           title: {
             display: true,
-            text: chart.xAxisLabel,
-            color: '#94a3b8',
+            text: this.i18n.t(chart.xAxisLabelKey),
+            color: textColor,
             font: { size: 9, weight: 600 },
           },
         },
         y: {
           min: chart.yMin,
           max: chart.yMax,
-          grid: { color: 'rgba(148, 163, 184, .13)' },
+          grid: { color: gridColor },
           border: { display: false },
           ticks: {
-            color: '#94a3b8',
+            color: textColor,
             font: { size: 9 },
             stepSize: chart.yStepSize,
             callback: (value) => `${value}${chart.valueSuffix}`,
           },
           title: {
             display: true,
-            text: chart.yAxisLabel,
-            color: '#94a3b8',
+            text: this.i18n.t(chart.yAxisLabelKey),
+            color: textColor,
             font: { size: 9, weight: 600 },
           },
         },
@@ -132,18 +146,35 @@ export class TelemetryChart {
   private prepareDataset(dataset: TelemetryChartDataset): ChartDataset<'line', number[]> {
     const prepared: ChartDataset<'line', number[]> = {
       ...dataset,
+      label: this.i18n.t(dataset.labelKey),
+      borderColor: this.cssColor(dataset.colorToken, 'currentColor'),
       fill: dataset.fill ?? false,
       pointRadius: dataset.pointRadius ?? 0,
       pointHoverRadius: dataset.pointHoverRadius ?? 4,
     };
 
-    if (dataset.gradientColors) {
-      const colors = dataset.gradientColors;
+    if (dataset.gradientColorTokens) {
+      const colors = dataset.gradientColorTokens.map((token) => this.cssColor(token, 'currentColor')) as [string, string];
       prepared.borderColor = (context) => this.createVerticalGradient(context, colors);
     }
 
-    delete (prepared as TelemetryChartDataset).gradientColors;
+    delete (prepared as Partial<TelemetryChartDataset>).labelKey;
+    delete (prepared as Partial<TelemetryChartDataset>).colorToken;
+    delete (prepared as Partial<TelemetryChartDataset>).backgroundColorToken;
+    delete (prepared as Partial<TelemetryChartDataset>).gradientColorTokens;
     return prepared;
+  }
+
+  protected title(): string {
+    return this.i18n.t(this.chart().titleKey);
+  }
+
+  protected subtitle(): string {
+    return this.i18n.t(this.chart().subtitleKey);
+  }
+
+  private cssColor(token: string, fallback: string): string {
+    return getComputedStyle(this.document.documentElement).getPropertyValue(token).trim() || fallback;
   }
 
   private createVerticalGradient(

@@ -44,8 +44,6 @@ export interface PrinterViewportConfig {
 }
 
 export interface PrinterNavigationLabels {
-  title: string;
-  browserTitle: (title: string) => string;
   canvasAriaLabel: string;
   settingsAriaLabel: string;
   backToConfigurationAriaLabel: string;
@@ -94,4 +92,3 @@ export interface HotendActionEvent {
   step: number;
   delta: number;
 }
-

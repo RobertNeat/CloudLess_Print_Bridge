@@ -296,16 +296,12 @@ describe('PrinterNavigation', () => {
     expect(component.instanceId()).not.toBe(secondFixture.componentInstance.instanceId());
   });
 
-  it('uses translated labels for both the heading and browser title', () => {
-    fixture.componentRef.setInput('labels', {
-      ...DEFAULT_LABELS,
-      title: 'Manual control',
-      browserTitle: (title: string) => `${title} widget`,
-    });
+  it('does not render a redundant heading or change the browser title', () => {
+    const initialTitle = document.title;
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Manual control');
-    expect(document.title).toBe('Manual control widget');
+    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
+    expect(document.title).toBe(initialTitle);
   });
 
   it('uses configured image and canvas dimensions independently of image size', () => {

@@ -71,13 +71,13 @@ export class App {
         command: () => this.filesLayout.set(value),
       });
       return [
-        option('Układ zrównoważony', 'balanced', 'pi pi-table'),
-        option('Szersza lista plików', 'browser-wide', 'pi pi-list'),
-        option('Szersze szczegóły', 'details-wide', 'pi pi-window-maximize'),
-        option('Szczegóły po lewej', 'reversed', 'pi pi-arrow-right-arrow-left'),
+        option(this.i18n.t('layout.balanced'), 'balanced', 'pi pi-table'),
+        option(this.i18n.t('layout.browserWide'), 'browser-wide', 'pi pi-list'),
+        option(this.i18n.t('layout.detailsWide'), 'details-wide', 'pi pi-window-maximize'),
+        option(this.i18n.t('layout.reversed'), 'reversed', 'pi pi-arrow-right-arrow-left'),
         { separator: true },
         {
-          label: 'Przywróć oryginalny układ',
+          label: this.i18n.t('layout.reset'),
           icon: 'pi pi-refresh',
           command: () => this.filesLayout.reset(),
         },
@@ -86,13 +86,13 @@ export class App {
 
     return [
       {
-        label: this.layout.editing() ? 'Zatwierdź układ' : 'Edytuj układ',
+        label: this.i18n.t(this.layout.editing() ? 'layout.confirm' : 'layout.edit'),
         icon: this.layout.editing() ? 'pi pi-check' : 'pi pi-arrows-alt',
         command: () => this.layout.toggle(),
       },
       { separator: true },
       {
-        label: 'Przywróć oryginalny układ',
+        label: this.i18n.t('layout.reset'),
         icon: 'pi pi-refresh',
         command: () => this.layout.reset(),
       },
@@ -101,8 +101,8 @@ export class App {
 
   protected readonly layoutButtonLabel = computed(() =>
     this.activeDashboardId() === 'files'
-      ? 'Ustawienia kolumn dashboardu plików'
-      : 'Ustawienia układu dashboardu',
+      ? this.i18n.t('layout.filesAria')
+      : this.i18n.t('layout.dashboardAria'),
   );
 
   protected readonly showsLayoutSettings = computed(() => this.activeDashboardId() !== 'videos');

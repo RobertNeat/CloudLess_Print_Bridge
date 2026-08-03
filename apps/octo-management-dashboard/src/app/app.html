@@ -1,6 +1,6 @@
 <div class="app-shell">
   <header class="app-header">
-    <p-menubar [model]="menuItems" aria-label="Główna nawigacja">
+    <p-menubar [model]="menuItems" [attr.aria-label]="t('mainNavigation')">
       <ng-template #start>
         <p-select
           inputId="dashboard-select"

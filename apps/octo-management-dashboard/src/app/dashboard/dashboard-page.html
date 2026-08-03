@@ -1,18 +1,30 @@
 <section class="dashboard" [class.dashboard--editing]="layout.editing()">
+  @if (commandError()) {
+    <div class="dashboard-command-error" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      {{ i18n.t('dashboard.commandError') }}
+    </div>
+  }
   @if (dashboard(); as data) {
     <gridster [options]="gridsterOptions()">
       @for (widget of widgets(); track widget.id + ':' + widgetRenderVersion()) {
-        <gridster-item [item]="widget" [attr.data-widget-id]="widget.id">
+        <gridster-item
+          [item]="widget"
+          [attr.data-widget-id]="widget.id"
+          [attr.tabindex]="layout.editing() ? 0 : null"
+          [attr.aria-label]="layout.editing() ? i18n.t('dashboard.widgetMoveAria', { id: widget.id }) : null"
+          (keydown)="moveWidgetByKeyboard(widget, $event)"
+        >
           <article class="widget-card">
             @if (layout.editing()) {
-              <div class="widget-edit-shield" aria-hidden="true">
-                <span><i class="pi pi-arrows-alt"></i> Przeciągnij, aby przenieść</span>
+              <div class="widget-edit-shield">
+                <span><i class="pi pi-arrows-alt" aria-hidden="true"></i> {{ i18n.t('dashboard.drag') }}</span>
               </div>
             }
             @switch (widget.type) {
               @case ('print-job') { <app-current-print-job [job]="data.printJob" (pauseRequested)="setPrintStatus('paused')" (resumeRequested)="setPrintStatus('printing')" (cancelRequested)="setPrintStatus('cancelled')" /> }
               @case ('quick-controls') { <app-printer-quick-controls [lightEnabled]="data.controls.lightEnabled" (lightEnabledChange)="updateControl('lightEnabled', $event)" [fansEnabled]="data.controls.fansEnabled" (fansEnabledChange)="updateControl('fansEnabled', $event)" [fanSpeed]="data.controls.fanSpeed" (fanSpeedChange)="updateControl('fanSpeed', $event)" [printSpeed]="data.controls.printSpeed" (printSpeedChange)="updateControl('printSpeed', $event)" /> }
-              @case ('temperatures') { <app-printer-temperatures [temperatures]="data.temperatures" /> }
+              @case ('temperatures') { <app-printer-temperatures [temperatures]="data.temperatures" (temperatureChange)="updateTemperature($event)" /> }
               @case ('printer-navigation') {
                 <app-printer-navigation
                   [coordinates]="data.coordinates"
@@ -21,6 +33,7 @@
                   [initialHotendPoint]="data.navigation.hotendPoint"
                   [steps]="data.navigation.steps"
                   [viewport]="data.navigation.viewport"
+                  [labels]="navigationLabels()"
                   (configurationSaved)="updateNavigationConfiguration($event)"
                 />
               }
@@ -32,8 +45,8 @@
       }
     </gridster>
   } @else if (loadingError()) {
-    <div class="dashboard-state"><i class="pi pi-exclamation-triangle"></i><strong>Nie udało się wczytać danych dashboardu.</strong></div>
+    <div class="dashboard-state"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><strong>{{ i18n.t('dashboard.loadError') }}</strong></div>
   } @else {
-    <div class="dashboard-state"><i class="pi pi-spin pi-spinner"></i><span>Ładowanie dashboardu…</span></div>
+    <div class="dashboard-state"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i><span>{{ i18n.t('dashboard.loading') }}</span></div>
   }
 </section>

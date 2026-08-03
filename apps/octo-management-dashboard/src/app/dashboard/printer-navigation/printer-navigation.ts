@@ -10,7 +10,6 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Title } from '@angular/platform-browser';
 import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
@@ -100,7 +99,6 @@ export class PrinterNavigation {
   protected readonly draftHotendPoint = signal<OverlayPoint | null>(null);
   protected readonly hotendPoint = signal<OverlayPoint | null>(null);
 
-  protected readonly titleId = computed(() => `${this.instanceId()}-title`);
   protected readonly canvasViewBox = computed(() => {
     const viewBox = this.viewport().viewBox;
     return `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`;
@@ -236,12 +234,7 @@ export class PrinterNavigation {
       : this.labels().chooseAxisInstruction;
   });
 
-  constructor(private readonly documentTitle: Title) {
-    effect(() => {
-      const labels = this.labels();
-      this.documentTitle.setTitle(labels.browserTitle(labels.title));
-    });
-
+  constructor() {
     effect(() => {
       const initialPoints = clonePoints(this.initialAxisPoints());
       untracked(() => {
@@ -650,4 +643,3 @@ export {
 };
 export * from './coordinate-utils';
 export * from './printer-navigation.models';
-

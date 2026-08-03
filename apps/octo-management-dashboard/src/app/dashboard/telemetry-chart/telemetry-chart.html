@@ -1,14 +1,16 @@
 <section class="chart">
   <header>
     <div>
-      <h2>{{ chart().title }}</h2>
-      <p>{{ chart().subtitle }}</p>
+      <h2>{{ title() }}</h2>
+      <p>{{ subtitle() }}</p>
     </div>
   </header>
   <div class="chart__canvas">
     <canvas
       baseChart
       type="line"
+      role="img"
+      [attr.aria-label]="title() + '. ' + subtitle()"
       [data]="data()"
       [options]="options()"
       [plugins]="plugins"

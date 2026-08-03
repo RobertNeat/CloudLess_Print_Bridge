@@ -1,17 +1,17 @@
-<section class="controls" aria-label="Szybkie sterowanie drukarką">
-  <button type="button" class="control" [class.control--active]="lightEnabled()" [attr.aria-pressed]="lightEnabled()" (click)="toggleLight()">
-    <span class="icon icon--light"><i class="pi pi-lightbulb"></i></span><span><small>Oświetlenie</small><strong>{{ lightEnabled() ? 'Włączone' : 'Wyłączone' }}</strong></span><i class="state-dot"></i>
+<section class="controls" [attr.aria-label]="i18n.t('controls.aria')">
+  <button type="button" class="control" [class.control--active]="lightEnabled()" [attr.aria-pressed]="lightEnabled()" [attr.aria-label]="i18n.t(lightEnabled() ? 'controls.lightOnAria' : 'controls.lightOffAria')" (click)="toggleLight()">
+    <span class="icon icon--light"><i [class]="lightEnabled() ? 'pi pi-lightbulb' : 'pi pi-power-off'" aria-hidden="true"></i></span><span><small>{{ i18n.t('controls.light') }}</small></span>
   </button>
   <button #fanTrigger type="button" class="control" [class.control--active]="fansEnabled()" (click)="fanPopover.toggle($event, fanTrigger)">
-    <span class="icon"><i class="pi pi-cog"></i></span><span><small>Wentylatory</small><strong>{{ fansEnabled() ? fanSpeed() + '%' : 'Wyłączone' }}</strong></span><i class="pi pi-chevron-down chevron"></i>
+    <span class="icon"><i class="pi pi-cog" aria-hidden="true"></i></span><span><small>{{ i18n.t('controls.fans') }}</small><strong>{{ fansEnabled() ? fanSpeed() + '%' : i18n.t('controls.off') }}</strong></span><i class="pi pi-chevron-down chevron" aria-hidden="true"></i>
   </button>
   <button #speedTrigger type="button" class="control" (click)="speedPopover.toggle($event, speedTrigger)">
-    <span class="icon"><i class="pi pi-gauge"></i></span><span><small>Prędkość druku</small><strong>{{ speedLabels[printSpeed()] }}</strong></span><i class="pi pi-chevron-down chevron"></i>
+    <span class="icon"><i class="pi pi-gauge" aria-hidden="true"></i></span><span><small>{{ i18n.t('controls.printSpeed') }}</small><strong>{{ speedLabel(printSpeed()) }}</strong></span><i class="pi pi-chevron-down chevron" aria-hidden="true"></i>
   </button>
 </section>
 <p-popover #fanPopover styleClass="printer-control-popover">
-  <div class="popover-panel"><div class="popover-row"><strong>Wentylatory</strong><button type="button" class="power" [class.power--on]="fansEnabled()" (click)="toggleFans()">{{ fansEnabled() ? 'Włączone' : 'Wyłączone' }}</button></div><div class="popover-row"><span>Prędkość</span><strong>{{ fanSpeed() }}%</strong></div><p-slider [ngModel]="fanSpeed()" (ngModelChange)="setFanSpeed($event)" [step]="10" /></div>
+  <div class="popover-panel"><div class="popover-row"><strong>{{ i18n.t('controls.fans') }}</strong><button type="button" class="power" [class.power--on]="fansEnabled()" (click)="toggleFans()">{{ i18n.t(fansEnabled() ? 'controls.on' : 'controls.off') }}</button></div><div class="popover-row"><span>{{ i18n.t('controls.speed') }}</span><strong>{{ fanSpeed() }}%</strong></div><p-slider [ngModel]="fanSpeed()" (ngModelChange)="setFanSpeed($event)" [step]="10" [attr.aria-label]="i18n.t('controls.fanSpeedAria')" /></div>
 </p-popover>
 <p-popover #speedPopover styleClass="printer-control-popover">
-  <div class="speed-list" role="radiogroup" aria-label="Tryb prędkości druku">@for (mode of speedModes; track mode) { <button type="button" role="radio" [attr.aria-checked]="printSpeed() === mode" [class.selected]="printSpeed() === mode" (click)="printSpeed.set(mode); speedPopover.hide()"><i class="pi pi-bolt"></i>{{ speedLabels[mode] }}</button> }</div>
+  <div class="speed-list" role="radiogroup" [attr.aria-label]="i18n.t('controls.speedGroupAria')">@for (mode of speedModes; track mode) { <button type="button" role="radio" [attr.aria-checked]="printSpeed() === mode" [class.selected]="printSpeed() === mode" (click)="printSpeed.set(mode); speedPopover.hide()"><i class="pi pi-bolt" aria-hidden="true"></i>{{ speedLabel(mode) }}</button> }</div>
 </p-popover>

@@ -1,8 +1,4 @@
-<section class="printer-card" [attr.aria-labelledby]="titleId()">
-  <header class="printer-card__header">
-    <h1 [id]="titleId()">{{ labels().title }}</h1>
-  </header>
-
+<section class="printer-card" [attr.aria-label]="labels().canvasAriaLabel">
   <div
     class="printer-navigation"
     [class.is-configuring]="configurationOpen()"

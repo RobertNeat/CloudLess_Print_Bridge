@@ -1,10 +1,10 @@
 <section class="preview">
-  <header><div><span class="live-dot" [class.live-dot--active]="preview().active"></span><strong>{{ preview().cameraName }}</strong></div><div class="preview-actions"><p-select [options]="preview().availableResolutions" [ngModel]="preview().resolution" (ngModelChange)="resolutionChanged.emit($event)" size="small" ariaLabel="Rozdzielczość podglądu" /><button pButton type="button" size="small" [severity]="preview().active ? 'danger' : 'primary'" [outlined]="preview().active" [icon]="preview().active ? 'pi pi-stop' : 'pi pi-play'" [label]="preview().active ? 'Zatrzymaj' : 'Uruchom'" (click)="activeChanged.emit(!preview().active)"></button></div></header>
+  <header><div><span class="live-dot" [class.live-dot--active]="preview().active" aria-hidden="true"></span><strong>{{ preview().cameraName }}</strong></div><div class="preview-actions"><p-select [options]="preview().availableResolutions" [ngModel]="preview().resolution" (ngModelChange)="resolutionChanged.emit($event)" size="small" [ariaLabel]="i18n.t('live.resolutionAria')" /><button pButton type="button" size="small" [severity]="preview().active ? 'danger' : 'primary'" [outlined]="preview().active" [icon]="preview().active ? 'pi pi-stop' : 'pi pi-play'" [label]="i18n.t(preview().active ? 'live.stop' : 'live.start')" (click)="activeChanged.emit(!preview().active)"></button></div></header>
   <div class="camera-frame">
     @if (preview().active) {
-      <img src="/images/live_preview.png" alt="Podgląd z kamery drukarki" />
+      <img src="/images/live_preview.png" [alt]="i18n.t('live.imageAlt')" />
     } @else {
-      <div class="camera-off" role="img" aria-label="Kamera drukarki jest wyłączona">
+      <div class="camera-off" role="img" [attr.aria-label]="i18n.t('live.offAria')">
         <span><i class="pi pi-camera" aria-hidden="true"></i></span>
       </div>
     }

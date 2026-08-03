@@ -15,8 +15,8 @@ export class ThemeService {
 
   toggle(): void {
     const theme: Theme = this.theme() === 'dark' ? 'light' : 'dark';
-    this.theme.set(theme);
     this.applyTheme(theme);
+    this.theme.set(theme);
     globalThis.localStorage?.setItem('octo-theme', theme);
   }
 

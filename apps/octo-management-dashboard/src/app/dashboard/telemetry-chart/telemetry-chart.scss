@@ -2,6 +2,6 @@
 .chart { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
 h2 { margin: 0; font-size: .84rem; }
-p { margin: .18rem 0 0; color: var(--app-text-muted); font-size: .64rem; }
+p { margin: .18rem 0 0; color: var(--semantic-text-muted); font-size: .64rem; }
 .chart__canvas { position: relative; min-height: 0; flex: 1; margin-top: .35rem; }
-canvas { color: var(--app-text-muted); }
+canvas { color: var(--semantic-text-muted); }

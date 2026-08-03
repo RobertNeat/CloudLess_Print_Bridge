@@ -1,26 +1,23 @@
 import type { Routes } from '@angular/router';
 import { dashboardAccessGuard } from './core/dashboard-access.guard';
-import { DashboardPage } from './dashboard/dashboard-page';
-import { FilesDashboardPage } from './files/files-dashboard-page';
-import { VideosDashboardPage } from './videos/videos-dashboard-page';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'management' },
   {
     path: 'management',
-    component: DashboardPage,
+    loadComponent: () => import('./dashboard/dashboard-page').then(({ DashboardPage }) => DashboardPage),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'management' },
   },
   {
     path: 'files',
-    component: FilesDashboardPage,
+    loadComponent: () => import('./files/files-dashboard-page').then(({ FilesDashboardPage }) => FilesDashboardPage),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'files' },
   },
   {
     path: 'videos',
-    component: VideosDashboardPage,
+    loadComponent: () => import('./videos/videos-dashboard-page').then(({ VideosDashboardPage }) => VideosDashboardPage),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'videos' },
   },

@@ -1,17 +1,18 @@
-import { ChangeDetectionStrategy, Component, effect, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PopoverModule } from 'primeng/popover';
 import { SliderModule } from 'primeng/slider';
 import type { PrintSpeedMode } from '../dashboard.models';
+import { I18nService, type TranslationKey } from '../../core/i18n.service';
 
 @Component({ selector: 'app-printer-quick-controls', imports: [FormsModule, PopoverModule, SliderModule], templateUrl: './printer-quick-controls.html', styleUrl: './printer-quick-controls.scss', changeDetection: ChangeDetectionStrategy.OnPush })
 export class PrinterQuickControls {
+  protected readonly i18n = inject(I18nService);
   readonly lightEnabled = model(false);
   readonly fansEnabled = model(false);
   readonly fanSpeed = model(0);
   readonly printSpeed = model<PrintSpeedMode>('standard');
   protected readonly speedModes: readonly PrintSpeedMode[] = ['silent', 'standard', 'sport', 'ludicrous'];
-  protected readonly speedLabels: Record<PrintSpeedMode, string> = { silent: 'Cichy', standard: 'Standard', sport: 'Sport', ludicrous: 'Szalony' };
   private lastFanSpeed = 50;
 
   private readonly normalizeState = effect(() => {
@@ -28,4 +29,7 @@ export class PrinterQuickControls {
     this.fanSpeed.set(next ? this.lastFanSpeed : 0);
   }
   protected setFanSpeed(value: number): void { this.fanSpeed.set(value); this.fansEnabled.set(value > 0); }
+  protected speedLabel(mode: PrintSpeedMode): string {
+    return this.i18n.t(`controls.speed.${mode}` as TranslationKey);
+  }
 }

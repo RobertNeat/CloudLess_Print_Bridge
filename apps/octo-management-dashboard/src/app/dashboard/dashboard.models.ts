@@ -1,4 +1,5 @@
 import type { ChartDataset } from 'chart.js';
+import type { TranslationKey } from '../core/i18n.service';
 import type {
   OverlayPoint,
   PrinterAxisPoints,
@@ -64,10 +65,10 @@ export interface PrinterNavigationData {
 
 export interface TelemetryChartData {
   kind: 'progress' | 'temperature' | 'fan';
-  title: string;
-  subtitle: string;
-  xAxisLabel: string;
-  yAxisLabel: string;
+  titleKey: TranslationKey;
+  subtitleKey: TranslationKey;
+  xAxisLabelKey: TranslationKey;
+  yAxisLabelKey: TranslationKey;
   yMin: number;
   yMax: number;
   yStepSize: number;
@@ -77,7 +78,10 @@ export interface TelemetryChartData {
 }
 
 export type TelemetryChartDataset = ChartDataset<'line', number[]> & {
-  gradientColors?: [string, string];
+  labelKey: TranslationKey;
+  colorToken: string;
+  backgroundColorToken?: string;
+  gradientColorTokens?: [string, string];
 };
 
 export interface DashboardWidget {

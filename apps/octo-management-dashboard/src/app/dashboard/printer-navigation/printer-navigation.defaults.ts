@@ -37,8 +37,6 @@ const directionSign = (direction: 'positive' | 'negative'): string =>
   direction === 'positive' ? '+' : '−';
 
 export const DEFAULT_LABELS: PrinterNavigationLabels = {
-  title: 'Sterowanie manualne',
-  browserTitle: (title) => `${title} Component`,
   canvasAriaLabel: 'Drukarka 3D z interaktywnymi osiami sterowania',
   settingsAriaLabel: 'Konfiguruj położenie osi',
   backToConfigurationAriaLabel: 'Wróć do panelu konfiguracji osi',
@@ -74,4 +72,3 @@ export const DEFAULT_LABELS: PrinterNavigationLabels = {
   hotendStepAriaLabel: (direction) =>
     `Inny krok hotendu w kierunku ${direction === 'up' ? 'góra' : 'dół'}`,
 };
-
