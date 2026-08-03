@@ -1,43 +1,56 @@
-<div class="video-search" role="search" aria-label="Wyszukiwanie nagrań">
+<div class="video-search" role="search" [attr.aria-label]="i18n.t('videos.searchAria')">
   <div class="filter-control">
-    <p-button
+    <button
+      pButton
+      type="button"
       icon="pi pi-calendar"
       severity="secondary"
       [text]="true"
       [rounded]="true"
       [outlined]="!!filters.date()"
-      ariaLabel="Filtruj po dacie"
-      (onClick)="toggle('date')"
-    />
+      [attr.aria-label]="i18n.t('videos.filterByDate')"
+      [attr.aria-expanded]="openFilter() === 'date'"
+      aria-controls="video-date-popover"
+      (click)="toggle('date')"
+    ></button>
     @if (openFilter() === 'date') {
-      <div class="filter-popover filter-popover--date">
-        <label for="video-date-filter">Data nagrania</label>
-        <input id="video-date-filter" type="date" [ngModel]="filters.date()" (ngModelChange)="filters.date.set($event)" />
+      <div id="video-date-popover" class="filter-popover filter-popover--date" role="group">
+        <label for="video-date-filter">{{ i18n.t('videos.recordingDate') }}</label>
+        <input
+          id="video-date-filter"
+          type="date"
+          [ngModel]="filters.date()"
+          (ngModelChange)="filters.setDate($event)"
+        />
       </div>
     }
   </div>
 
   <div class="filter-control">
-    <p-button
+    <button
+      pButton
+      type="button"
       icon="pi pi-video"
       severity="secondary"
       [text]="true"
       [rounded]="true"
       [outlined]="!!filters.sourceId()"
-      ariaLabel="Filtruj po źródle kamery"
-      (onClick)="toggle('source')"
-    />
+      [attr.aria-label]="i18n.t('videos.filterBySource')"
+      [attr.aria-expanded]="openFilter() === 'source'"
+      aria-controls="video-source-popover"
+      (click)="toggle('source')"
+    ></button>
     @if (openFilter() === 'source') {
-      <div class="filter-popover filter-popover--source">
-        <label for="video-source-filter">Źródło kamery</label>
+      <div id="video-source-popover" class="filter-popover filter-popover--source" role="group">
+        <label for="video-source-filter">{{ i18n.t('videos.cameraSource') }}</label>
         <p-select
           inputId="video-source-filter"
           [options]="filters.sources()"
           [ngModel]="filters.sourceId()"
-          (ngModelChange)="filters.sourceId.set($event ?? '')"
+          (ngModelChange)="filters.setSourceId($event ?? '')"
           optionLabel="name"
           optionValue="id"
-          placeholder="Wszystkie kamery"
+          [placeholder]="i18n.t('videos.allCameras')"
           [showClear]="true"
           appendTo="body"
         />
@@ -51,9 +64,9 @@
       pInputText
       type="search"
       [ngModel]="filters.query()"
-      (ngModelChange)="filters.query.set($event)"
-      placeholder="Szukaj pliku"
-      aria-label="Szukaj pliku multimedialnego"
+      (ngModelChange)="filters.setQuery($event)"
+      [placeholder]="i18n.t('videos.searchPlaceholder')"
+      [attr.aria-label]="i18n.t('videos.searchInputAria')"
     />
   </span>
 </div>

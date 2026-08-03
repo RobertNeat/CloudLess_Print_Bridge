@@ -5,20 +5,74 @@
         [metrics]="data.metrics"
         [sources]="data.sources"
         [selectedSourceId]="data.player.selectedSourceId"
-        (sourceSelected)="updatePlayer({ selectedSourceId: $event })"
+        [streamActive]="data.player.active"
+        (sourceSelected)="selectSource($event)"
       />
       <app-video-player
         [player]="data.player"
-        (activeChanged)="updatePlayer({ active: $event })"
-        (resolutionChanged)="updatePlayer({ resolution: $event })"
+        [canStart]="canStartStream()"
+        [sourceName]="selectedSource()?.name ?? ''"
+        [previewUrl]="selectedSource()?.previewUrl ?? ''"
+        (activeChanged)="setStreamActive($event)"
+        (resolutionChanged)="setResolution($event)"
       />
     </div>
     <div class="media-area">
       <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
     </div>
   } @else if (loadingError()) {
-    <div class="dashboard-state"><i class="pi pi-exclamation-triangle"></i><strong>Nie udało się wczytać danych dashboardu wideo.</strong></div>
+    <div class="dashboard-state" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
+      ><strong>{{ i18n.t('videos.loadError') }}</strong
+      ><p-button
+        size="small"
+        icon="pi pi-refresh"
+        [label]="i18n.t('videos.retry')"
+        (onClick)="retryLoad()"
+      />
+    </div>
   } @else {
-    <div class="dashboard-state"><i class="pi pi-spin pi-spinner"></i><span>Ładowanie dashboardu…</span></div>
+    <div class="dashboard-state" role="status" aria-live="polite">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i
+      ><span>{{ i18n.t('videos.loading') }}</span>
+    </div>
   }
 </section>
+
+<p-dialog
+  [header]="i18n.t('videos.mediaPreview')"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('videos.closePreview')"
+  [visible]="!!selectedMedia()"
+  [style]="{ width: 'min(32rem, calc(100vw - 2rem))' }"
+  (visibleChange)="!$event && selectedMedia.set(null)"
+>
+  @if (selectedMedia(); as item) {
+    <article class="media-preview">
+      @if (item.thumbnailUrl) {
+        <img
+          [src]="item.thumbnailUrl"
+          [alt]="i18n.t('videos.mediaPreviewAlt', { name: item.name })"
+        />
+      } @else {
+        <div class="media-preview__placeholder">
+          <i class="pi pi-file" aria-hidden="true"></i
+          ><span>{{ i18n.t('videos.previewUnavailable') }}</span>
+        </div>
+      }
+      <h2>{{ item.name }}</h2>
+      <dl>
+        <div>
+          <dt>{{ i18n.t('videos.capturedAt') }}</dt>
+          <dd>{{ i18n.formatDateTime(item.capturedAt) }}</dd>
+        </div>
+        @if (item.duration) {
+          <div>
+            <dt>{{ i18n.t('videos.duration') }}</dt>
+            <dd>{{ item.duration }}</dd>
+          </div>
+        }
+      </dl>
+    </article>
+  }
+</p-dialog>

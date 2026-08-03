@@ -1,23 +1,44 @@
-<section class="library" aria-label="Biblioteka multimediów">
+<section class="library" [attr.aria-label]="i18n.t('videos.libraryAria')">
   @for (section of sections; track section.kind) {
     <article class="media-section">
       <header>
-        <span><i [class]="section.icon"></i><strong>{{ section.label }}</strong></span>
+        <span
+          ><i [class]="section.icon" aria-hidden="true"></i
+          ><strong>{{ i18n.t(section.labelKey) }}</strong></span
+        >
         <small>{{ itemsFor(section.kind).length }}</small>
       </header>
       <div class="media-grid">
         @for (item of itemsFor(section.kind); track item.id) {
-          <button type="button" class="media-card" (click)="itemOpened.emit(item)">
+          <button
+            type="button"
+            class="media-card"
+            [attr.aria-label]="i18n.t('videos.openMedia', { name: item.name })"
+            (click)="itemOpened.emit(item)"
+          >
             <span class="thumbnail" [class.thumbnail--image]="item.kind === 'image'">
-              @if (item.thumbnailUrl) { <img [src]="item.thumbnailUrl" alt="" /> }
-              @else { <i [class]="section.icon"></i> }
-              @if (item.kind === 'recording' || item.kind === 'timelapse') { <b><i class="pi pi-play"></i></b> }
-              @if (item.duration) { <em>{{ item.duration }}</em> }
+              @if (item.thumbnailUrl) {
+                <img [src]="item.thumbnailUrl" alt="" />
+              } @else {
+                <i [class]="section.icon" aria-hidden="true"></i>
+              }
+              @if (item.kind === 'recording' || item.kind === 'timelapse') {
+                <b><i class="pi pi-play" aria-hidden="true"></i></b>
+              }
+              @if (item.duration) {
+                <em>{{ item.duration }}</em>
+              }
             </span>
-            <span class="media-meta"><strong>{{ item.name }}</strong><small>{{ dateLabel(item.capturedAt) }}</small></span>
+            <span class="media-meta"
+              ><strong>{{ item.name }}</strong
+              ><small>{{ dateLabel(item.capturedAt) }}</small></span
+            >
           </button>
         } @empty {
-          <div class="empty"><i class="pi pi-filter-slash"></i><span>Brak wyników</span></div>
+          <div class="empty">
+            <i class="pi pi-filter-slash" aria-hidden="true"></i
+            ><span>{{ i18n.t('videos.noResults') }}</span>
+          </div>
         }
       </div>
     </article>

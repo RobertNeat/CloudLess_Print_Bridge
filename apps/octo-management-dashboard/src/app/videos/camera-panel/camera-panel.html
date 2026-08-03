@@ -1,24 +1,58 @@
-<section class="camera-panel">
+<section class="camera-panel" [attr.aria-label]="i18n.t('videos.cameraPanelAria')">
   <header>
-    <span class="eyebrow">Kamera na żywo</span>
-    <span class="status"><i></i> Stream aktywny</span>
+    <span class="eyebrow">{{ i18n.t('videos.liveCamera') }}</span>
+    <span
+      class="status"
+      [class.status--active]="streamActive()"
+      [class.status--offline]="streamStatusKey() === 'videos.stream.offline'"
+      role="status"
+      ><i aria-hidden="true"></i> {{ i18n.t(streamStatusKey()) }}</span
+    >
   </header>
   <dl>
-    @for (metric of metrics(); track metric.label) {
-      <div><dt>{{ metric.label }}</dt><dd>{{ metric.value }}</dd></div>
+    @for (metric of metrics(); track metric.code) {
+      <div>
+        <dt>{{ metricLabel(metric) }}</dt>
+        <dd>{{ metricValue(metric) }}</dd>
+      </div>
     }
   </dl>
 
   <div class="source-heading">
-    <div><span class="eyebrow">Źródła kamery</span><small>{{ sources().length }} dostępne</small></div>
-    <p-button icon="pi pi-plus" [rounded]="true" [outlined]="true" size="small" ariaLabel="Dodaj kamerę" />
+    <div>
+      <span class="eyebrow">{{ i18n.t('videos.cameraSources') }}</span
+      ><small>{{ sourcesCount() }}</small>
+    </div>
+    <p-button
+      icon="pi pi-plus"
+      [rounded]="true"
+      [outlined]="true"
+      size="small"
+      [ariaLabel]="i18n.t('videos.addCamera')"
+    />
   </div>
-  <div class="sources">
+  <div class="sources" role="radiogroup" [attr.aria-label]="i18n.t('videos.sourcesAria')">
     @for (source of sources(); track source.id) {
-      <button type="button" class="source" [class.source--selected]="source.id === selectedSourceId()" (click)="sourceSelected.emit(source.id)">
-        <span class="source-icon"><i class="pi pi-video"></i><b [class.offline]="source.status === 'offline'"></b></span>
-        <span><strong>{{ source.name }}</strong><small>{{ source.location }}</small></span>
-        @if (source.id === selectedSourceId()) { <i class="pi pi-check selected-check"></i> }
+      <button
+        type="button"
+        class="source"
+        role="radio"
+        [attr.aria-checked]="source.id === selectedSourceId()"
+        [attr.aria-label]="sourceAriaLabel(source)"
+        [class.source--selected]="source.id === selectedSourceId()"
+        (click)="sourceSelected.emit(source.id)"
+      >
+        <span class="source-icon"
+          ><i class="pi pi-video" aria-hidden="true"></i
+          ><b [class.offline]="source.status === 'offline'" aria-hidden="true"></b
+        ></span>
+        <span
+          ><strong>{{ source.name }}</strong
+          ><small>{{ sourceLocation(source) }}</small></span
+        >
+        @if (source.id === selectedSourceId()) {
+          <i class="pi pi-check selected-check" aria-hidden="true"></i>
+        }
       </button>
     }
   </div>

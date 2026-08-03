@@ -7,18 +7,36 @@ export interface VideoSourceOption {
 
 @Injectable({ providedIn: 'root' })
 export class VideoFiltersService {
-  readonly query = signal('');
-  readonly date = signal('');
-  readonly sourceId = signal('');
-  readonly sources = signal<readonly VideoSourceOption[]>([]);
+  private readonly queryState = signal('');
+  private readonly dateState = signal('');
+  private readonly sourceIdState = signal('');
+  private readonly sourcesState = signal<readonly VideoSourceOption[]>([]);
 
-  setSources(sources: readonly VideoSourceOption[]): void {
-    this.sources.set(sources);
+  readonly query = this.queryState.asReadonly();
+  readonly date = this.dateState.asReadonly();
+  readonly sourceId = this.sourceIdState.asReadonly();
+  readonly sources = this.sourcesState.asReadonly();
+
+  setQuery(query: string): void {
+    this.queryState.set(query);
   }
 
-  clear(): void {
-    this.query.set('');
-    this.date.set('');
-    this.sourceId.set('');
+  setDate(date: string): void {
+    this.dateState.set(date);
+  }
+
+  setSourceId(sourceId: string): void {
+    this.sourceIdState.set(sourceId);
+  }
+
+  setSources(sources: readonly VideoSourceOption[]): void {
+    this.sourcesState.set(sources);
+  }
+
+  reset(): void {
+    this.queryState.set('');
+    this.dateState.set('');
+    this.sourceIdState.set('');
+    this.sourcesState.set([]);
   }
 }

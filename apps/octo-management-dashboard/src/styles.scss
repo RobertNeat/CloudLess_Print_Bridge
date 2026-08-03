@@ -32,9 +32,18 @@
   --semantic-accent-favorite: var(--p-amber-500);
   --semantic-file-image: var(--p-violet-500);
   --semantic-status-success: var(--p-green-500);
+  --semantic-status-success-text: var(--p-green-700);
+  --semantic-status-offline: var(--p-surface-500);
   --semantic-status-warning: var(--p-orange-500);
   --semantic-status-danger: var(--p-red-500);
   --semantic-status-info: var(--p-blue-500);
+  --semantic-video-canvas: var(--p-surface-950);
+  --semantic-video-panel: var(--p-surface-800);
+  --semantic-video-border: var(--p-surface-600);
+  --semantic-video-text: var(--p-surface-200);
+  --semantic-video-text-muted: var(--p-surface-400);
+  --semantic-media-overlay: color-mix(in srgb, var(--p-surface-950) 72%, transparent);
+  --semantic-media-overlay-text: var(--p-surface-0);
   --semantic-axis-line: var(--p-surface-0);
   --semantic-chart-text: var(--p-surface-500);
   --semantic-chart-border: color-mix(in srgb, var(--p-surface-500) 28%, transparent);
@@ -49,7 +58,14 @@
   --semantic-chart-series-8: var(--p-cyan-500);
   --semantic-chart-series-9: var(--p-violet-500);
   --semantic-chart-series-10: var(--p-green-500);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   font-synthesis: none;
 }
 
@@ -76,6 +92,8 @@
   --semantic-focus-ring: var(--p-primary-400);
   --semantic-accent-primary: var(--p-primary-400);
   --semantic-accent-secondary: var(--p-cyan-300);
+  --semantic-status-success-text: var(--p-green-400);
+  --semantic-status-offline: var(--p-surface-400);
   --semantic-axis-line: var(--p-surface-0);
   --semantic-chart-text: var(--p-surface-0);
 }

@@ -1,15 +1,23 @@
 export type MediaKind = 'audio' | 'recording' | 'timelapse' | 'image';
 
+export type CameraMetricCode =
+  'status' | 'power' | 'mode' | 'resolution' | 'fps' | 'temperature' | 'cameraIp' | 'serviceIp';
+
+export type CameraMetricValueCode = 'stream' | 'enabled' | 'ready';
+export type CameraLocationCode = 'printerChamber' | 'buildPlate' | 'workshop';
+
 export interface CameraMetric {
-  readonly label: string;
-  readonly value: string;
+  readonly code: CameraMetricCode;
+  readonly value?: string | number;
+  readonly valueCode?: CameraMetricValueCode;
 }
 
 export interface CameraSource {
   readonly id: string;
   readonly name: string;
-  readonly location: string;
+  readonly locationCode: CameraLocationCode;
   readonly status: 'online' | 'offline';
+  readonly previewUrl?: string;
 }
 
 export interface VideoPlayerData {
@@ -17,7 +25,6 @@ export interface VideoPlayerData {
   readonly selectedSourceId: string;
   readonly resolution: string;
   readonly availableResolutions: readonly string[];
-  readonly previewUrl: string;
 }
 
 export interface MediaItem {

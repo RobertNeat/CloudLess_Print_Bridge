@@ -1,42 +1,173 @@
 {
   "metrics": [
-    { "label": "Status", "value": "Stream" },
-    { "label": "Zasilanie kamery", "value": "Włączone" },
-    { "label": "Tryb kamery", "value": "Gotowa" },
-    { "label": "Rozdzielczość", "value": "640 × 480 (VGA)" },
-    { "label": "Klatki na sekundę", "value": "9 FPS" },
-    { "label": "Temperatura", "value": "40,5 °C" },
-    { "label": "Adres IP kamery", "value": "192.168.1.234" },
-    { "label": "Video Service IP", "value": "192.168.1.101" }
+    { "code": "status", "valueCode": "stream" },
+    { "code": "power", "valueCode": "enabled" },
+    { "code": "mode", "valueCode": "ready" },
+    { "code": "resolution", "value": "640 × 480 (VGA)" },
+    { "code": "fps", "value": "9 FPS" },
+    { "code": "temperature", "value": 40.5 },
+    { "code": "cameraIp", "value": "192.168.1.234" },
+    { "code": "serviceIp", "value": "192.168.1.101" }
   ],
   "sources": [
-    { "id": "cam-oxa", "name": "CAM_OXA", "location": "Komora drukarki", "status": "online" },
-    { "id": "cam-ox2", "name": "CAM_OX2", "location": "Widok stołu", "status": "online" },
-    { "id": "cam-workshop", "name": "CAM_WORKSHOP", "location": "Warsztat", "status": "offline" }
+    {
+      "id": "cam-oxa",
+      "name": "CAM_OXA",
+      "locationCode": "printerChamber",
+      "status": "online",
+      "previewUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "cam-ox2",
+      "name": "CAM_OX2",
+      "locationCode": "buildPlate",
+      "status": "online",
+      "previewUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "cam-workshop",
+      "name": "CAM_WORKSHOP",
+      "locationCode": "workshop",
+      "status": "offline"
+    }
   ],
   "player": {
     "active": false,
     "selectedSourceId": "cam-oxa",
     "resolution": "VGA · 640 × 480",
-    "availableResolutions": ["Auto", "SVGA · 800 × 600", "VGA · 640 × 480", "XVGA · 1024 × 768"],
-    "previewUrl": "/images/live_preview.png"
+    "availableResolutions": ["auto", "SVGA · 800 × 600", "VGA · 640 × 480", "XVGA · 1024 × 768"]
   },
   "media": [
-    { "id": "audio-1", "kind": "audio", "name": "motor-check.wav", "sourceId": "cam-oxa", "capturedAt": "2026-07-31T08:24:00Z", "duration": "00:18" },
-    { "id": "audio-2", "kind": "audio", "name": "fan-test.wav", "sourceId": "cam-ox2", "capturedAt": "2026-07-31T10:15:00Z", "duration": "00:32" },
-    { "id": "audio-3", "kind": "audio", "name": "startup.wav", "sourceId": "cam-oxa", "capturedAt": "2026-07-30T06:11:00Z", "duration": "00:12" },
-    { "id": "audio-4", "kind": "audio", "name": "axis-noise.wav", "sourceId": "cam-ox2", "capturedAt": "2026-07-29T19:42:00Z", "duration": "00:41" },
-    { "id": "recording-1", "kind": "recording", "name": "benchy-print.mp4", "sourceId": "cam-oxa", "capturedAt": "2026-07-31T11:32:00Z", "duration": "42:18", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "recording-2", "kind": "recording", "name": "first-layer.mp4", "sourceId": "cam-ox2", "capturedAt": "2026-07-31T09:04:00Z", "duration": "08:07", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "recording-3", "kind": "recording", "name": "calibration.mp4", "sourceId": "cam-oxa", "capturedAt": "2026-07-30T17:20:00Z", "duration": "12:54" },
-    { "id": "recording-4", "kind": "recording", "name": "bridge-test.mp4", "sourceId": "cam-ox2", "capturedAt": "2026-07-29T13:05:00Z", "duration": "24:10" },
-    { "id": "timelapse-1", "kind": "timelapse", "name": "octopus-final.mp4", "sourceId": "cam-oxa", "capturedAt": "2026-07-31T14:06:00Z", "duration": "01:24", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "timelapse-2", "kind": "timelapse", "name": "gear-set.mp4", "sourceId": "cam-ox2", "capturedAt": "2026-07-30T15:28:00Z", "duration": "00:48" },
-    { "id": "timelapse-3", "kind": "timelapse", "name": "vase-mode.mp4", "sourceId": "cam-oxa", "capturedAt": "2026-07-29T07:50:00Z", "duration": "01:11" },
-    { "id": "timelapse-4", "kind": "timelapse", "name": "prototype-v2.mp4", "sourceId": "cam-ox2", "capturedAt": "2026-07-28T21:17:00Z", "duration": "01:37" },
-    { "id": "image-1", "kind": "image", "name": "layer-001.jpg", "sourceId": "cam-oxa", "capturedAt": "2026-07-31T12:02:00Z", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "image-2", "kind": "image", "name": "layer-120.jpg", "sourceId": "cam-ox2", "capturedAt": "2026-07-31T12:45:00Z", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "image-3", "kind": "image", "name": "finished-part.jpg", "sourceId": "cam-oxa", "capturedAt": "2026-07-30T18:32:00Z", "thumbnailUrl": "/images/live_preview.png" },
-    { "id": "image-4", "kind": "image", "name": "print-failure.jpg", "sourceId": "cam-ox2", "capturedAt": "2026-07-29T04:21:00Z", "thumbnailUrl": "/images/live_preview.png" }
+    {
+      "id": "audio-1",
+      "kind": "audio",
+      "name": "motor-check.wav",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-31T08:24:00Z",
+      "duration": "00:18"
+    },
+    {
+      "id": "audio-2",
+      "kind": "audio",
+      "name": "fan-test.wav",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-31T10:15:00Z",
+      "duration": "00:32"
+    },
+    {
+      "id": "audio-3",
+      "kind": "audio",
+      "name": "startup.wav",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-30T06:11:00Z",
+      "duration": "00:12"
+    },
+    {
+      "id": "audio-4",
+      "kind": "audio",
+      "name": "axis-noise.wav",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-29T19:42:00Z",
+      "duration": "00:41"
+    },
+    {
+      "id": "recording-1",
+      "kind": "recording",
+      "name": "benchy-print.mp4",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-31T11:32:00Z",
+      "duration": "42:18",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "recording-2",
+      "kind": "recording",
+      "name": "first-layer.mp4",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-31T09:04:00Z",
+      "duration": "08:07",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "recording-3",
+      "kind": "recording",
+      "name": "calibration.mp4",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-30T17:20:00Z",
+      "duration": "12:54"
+    },
+    {
+      "id": "recording-4",
+      "kind": "recording",
+      "name": "bridge-test.mp4",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-29T13:05:00Z",
+      "duration": "24:10"
+    },
+    {
+      "id": "timelapse-1",
+      "kind": "timelapse",
+      "name": "octopus-final.mp4",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-31T14:06:00Z",
+      "duration": "01:24",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "timelapse-2",
+      "kind": "timelapse",
+      "name": "gear-set.mp4",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-30T15:28:00Z",
+      "duration": "00:48"
+    },
+    {
+      "id": "timelapse-3",
+      "kind": "timelapse",
+      "name": "vase-mode.mp4",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-29T07:50:00Z",
+      "duration": "01:11"
+    },
+    {
+      "id": "timelapse-4",
+      "kind": "timelapse",
+      "name": "prototype-v2.mp4",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-28T21:17:00Z",
+      "duration": "01:37"
+    },
+    {
+      "id": "image-1",
+      "kind": "image",
+      "name": "layer-001.jpg",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-31T12:02:00Z",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "image-2",
+      "kind": "image",
+      "name": "layer-120.jpg",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-31T12:45:00Z",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "image-3",
+      "kind": "image",
+      "name": "finished-part.jpg",
+      "sourceId": "cam-oxa",
+      "capturedAt": "2026-07-30T18:32:00Z",
+      "thumbnailUrl": "/images/live_preview.png"
+    },
+    {
+      "id": "image-4",
+      "kind": "image",
+      "name": "print-failure.jpg",
+      "sourceId": "cam-ox2",
+      "capturedAt": "2026-07-29T04:21:00Z",
+      "thumbnailUrl": "/images/live_preview.png"
+    }
   ]
 }
