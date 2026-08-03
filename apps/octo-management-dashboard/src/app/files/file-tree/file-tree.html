@@ -1,7 +1,7 @@
 <aside class="tree-panel">
   <section class="pinned-section">
     <div class="section-heading">
-      <span>Przypięte</span>
+      <span>{{ i18n.t('files.pinned') }}</span>
       <i class="pi pi-star-fill" aria-hidden="true"></i>
     </div>
     <div class="pinned-list">
@@ -9,12 +9,13 @@
         <button
           type="button"
           class="pinned-item"
-          [class.pinned-item--active]="selectedPath() === location.path"
-          (click)="select(location.path)"
+          [class.pinned-item--active]="selectedFolderPath() === location.path"
+          [attr.aria-pressed]="selectedFolderPath() === location.path"
+          (click)="selectPinned(location.path)"
         >
           <i [class]="location.icon" aria-hidden="true"></i>
           <span
-            ><strong>{{ location.label }}</strong
+            ><strong>{{ i18n.t(location.labelKey) }}</strong
             ><small>{{ location.path }}</small></span
           >
           <i class="pi pi-chevron-right" aria-hidden="true"></i>
@@ -24,9 +25,10 @@
   </section>
   <section class="files-section">
     <div class="section-heading">
-      <span>Pliki</span><span class="section-count">{{ nodes().length }}</span>
+      <span>{{ i18n.t('files.section') }}</span
+      ><span class="section-count">{{ nodes().length }}</span>
     </div>
-    <nav class="file-tree" aria-label="Drzewo plików">
+    <nav class="file-tree" role="tree" [attr.aria-label]="i18n.t('files.treeAria')">
       @for (node of nodes(); track node.id) {
         <ng-container
           [ngTemplateOutlet]="treeNode"
@@ -41,19 +43,36 @@
   <button
     type="button"
     class="tree-node"
-    [class.tree-node--active]="selectedPath() === node.path"
+    role="treeitem"
+    [class.tree-node--active]="
+      selectedFilePath() === node.path ||
+      (!selectedFilePath() && selectedFolderPath() === node.path)
+    "
     [style.--tree-depth]="depth"
-    (click)="select(node.path)"
+    [attr.aria-level]="depth + 1"
+    [attr.aria-selected]="
+      selectedFilePath() === node.path ||
+      (!selectedFilePath() && selectedFolderPath() === node.path)
+    "
+    [attr.aria-expanded]="node.type === 'folder' ? isExpanded(node.id) : null"
+    (click)="select(node)"
+    (keydown.arrowRight)="expand(node.id); $event.preventDefault()"
+    (keydown.arrowLeft)="collapse(node.id); $event.preventDefault()"
   >
     @if (node.type === 'folder') {
-      <i class="pi pi-chevron-down tree-chevron" aria-hidden="true"></i
+      <i
+        class="pi tree-chevron"
+        [class.pi-chevron-down]="isExpanded(node.id)"
+        [class.pi-chevron-right]="!isExpanded(node.id)"
+        aria-hidden="true"
+      ></i
       ><i class="pi pi-folder tree-icon" aria-hidden="true"></i>
     } @else {
       <span class="tree-indent"></span><i class="pi pi-file tree-icon" aria-hidden="true"></i>
     }
     <span class="tree-label">{{ node.name }}</span>
   </button>
-  @if (node.children?.length) {
+  @if (node.children?.length && isExpanded(node.id)) {
     @for (child of node.children; track child.id) {
       <ng-container
         [ngTemplateOutlet]="treeNode"

@@ -6,7 +6,7 @@
 .tree-panel {
   height: 100%;
   overflow: auto;
-  background: var(--app-surface-card);
+  background: var(--semantic-surface-raised);
   scrollbar-width: thin;
 }
 .pinned-section,
@@ -14,7 +14,7 @@
   padding: 1rem;
 }
 .pinned-section {
-  border-bottom: 1px solid var(--app-surface-border);
+  border-bottom: 1px solid var(--semantic-border-subtle);
 }
 .files-section {
   padding-inline: 0.65rem;
@@ -24,14 +24,14 @@
   align-items: center;
   justify-content: space-between;
   margin: 0 0.35rem 0.75rem;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .section-heading > i {
-  color: #f59e0b;
+  color: var(--semantic-accent-favorite);
   font-size: 0.72rem;
 }
 .section-count {
@@ -56,15 +56,15 @@
   border: 1px solid transparent;
   border-radius: 0.7rem;
   background: transparent;
-  color: var(--app-text-color);
+  color: var(--semantic-text-primary);
   text-align: left;
   cursor: pointer;
   gap: 0.55rem;
 }
 .pinned-item:hover,
 .pinned-item--active {
-  border-color: color-mix(in srgb, var(--app-primary-color) 22%, transparent);
-  background: var(--app-primary-subtle);
+  border-color: color-mix(in srgb, var(--semantic-accent-primary) 22%, transparent);
+  background: var(--semantic-accent-subtle);
 }
 .pinned-item > i:first-child {
   display: grid;
@@ -72,11 +72,11 @@
   height: 2rem;
   border-radius: 0.55rem;
   background: var(--semantic-surface-interactive);
-  color: var(--app-primary-color);
+  color: var(--semantic-accent-primary);
   place-items: center;
 }
 .pinned-item > i:last-child {
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.65rem;
 }
 .pinned-item span {
@@ -94,7 +94,7 @@
 }
 .pinned-item small {
   margin-top: 0.15rem;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.68rem;
 }
 .file-tree {
@@ -110,7 +110,7 @@
   border: 0;
   border-radius: 0.45rem;
   background: transparent;
-  color: var(--app-text-color);
+  color: var(--semantic-text-primary);
   text-align: left;
   cursor: pointer;
   gap: 0.38rem;
@@ -119,8 +119,8 @@
   background: var(--semantic-surface-interactive);
 }
 .tree-node--active {
-  background: var(--app-primary-subtle);
-  color: var(--app-primary-color);
+  background: var(--semantic-accent-subtle);
+  color: var(--semantic-accent-primary);
   font-weight: 650;
 }
 .tree-chevron,
@@ -131,7 +131,7 @@
 }
 .tree-icon {
   flex: 0 0 auto;
-  color: color-mix(in srgb, var(--app-primary-color) 76%, #f59e0b);
+  color: color-mix(in srgb, var(--semantic-accent-primary) 76%, var(--semantic-accent-favorite));
   font-size: 0.82rem;
 }
 .tree-label {

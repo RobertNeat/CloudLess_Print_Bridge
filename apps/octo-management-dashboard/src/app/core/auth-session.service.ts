@@ -1,10 +1,14 @@
-import { inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
+import { computed, inject, Injectable, InjectionToken, signal, type Signal } from '@angular/core';
 
 export type AuthMode = 'disabled' | 'optional' | 'required';
 export type Permission =
   | 'dashboard.view'
   | 'printer.control'
-  | 'printer.configure';
+  | 'printer.configure'
+  | 'files.read'
+  | 'files.upload'
+  | 'files.download'
+  | 'files.manage';
 
 export interface UserSession {
   readonly userId: string;
@@ -39,8 +43,10 @@ export class AccessPolicy {
   private readonly mode = inject(AUTH_MODE);
   private readonly auth = inject(AUTH_SESSION);
 
+  readonly ready = computed(() => this.mode === 'disabled' || this.auth.ready());
+
   isReady(): boolean {
-    return this.mode === 'disabled' || this.auth.ready();
+    return this.ready();
   }
 
   can(permission: Permission): boolean {

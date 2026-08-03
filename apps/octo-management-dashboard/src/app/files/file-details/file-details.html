@@ -3,72 +3,78 @@
     <div class="details-content">
       <div class="details-title">
         <div>
-          <span>Szczegóły pliku</span><strong>{{ selected.name }}</strong>
+          <span>{{ i18n.t('files.details') }}</span
+          ><strong>{{ selected.name }}</strong>
         </div>
-        <i class="pi pi-ellipsis-h"></i>
       </div>
       <div class="preview">
         @if (selected.thumbnailUrl) {
-          <img [src]="selected.thumbnailUrl" [alt]="'Podgląd ' + selected.name" />
+          <img
+            [src]="selected.thumbnailUrl"
+            [alt]="i18n.t('files.previewAlt', { name: selected.name })"
+          />
         } @else {
-          <i class="pi pi-image"></i><span>Podgląd modelu</span
+          <i class="pi pi-image" aria-hidden="true"></i
+          ><span>{{ i18n.t('files.previewModel') }}</span
           ><small>{{ selected.extension }}</small>
         }
       </div>
       <dl class="basic-metadata">
         <div>
-          <dt>Typ</dt>
+          <dt>{{ i18n.t('files.type') }}</dt>
           <dd>{{ selected.extension.toUpperCase() }}</dd>
         </div>
         <div>
-          <dt>Rozmiar</dt>
-          <dd>{{ selected.size }}</dd>
+          <dt>{{ i18n.t('files.size') }}</dt>
+          <dd>{{ i18n.formatBytes(selected.sizeBytes) }}</dd>
         </div>
         <div>
-          <dt>Zmodyfikowano</dt>
-          <dd>{{ selected.modifiedAt }}</dd>
+          <dt>{{ i18n.t('files.modified') }}</dt>
+          <dd>{{ i18n.formatDateTime(selected.modifiedAt) }}</dd>
         </div>
       </dl>
-      <div class="metadata-heading">Metadane modelu</div>
+      <div class="metadata-heading">{{ i18n.t('files.metadata') }}</div>
       <dl class="metadata-list">
         <div>
-          <dt>Liczba warstw</dt>
+          <dt>{{ i18n.t('files.layers') }}</dt>
           <dd>{{ selected.metadata.layers ?? '—' }}</dd>
         </div>
         <div>
-          <dt>Gęstość filamentu</dt>
-          <dd>{{ selected.metadata.filamentDensity ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.filamentDensity') }}</dt>
+          <dd>{{ formatUnit(selected.metadata.filamentDensityGcm3, 'g/cm³') }}</dd>
         </div>
         <div>
-          <dt>Średnica filamentu</dt>
-          <dd>{{ selected.metadata.filamentDiameter ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.filamentDiameter') }}</dt>
+          <dd>{{ formatUnit(selected.metadata.filamentDiameterMm, 'mm') }}</dd>
         </div>
         <div>
-          <dt>Wymiary maks.</dt>
-          <dd>{{ selected.metadata.dimensions ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.dimensions') }}</dt>
+          <dd>{{ formatDimensions(selected.metadata.dimensionsMm) }}</dd>
         </div>
         <div>
-          <dt>Długość filamentu</dt>
-          <dd>{{ selected.metadata.filamentLength ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.filamentLength') }}</dt>
+          <dd>{{ formatUnit(selected.metadata.filamentLengthM, 'm') }}</dd>
         </div>
         <div>
-          <dt>Szacowany koszt</dt>
-          <dd>{{ selected.metadata.filamentCost ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.estimatedCost') }}</dt>
+          <dd>
+            {{ formatCost(selected.metadata.filamentCost, selected.metadata.filamentCostCurrency) }}
+          </dd>
         </div>
         <div>
-          <dt>Szacowany czas</dt>
-          <dd>{{ selected.metadata.estimatedTime ?? '—' }}</dd>
+          <dt>{{ i18n.t('files.estimatedTime') }}</dt>
+          <dd>{{ formatDuration(selected.metadata.estimatedTimeSeconds) }}</dd>
         </div>
       </dl>
     </div>
   } @else {
     <div class="no-selection">
-      <i class="pi pi-file"></i><strong>Wybierz plik</strong
-      ><span>Tu pojawi się podgląd i metadane.</span>
+      <i class="pi pi-file" aria-hidden="true"></i><strong>{{ i18n.t('files.chooseFile') }}</strong
+      ><span>{{ i18n.t('files.noSelection') }}</span>
     </div>
   }
-  <app-upload-zone [path]="uploadPath()" (uploadRequested)="requestUpload()" />
-  @if (uploadMessage) {
-    <p class="upload-message" role="status">{{ uploadMessage }}</p>
+  <app-upload-zone [path]="uploadPath()" (uploadRequested)="uploadRequested.emit()" />
+  @if (statusMessage()) {
+    <p class="upload-message" role="status">{{ statusMessage() }}</p>
   }
 </aside>

@@ -1,9 +1,10 @@
 <section class="upload-card">
   <div class="upload-heading">
-    <span>Prześlij do lokalizacji</span><i class="pi pi-upload" aria-hidden="true"></i>
+    <span>{{ i18n.t('files.uploadTo') }}</span
+    ><i class="pi pi-upload" aria-hidden="true"></i>
   </div>
   <div class="upload-path">
-    <i class="pi pi-folder-open"></i><span>{{ path() }}</span>
+    <i class="pi pi-folder-open" aria-hidden="true"></i><span>{{ path() }}</span>
   </div>
   <button
     type="button"
@@ -16,7 +17,8 @@
     (dragover)="$event.preventDefault()"
   >
     <span class="upload-icon"><i class="pi pi-cloud-upload"></i></span
-    ><strong>Upuść pliki tutaj</strong><span>lub kliknij, aby przeglądać</span
-    ><small>Maksymalnie 5 GB na plik</small>
+    ><strong>{{ i18n.t('files.dropHere') }}</strong
+    ><span>{{ i18n.t('files.browse') }}</span
+    ><small>{{ i18n.t('files.maxSize') }}</small>
   </button>
 </section>

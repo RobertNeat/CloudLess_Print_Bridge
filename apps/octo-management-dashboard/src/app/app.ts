@@ -4,9 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import type { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { MenuModule } from 'primeng/menu';
 import { MenubarModule } from 'primeng/menubar';
 import { SelectModule } from 'primeng/select';
+import { TieredMenuModule } from 'primeng/tieredmenu';
 import { TooltipModule } from 'primeng/tooltip';
 import { filter, map, startWith } from 'rxjs';
 
@@ -14,7 +14,8 @@ import { DashboardCatalogService, type DashboardId } from './core/dashboard-cata
 import { DashboardLayoutService } from './core/dashboard-layout.service';
 import {
   FilesDashboardLayoutService,
-  type FilesDashboardLayout,
+  type FilesBrowserWidth,
+  type FilesDetailsPosition,
 } from './core/files-dashboard-layout.service';
 import { I18nService } from './core/i18n.service';
 import { ThemeService } from './core/theme.service';
@@ -26,9 +27,9 @@ import { VideoSearch } from './videos/video-search/video-search';
     ButtonModule,
     FormsModule,
     MenubarModule,
-    MenuModule,
     RouterOutlet,
     SelectModule,
+    TieredMenuModule,
     TooltipModule,
     VideoSearch,
   ],
@@ -64,17 +65,36 @@ export class App {
 
   protected readonly layoutMenuItems = computed<MenuItem[]>(() => {
     if (this.activeDashboardId() === 'files') {
-      const active = this.filesLayout.layout();
-      const option = (label: string, value: FilesDashboardLayout, icon: string): MenuItem => ({
+      const activeWidth = this.filesLayout.browserWidth();
+      const activePosition = this.filesLayout.detailsPosition();
+      const widthOption = (label: string, value: FilesBrowserWidth): MenuItem => ({
         label,
-        icon: active === value ? 'pi pi-check' : icon,
-        command: () => this.filesLayout.set(value),
+        icon: activeWidth === value ? 'pi pi-check' : 'pi pi-arrows-h',
+        command: () => this.filesLayout.setBrowserWidth(value),
+      });
+      const positionOption = (label: string, value: FilesDetailsPosition): MenuItem => ({
+        label,
+        icon: activePosition === value ? 'pi pi-check' : 'pi pi-arrow-right-arrow-left',
+        command: () => this.filesLayout.setDetailsPosition(value),
       });
       return [
-        option(this.i18n.t('layout.balanced'), 'balanced', 'pi pi-table'),
-        option(this.i18n.t('layout.browserWide'), 'browser-wide', 'pi pi-list'),
-        option(this.i18n.t('layout.detailsWide'), 'details-wide', 'pi pi-window-maximize'),
-        option(this.i18n.t('layout.reversed'), 'reversed', 'pi pi-arrow-right-arrow-left'),
+        {
+          label: this.i18n.t('layout.fileAreaWidth'),
+          icon: 'pi pi-arrows-h',
+          items: [
+            widthOption(this.i18n.t('layout.fileAreaStandard'), 'standard'),
+            widthOption(this.i18n.t('layout.fileAreaWide'), 'wide'),
+            widthOption(this.i18n.t('layout.fileAreaMaximum'), 'maximum'),
+          ],
+        },
+        {
+          label: this.i18n.t('layout.detailsPosition'),
+          icon: 'pi pi-arrow-right-arrow-left',
+          items: [
+            positionOption(this.i18n.t('layout.detailsRight'), 'right'),
+            positionOption(this.i18n.t('layout.detailsLeft'), 'left'),
+          ],
+        },
         { separator: true },
         {
           label: this.i18n.t('layout.reset'),

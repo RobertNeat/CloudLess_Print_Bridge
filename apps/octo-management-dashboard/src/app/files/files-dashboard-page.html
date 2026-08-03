@@ -1,11 +1,17 @@
-<section class="files-dashboard" [attr.data-layout]="layout.layout()">
+<section
+  class="files-dashboard"
+  [attr.data-browser-width]="layout.browserWidth()"
+  [attr.data-details-position]="layout.detailsPosition()"
+>
   @if (dashboard(); as data) {
     <div class="panel panel--tree">
       <app-file-tree
         [pinnedLocations]="data.pinnedLocations"
         [nodes]="data.tree"
-        [selectedPath]="selectedFolderPath()"
-        (pathSelected)="selectFolder($event)"
+        [selectedFolderPath]="selectedFolderPath()"
+        [selectedFilePath]="selectedFile()?.path ?? null"
+        (folderSelected)="selectFolder($event)"
+        (fileSelected)="selectFileNode($event)"
       />
     </div>
     <div class="panel panel--browser">
@@ -14,22 +20,24 @@
         [path]="selectedFolderPath()"
         [selectedFileId]="selectedFile()?.id ?? null"
         (fileSelected)="selectedFile.set($event)"
+        (fileAction)="executeFileAction($event)"
       />
     </div>
     <div class="panel panel--details">
       <app-file-details
         [file]="selectedFile()"
         [uploadPath]="selectedFolderPath() || data.uploadPath"
+        [statusMessage]="operationMessage()"
+        (uploadRequested)="requestUpload()"
       />
     </div>
   } @else if (loadingError()) {
     <div class="dashboard-state">
-      <i class="pi pi-exclamation-triangle"></i
-      ><strong>Nie udało się wczytać danych plików.</strong>
+      <i class="pi pi-exclamation-triangle"></i><strong>{{ i18n.t('files.loadError') }}</strong>
     </div>
   } @else {
     <div class="dashboard-state">
-      <i class="pi pi-spin pi-spinner"></i><span>Ładowanie plików…</span>
+      <i class="pi pi-spin pi-spinner"></i><span>{{ i18n.t('files.loading') }}</span>
     </div>
   }
 </section>

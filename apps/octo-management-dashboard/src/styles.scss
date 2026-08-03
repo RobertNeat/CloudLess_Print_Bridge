@@ -26,8 +26,11 @@
   --semantic-grid-line: var(--app-grid-line);
   --semantic-shadow-raised: var(--app-shadow-sm);
   --semantic-accent-primary: var(--p-primary-500);
+  --semantic-accent-contrast: var(--app-primary-contrast);
   --semantic-accent-secondary: var(--p-cyan-400);
   --semantic-accent-subtle: var(--app-primary-subtle);
+  --semantic-accent-favorite: var(--p-amber-500);
+  --semantic-file-image: var(--p-violet-500);
   --semantic-status-success: var(--p-green-500);
   --semantic-status-warning: var(--p-orange-500);
   --semantic-status-danger: var(--p-red-500);
@@ -137,4 +140,14 @@ textarea {
   width: 100%;
   margin: 0.15rem 0 0;
   justify-content: center;
+}
+
+// File action menus are appended to <body>, outside the file-list component scope.
+.file-action--danger {
+  color: var(--semantic-status-danger);
+}
+
+.file-action--danger .p-menu-item-link,
+.file-action--danger .p-menu-item-icon {
+  color: var(--semantic-status-danger);
 }

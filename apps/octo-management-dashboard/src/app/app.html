@@ -31,7 +31,12 @@
             <app-video-search />
           }
           @if (showsLayoutSettings()) {
-            <p-menu #layoutMenu [model]="layoutMenuItems()" [popup]="true" appendTo="body" />
+            <p-tieredmenu
+              #layoutMenu
+              [model]="layoutMenuItems()"
+              [popup]="true"
+              appendTo="body"
+            />
             <p-button
               data-testid="layout-edit-toggle"
               severity="secondary"

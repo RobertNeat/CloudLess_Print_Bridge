@@ -13,15 +13,69 @@ const messages = {
     changeLanguage: 'Zmień język na angielski',
     toggleTheme: 'Przełącz tryb jasny lub ciemny',
     mainNavigation: 'Główna nawigacja',
-    'layout.balanced': 'Układ zrównoważony',
-    'layout.browserWide': 'Szersza lista plików',
-    'layout.detailsWide': 'Szersze szczegóły',
-    'layout.reversed': 'Szczegóły po lewej',
     'layout.reset': 'Przywróć oryginalny układ',
     'layout.confirm': 'Zatwierdź układ',
     'layout.edit': 'Edytuj układ',
     'layout.filesAria': 'Ustawienia kolumn dashboardu plików',
     'layout.dashboardAria': 'Ustawienia układu dashboardu',
+    'layout.fileAreaWidth': 'Szerokość listy plików',
+    'layout.fileAreaStandard': 'Standardowa',
+    'layout.fileAreaWide': 'Szeroka',
+    'layout.fileAreaMaximum': 'Maksymalna',
+    'layout.detailsPosition': 'Położenie szczegółów',
+    'layout.detailsRight': 'Po prawej',
+    'layout.detailsLeft': 'Po lewej',
+    'files.pinned': 'Przypięte',
+    'files.pinned.models': 'Modele MD5',
+    'files.pinned.cache': 'Pamięć podręczna',
+    'files.pinned.logs': 'Logi drukarki',
+    'files.section': 'Pliki',
+    'files.treeAria': 'Drzewo plików',
+    'files.breadcrumbsAria': 'Ścieżka folderu',
+    'files.home': 'Home',
+    'files.search': 'Szukaj w folderze',
+    'files.sortName': 'Nazwa',
+    'files.sortAscending': 'Sortuj rosnąco',
+    'files.sortDescending': 'Sortuj malejąco',
+    'files.count.one': '{{count}} plik',
+    'files.count.few': '{{count}} pliki',
+    'files.count.many': '{{count}} plików',
+    'files.count.other': '{{count}} pliku',
+    'files.emptyTitle': 'Brak pasujących plików',
+    'files.emptyDescription': 'Zmień wyszukiwaną frazę.',
+    'files.details': 'Szczegóły pliku',
+    'files.previewAlt': 'Podgląd {{name}}',
+    'files.previewModel': 'Podgląd modelu',
+    'files.type': 'Typ',
+    'files.size': 'Rozmiar',
+    'files.modified': 'Zmodyfikowano',
+    'files.metadata': 'Metadane modelu',
+    'files.layers': 'Liczba warstw',
+    'files.filamentDensity': 'Gęstość filamentu',
+    'files.filamentDiameter': 'Średnica filamentu',
+    'files.dimensions': 'Wymiary maks.',
+    'files.filamentLength': 'Długość filamentu',
+    'files.estimatedCost': 'Szacowany koszt',
+    'files.estimatedTime': 'Szacowany czas',
+    'files.chooseFile': 'Wybierz plik',
+    'files.noSelection': 'Tu pojawi się podgląd i metadane.',
+    'files.uploadTo': 'Prześlij do lokalizacji',
+    'files.dropHere': 'Upuść pliki tutaj',
+    'files.browse': 'lub kliknij, aby przeglądać',
+    'files.maxSize': 'Maksymalnie 5 GB na plik',
+    'files.loading': 'Ładowanie plików…',
+    'files.loadError': 'Nie udało się wczytać danych plików.',
+    'files.actions.open': 'Otwórz działania dla pliku {{name}}',
+    'files.actions.download': 'Pobierz',
+    'files.actions.rename': 'Zmień nazwę',
+    'files.actions.move': 'Przenieś',
+    'files.actions.delete': 'Usuń',
+    'files.operationUnavailable': 'Operacja „{{action}}” będzie dostępna po podłączeniu usługi FTPS.',
+    'files.operationDenied': 'Nie masz uprawnień do wykonania tej operacji.',
+    'files.uploadUnavailable': 'Wybór pliku będzie dostępny po podłączeniu usługi FTPS.',
+    'auth.deniedTitle': 'Brak dostępu',
+    'auth.deniedDescription': 'Nie masz uprawnień do wyświetlenia tej strony.',
+    'auth.backToApp': 'Wróć do aplikacji',
     'dashboard.drag': 'Przeciągnij, aby przenieść',
     'dashboard.widgetMoveAria': 'Przenieś widżet {{id}} klawiszami strzałek',
     'dashboard.loadError': 'Nie udało się wczytać danych dashboardu.',
@@ -123,15 +177,69 @@ const messages = {
     changeLanguage: 'Change language to Polish',
     toggleTheme: 'Switch between light and dark mode',
     mainNavigation: 'Main navigation',
-    'layout.balanced': 'Balanced layout',
-    'layout.browserWide': 'Wider file list',
-    'layout.detailsWide': 'Wider details',
-    'layout.reversed': 'Details on the left',
     'layout.reset': 'Restore original layout',
     'layout.confirm': 'Apply layout',
     'layout.edit': 'Edit layout',
     'layout.filesAria': 'File dashboard column settings',
     'layout.dashboardAria': 'Dashboard layout settings',
+    'layout.fileAreaWidth': 'File list width',
+    'layout.fileAreaStandard': 'Standard',
+    'layout.fileAreaWide': 'Wide',
+    'layout.fileAreaMaximum': 'Maximum',
+    'layout.detailsPosition': 'Details position',
+    'layout.detailsRight': 'On the right',
+    'layout.detailsLeft': 'On the left',
+    'files.pinned': 'Pinned',
+    'files.pinned.models': 'MD5 models',
+    'files.pinned.cache': 'Cache',
+    'files.pinned.logs': 'Printer logs',
+    'files.section': 'Files',
+    'files.treeAria': 'File tree',
+    'files.breadcrumbsAria': 'Folder path',
+    'files.home': 'Home',
+    'files.search': 'Search this folder',
+    'files.sortName': 'Name',
+    'files.sortAscending': 'Sort ascending',
+    'files.sortDescending': 'Sort descending',
+    'files.count.one': '{{count}} file',
+    'files.count.few': '{{count}} files',
+    'files.count.many': '{{count}} files',
+    'files.count.other': '{{count}} files',
+    'files.emptyTitle': 'No matching files',
+    'files.emptyDescription': 'Try a different search phrase.',
+    'files.details': 'File details',
+    'files.previewAlt': '{{name}} preview',
+    'files.previewModel': 'Model preview',
+    'files.type': 'Type',
+    'files.size': 'Size',
+    'files.modified': 'Modified',
+    'files.metadata': 'Model metadata',
+    'files.layers': 'Layer count',
+    'files.filamentDensity': 'Filament density',
+    'files.filamentDiameter': 'Filament diameter',
+    'files.dimensions': 'Maximum dimensions',
+    'files.filamentLength': 'Filament length',
+    'files.estimatedCost': 'Estimated cost',
+    'files.estimatedTime': 'Estimated time',
+    'files.chooseFile': 'Select a file',
+    'files.noSelection': 'The preview and metadata will appear here.',
+    'files.uploadTo': 'Upload to location',
+    'files.dropHere': 'Drop files here',
+    'files.browse': 'or click to browse',
+    'files.maxSize': 'Maximum 5 GB per file',
+    'files.loading': 'Loading files…',
+    'files.loadError': 'File data could not be loaded.',
+    'files.actions.open': 'Open actions for {{name}}',
+    'files.actions.download': 'Download',
+    'files.actions.rename': 'Rename',
+    'files.actions.move': 'Move',
+    'files.actions.delete': 'Delete',
+    'files.operationUnavailable': '“{{action}}” will be available after the FTPS service is connected.',
+    'files.operationDenied': 'You do not have permission to perform this operation.',
+    'files.uploadUnavailable': 'File selection will be available after the FTPS service is connected.',
+    'auth.deniedTitle': 'Access denied',
+    'auth.deniedDescription': 'You do not have permission to view this page.',
+    'auth.backToApp': 'Back to the application',
     'dashboard.drag': 'Drag to move',
     'dashboard.widgetMoveAria': 'Move widget {{id}} with arrow keys',
     'dashboard.loadError': 'Dashboard data could not be loaded.',
@@ -247,6 +355,62 @@ export class I18nService {
     );
   }
 
+  plural(
+    keys: Readonly<Partial<Record<Intl.LDMLPluralRule, TranslationKey>>> & {
+      readonly other: TranslationKey;
+    },
+    count: number,
+    params: TranslationParams = {},
+  ): string {
+    const rule = new Intl.PluralRules(this.locale()).select(count);
+    return this.t(keys[rule] ?? keys.other, { count, ...params });
+  }
+
+  formatNumber(value: number, maximumFractionDigits = 2): string {
+    return new Intl.NumberFormat(this.locale(), { maximumFractionDigits }).format(value);
+  }
+
+  formatDateTime(value: string): string {
+    return new Intl.DateTimeFormat(this.locale(), {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+
+  formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    return `${this.formatNumber(bytes / 1024 ** unitIndex, 1)} ${units[unitIndex]}`;
+  }
+
+  formatCurrency(value: number, currency = 'PLN'): string {
+    return new Intl.NumberFormat(this.locale(), { style: 'currency', currency }).format(value);
+  }
+
+  formatDuration(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    const parts: string[] = [];
+    if (hours) {
+      parts.push(
+        new Intl.NumberFormat(this.locale(), { style: 'unit', unit: 'hour', unitDisplay: 'short' }).format(
+          hours,
+        ),
+      );
+    }
+    if (minutes || !hours) {
+      parts.push(
+        new Intl.NumberFormat(this.locale(), {
+          style: 'unit',
+          unit: 'minute',
+          unitDisplay: 'short',
+        }).format(minutes),
+      );
+    }
+    return parts.join(' ');
+  }
+
   toggleLanguage(): void {
     const language: Language = this.language() === 'pl' ? 'en' : 'pl';
     this.language.set(language);
@@ -256,6 +420,10 @@ export class I18nService {
 
   private applyLanguage(language: Language): void {
     this.document.documentElement.lang = language;
+  }
+
+  private locale(): string {
+    return this.language() === 'pl' ? 'pl-PL' : 'en-US';
   }
 
   private readInitialLanguage(): Language {

@@ -9,7 +9,7 @@
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  background: var(--app-surface-card);
+  background: var(--semantic-surface-raised);
 }
 .browser-header {
   display: flex;
@@ -17,7 +17,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.15rem;
-  border-bottom: 1px solid var(--app-surface-border);
+  border-bottom: 1px solid var(--semantic-border-subtle);
   gap: 1rem;
 }
 .breadcrumbs {
@@ -25,7 +25,7 @@
   min-width: 0;
   align-items: center;
   overflow: hidden;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.8rem;
   gap: 0.5rem;
 }
@@ -42,11 +42,11 @@
 .home-crumb {
   display: inline-flex;
   align-items: center;
-  color: var(--app-text-color);
+  color: var(--semantic-text-primary);
   gap: 0.4rem;
 }
 .current-crumb {
-  color: var(--app-text-color);
+  color: var(--semantic-text-primary);
   font-weight: 700;
 }
 .search-box {
@@ -57,7 +57,7 @@
   position: absolute;
   top: 50%;
   left: 0.65rem;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.75rem;
   transform: translateY(-50%);
 }
@@ -72,8 +72,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1.15rem;
-  border-bottom: 1px solid var(--app-surface-border);
-  color: var(--app-text-muted);
+  border-bottom: 1px solid var(--semantic-border-subtle);
+  color: var(--semantic-text-muted);
   font-size: 0.7rem;
 }
 .sort-button {
@@ -97,23 +97,32 @@
 .file-row {
   display: grid;
   width: 100%;
-  grid-template-columns: 2.65rem minmax(0, 1fr) 1.5rem;
+  grid-template-columns: minmax(0, 1fr) 2.25rem;
   align-items: center;
-  padding: 0.65rem 0.55rem;
   border: 1px solid transparent;
   border-radius: 0.7rem;
   background: transparent;
-  color: var(--app-text-color);
-  text-align: left;
-  cursor: pointer;
-  gap: 0.7rem;
+  color: var(--semantic-text-primary);
 }
 .file-row:hover {
   background: var(--semantic-surface-interactive);
 }
 .file-row--selected {
-  border-color: color-mix(in srgb, var(--app-primary-color) 28%, transparent);
-  background: var(--app-primary-subtle);
+  border-color: color-mix(in srgb, var(--semantic-accent-primary) 28%, transparent);
+  background: var(--semantic-accent-subtle);
+}
+.file-select {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 2.65rem minmax(0, 1fr);
+  align-items: center;
+  padding: 0.65rem 0 0.65rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  gap: 0.7rem;
 }
 .file-type {
   position: relative;
@@ -121,8 +130,12 @@
   width: 2.65rem;
   height: 2.65rem;
   border-radius: 0.65rem;
-  background: color-mix(in srgb, var(--app-primary-color) 10%, var(--app-surface-card));
-  color: var(--app-primary-color);
+  background: color-mix(
+    in srgb,
+    var(--semantic-accent-primary) 10%,
+    var(--semantic-surface-raised)
+  );
+  color: var(--semantic-accent-primary);
   place-items: center;
 }
 .file-type > i {
@@ -134,17 +147,17 @@
   bottom: -0.2rem;
   padding: 0.1rem 0.25rem;
   border-radius: 0.25rem;
-  background: var(--app-primary-color);
-  color: var(--app-primary-contrast);
+  background: var(--semantic-accent-primary);
+  color: var(--semantic-accent-contrast);
   font-size: 0.48rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 .file-type[data-kind='image'] {
-  color: #8b5cf6;
+  color: var(--semantic-file-image);
 }
 .file-type[data-kind='image'] small {
-  background: #8b5cf6;
+  background: var(--semantic-file-image);
 }
 .file-copy {
   min-width: 0;
@@ -162,19 +175,39 @@
 }
 .file-copy small {
   margin-top: 0.22rem;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   font-size: 0.67rem;
 }
-.row-menu {
-  color: var(--app-text-muted);
+.row-menu-button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--semantic-text-muted);
   font-size: 0.8rem;
+  cursor: pointer;
+  place-items: center;
+}
+.row-menu-button:hover,
+.row-menu-button:focus-visible {
+  background: var(--semantic-surface-hover);
+  color: var(--semantic-text-primary);
+}
+.file-select:focus-visible,
+.row-menu-button:focus-visible,
+.sort-button:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring);
+  outline-offset: -2px;
 }
 .empty-list {
   display: grid;
   height: 60%;
   align-content: center;
   justify-items: center;
-  color: var(--app-text-muted);
+  color: var(--semantic-text-muted);
   text-align: center;
   gap: 0.45rem;
 }
@@ -182,14 +215,21 @@
   font-size: 1.5rem;
 }
 .empty-list strong {
-  color: var(--app-text-color);
+  color: var(--semantic-text-primary);
   font-size: 0.86rem;
 }
 .empty-list span {
   font-size: 0.72rem;
 }
 @media (max-width: 1100px) {
+  .browser-header {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .breadcrumbs {
+    flex: 1 1 100%;
+  }
   .search-box {
-    display: none;
+    flex: 1 1 100%;
   }
 }

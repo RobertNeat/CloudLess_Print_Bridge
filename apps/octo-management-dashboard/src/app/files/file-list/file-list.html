@@ -1,7 +1,9 @@
 <section class="browser-panel">
   <header class="browser-header">
-    <nav class="breadcrumbs" aria-label="Ścieżka folderu">
-      <span class="home-crumb"><i class="pi pi-home"></i><span>Home</span></span>
+    <nav class="breadcrumbs" [attr.aria-label]="i18n.t('files.breadcrumbsAria')">
+      <span class="home-crumb"
+        ><i class="pi pi-home" aria-hidden="true"></i><span>{{ i18n.t('files.home') }}</span></span
+      >
       @for (crumb of breadcrumbs(); track $index) {
         <i class="pi pi-chevron-right" aria-hidden="true"></i
         ><span [class.current-crumb]="$last">{{ crumb }}</span>
@@ -11,47 +13,65 @@
       <i class="pi pi-search" aria-hidden="true"></i>
       <input
         pInputText
-        [(ngModel)]="query"
-        placeholder="Szukaj w folderze"
-        aria-label="Szukaj w folderze"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+        [placeholder]="i18n.t('files.search')"
+        [attr.aria-label]="i18n.t('files.search')"
       />
     </label>
   </header>
   <div class="list-summary">
-    <span>{{ visibleFiles().length }} plików</span>
+    <span>{{ fileCount(visibleFiles().length) }}</span>
     <button
       type="button"
       class="sort-button"
-      [attr.aria-label]="sortAscending ? 'Sortuj malejąco' : 'Sortuj rosnąco'"
-      (click)="sortAscending = !sortAscending"
+      [attr.aria-label]="i18n.t(sortAscending() ? 'files.sortDescending' : 'files.sortAscending')"
+      (click)="sortAscending.set(!sortAscending())"
     >
-      <i [class]="sortAscending ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"></i>
-      Nazwa
+      <i
+        [class]="sortAscending() ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"
+        aria-hidden="true"
+      ></i>
+      {{ i18n.t('files.sortName') }}
     </button>
   </div>
   <div class="file-list">
     @for (file of visibleFiles(); track file.id) {
-      <button
-        type="button"
-        class="file-row"
-        [class.file-row--selected]="selectedFileId() === file.id"
-        (click)="fileSelected.emit(file)"
-      >
-        <span class="file-type" [attr.data-kind]="file.kind"
-          ><i [class]="fileIcon(file)" aria-hidden="true"></i
-          ><small>{{ file.extension }}</small></span
+      <div class="file-row" [class.file-row--selected]="selectedFileId() === file.id">
+        <button
+          type="button"
+          class="file-select"
+          [attr.aria-pressed]="selectedFileId() === file.id"
+          (click)="fileSelected.emit(file)"
         >
-        <span class="file-copy"
-          ><strong>{{ file.name }}</strong
-          ><small>{{ file.size }} · {{ file.modifiedAt }}</small></span
+          <span class="file-type" [attr.data-kind]="file.kind"
+            ><i [class]="fileIcon(file)" aria-hidden="true"></i
+            ><small>{{ file.extension }}</small></span
+          >
+          <span class="file-copy"
+            ><strong>{{ file.name }}</strong
+            ><small
+              >{{ i18n.formatBytes(file.sizeBytes) }} ·
+              {{ i18n.formatDateTime(file.modifiedAt) }}</small
+            ></span
+          >
+        </button>
+        <button
+          type="button"
+          class="row-menu-button"
+          [attr.aria-label]="i18n.t('files.actions.open', { name: file.name })"
+          (click)="menuFile.set(file); fileMenu.toggle($event)"
         >
-        <i class="pi pi-ellipsis-v row-menu" aria-hidden="true"></i>
-      </button>
+          <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+        </button>
+      </div>
     } @empty {
       <div class="empty-list">
-        <i class="pi pi-search"></i><strong>Brak pasujących plików</strong
-        ><span>Zmień wyszukiwaną frazę.</span>
+        <i class="pi pi-search" aria-hidden="true"></i
+        ><strong>{{ i18n.t('files.emptyTitle') }}</strong
+        ><span>{{ i18n.t('files.emptyDescription') }}</span>
       </div>
     }
   </div>
+  <p-menu #fileMenu [model]="fileMenuItems()" [popup]="true" appendTo="body" />
 </section>
