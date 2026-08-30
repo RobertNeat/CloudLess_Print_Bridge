@@ -1,15 +1,77 @@
-:host { display: block; height: 100%; }
-.temperatures { display: grid; height: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.temperature { display: flex; min-width: 0; align-items: center; justify-content: center; padding: .55rem; border: 0; border-right: 1px solid var(--semantic-border-default); background: transparent; color: var(--semantic-text-primary); cursor: pointer; gap: .55rem; }
-.temperature:last-child { border-right: 0; }
-.temperature:not(:disabled):hover { background: var(--semantic-surface-hover); }
-.temperature:focus-visible { z-index: 1; outline: 2px solid var(--semantic-focus-ring); outline-offset: -2px; }
-.temperature__icon { display: grid; width: 2rem; height: 2rem; flex: 0 0 2rem; border-radius: .5rem; background: color-mix(in srgb, var(--temperature-color) 14%, transparent); color: var(--temperature-color); place-items: center; }
-.temperature > span:last-child { display: flex; min-width: 0; flex-direction: column; gap: .1rem; }
-small { color: var(--semantic-text-muted); font-size: .65rem; }
-strong { font-size: .88rem; font-variant-numeric: tabular-nums; }
-.temperature--info { --temperature-color: var(--semantic-status-info); }
-.temperature--warning { --temperature-color: var(--semantic-status-warning); }
-.temperature--danger { --temperature-color: var(--semantic-status-danger); }
-.temperature--disabled { cursor: not-allowed; opacity: .48; }
-@media (max-width: 520px) { .temperature { flex-direction: column; gap: .25rem; text-align: center; } }
+:host {
+  display: block;
+  height: 100%;
+}
+.temperatures {
+  display: grid;
+  height: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.temperature {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem;
+  border: 0;
+  border-right: 1px solid var(--semantic-border-default);
+  background: transparent;
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  gap: 0.55rem;
+}
+.temperature:last-child {
+  border-right: 0;
+}
+.temperature:not(:disabled):hover {
+  background: var(--semantic-surface-hover);
+}
+.temperature:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--semantic-focus-ring);
+  outline-offset: -2px;
+}
+.temperature__icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--temperature-color) 14%, transparent);
+  color: var(--temperature-color);
+  place-items: center;
+}
+.temperature > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+small {
+  color: var(--semantic-text-muted);
+  font-size: 0.65rem;
+}
+strong {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+.temperature--info {
+  --temperature-color: var(--semantic-status-info);
+}
+.temperature--warning {
+  --temperature-color: var(--semantic-status-warning);
+}
+.temperature--danger {
+  --temperature-color: var(--semantic-status-danger);
+}
+.temperature--disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+@media (max-width: 520px) {
+  .temperature {
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+  }
+}

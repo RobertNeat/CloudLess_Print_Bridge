@@ -22,7 +22,7 @@ pnpm install
 pnpm --filter @cloudless/video-service-hub start:dev
 ```
 
-Domyślnie HTTP działa na `0.0.0.0:3000`, MQTT na `0.0.0.0:1883`, a pliki
+Domyślnie HTTP działa na `0.0.0.0:10222`, MQTT na `0.0.0.0:1883`, a pliki
 trafiają do `./storage` względem katalogu roboczego procesu. W konfiguracji
 kamery `videoServiceIp` musi wskazywać adres LAN hosta serwisu.
 
@@ -122,21 +122,21 @@ otrzymaniu wszystkich kolejnych części.
 
 | Zmienna | Domyślnie | Znaczenie |
 | --- | ---: | --- |
-| `HOST` | `0.0.0.0` | adres nasłuchu HTTP |
-| `PORT` | `3000` | port HTTP |
-| `STORAGE_PATH` | `./storage` | katalog danych |
-| `CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout proxy do kamery |
-| `MQTT_PORT` | `1883` | port brokera embedded (`0` w testach) |
-| `MQTT_URL` | — | broker zewnętrzny; wyłącza embedded |
-| `MQTT_USERNAME`, `MQTT_PASSWORD` | — | dane brokera zewnętrznego |
-| `MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia |
-| `MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
-| `MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
-| `CAPTURE_MAX_BYTES` | `20971520` | limit JPEG |
-| `RECORDING_PART_MAX_BYTES` | `16777216` | limit części MJPEG |
-| `AUDIO_MAX_BYTES` | `10485760` | limit WAV |
-| `LIVE_MAX_BYTES` | `1073741824` | limit pojedynczego live |
-| `LIVE_VIEWER_BUFFER_BYTES` | `2097152` | bufor wolnego odbiorcy live |
+| `VIDEO_SERVICE_HUB_HOST` | `0.0.0.0` | adres nasłuchu HTTP |
+| `VIDEO_SERVICE_HUB_PORT` | `10222` | port HTTP |
+| `VIDEO_SERVICE_HUB_STORAGE_PATH` | `./storage` | katalog danych |
+| `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout proxy do kamery |
+| `VIDEO_SERVICE_HUB_MQTT_PORT` | `1883` | port brokera embedded (`0` w testach) |
+| `VIDEO_SERVICE_HUB_MQTT_URL` | — | broker zewnętrzny; wyłącza embedded |
+| `VIDEO_SERVICE_HUB_MQTT_USERNAME`, `VIDEO_SERVICE_HUB_MQTT_PASSWORD` | — | dane brokera zewnętrznego |
+| `VIDEO_SERVICE_HUB_MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia |
+| `VIDEO_SERVICE_HUB_MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
+| `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
+| `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES` | `20971520` | limit JPEG |
+| `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES` | `16777216` | limit części MJPEG |
+| `VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES` | `10485760` | limit WAV |
+| `VIDEO_SERVICE_HUB_LIVE_MAX_BYTES` | `1073741824` | limit pojedynczego live |
+| `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES` | `2097152` | bufor wolnego odbiorcy live |
 
 Serwis jest przeznaczony do zaufanej sieci lokalnej. Komendy przyjmują adres
 kamery od klienta, więc przed wystawieniem API poza LAN trzeba dodać

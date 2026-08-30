@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
+import type { AuthConfig } from '../auth/auth.types';
 
 export type FtpsTlsMode = 'implicit' | 'explicit';
 
@@ -22,6 +23,7 @@ export interface ServiceConfig {
   upload: {
     maximumBytes: number;
   };
+  auth: AuthConfig;
 }
 
 export function loadServiceConfig(
@@ -29,63 +31,96 @@ export function loadServiceConfig(
 ): ServiceConfig {
   loadWorkspaceEnv(environment);
 
-  const tlsMode = optionalValue(environment.FTP_TLS_MODE) ?? 'implicit';
+  const tlsMode =
+    envValue(environment, 'FTPS_REMOTE_MANAGER_FTP_TLS_MODE') ?? 'implicit';
   if (tlsMode !== 'implicit' && tlsMode !== 'explicit') {
-    throw new Error('FTP_TLS_MODE must be implicit or explicit');
+    throw new Error(
+      'FTPS_REMOTE_MANAGER_FTP_TLS_MODE must be implicit or explicit',
+    );
   }
 
   const certificateFingerprint256 = requiredValue(
     environment,
-    'FTP_TLS_FINGERPRINT256',
+    'FTPS_REMOTE_MANAGER_FTP_TLS_FINGERPRINT256',
   )
     .replaceAll(':', '')
     .toUpperCase();
   if (!/^[A-F0-9]{64}$/.test(certificateFingerprint256)) {
     throw new Error(
-      'FTP_TLS_FINGERPRINT256 must contain 64 hexadecimal characters',
+      'FTPS_REMOTE_MANAGER_FTP_TLS_FINGERPRINT256 must contain 64 hexadecimal characters',
     );
   }
 
   return {
     http: {
-      host: optionalValue(environment.HOST) ?? '127.0.0.1',
-      port: integer(environment, 'PORT', 3000, 0, 65_535),
+      host: envValue(environment, 'FTPS_REMOTE_MANAGER_HOST') ?? '127.0.0.1',
+      port: integerValue(
+        envValue(environment, 'FTPS_REMOTE_MANAGER_PORT'),
+        'FTPS_REMOTE_MANAGER_PORT',
+        10221,
+        0,
+        65_535,
+      ),
     },
     ftps: {
-      host: requiredValue(environment, 'FTP_HOST'),
-      port: integer(environment, 'FTP_PORT', 990, 1, 65_535),
-      username: requiredValue(environment, 'FTP_USER'),
-      password: requiredValue(environment, 'FTP_PASSWORD'),
+      host: requiredValue(environment, 'FTPS_REMOTE_MANAGER_FTP_HOST'),
+      port: integerValue(
+        envValue(environment, 'FTPS_REMOTE_MANAGER_FTP_PORT'),
+        'FTPS_REMOTE_MANAGER_FTP_PORT',
+        990,
+        1,
+        65_535,
+      ),
+      username: requiredValue(environment, 'FTPS_REMOTE_MANAGER_FTP_USER'),
+      password: requiredValue(environment, 'FTPS_REMOTE_MANAGER_FTP_PASSWORD'),
       tlsMode,
       certificateFingerprint256,
-      timeoutMs: integer(environment, 'FTP_TIMEOUT_MS', 10_000, 1),
-      maximumConcurrentSessions: integer(
-        environment,
-        'FTP_MAX_CONCURRENT_SESSIONS',
+      timeoutMs: integerValue(
+        envValue(environment, 'FTPS_REMOTE_MANAGER_FTP_TIMEOUT_MS'),
+        'FTPS_REMOTE_MANAGER_FTP_TIMEOUT_MS',
+        10_000,
+        1,
+      ),
+      maximumConcurrentSessions: integerValue(
+        envValue(
+          environment,
+          'FTPS_REMOTE_MANAGER_FTP_MAX_CONCURRENT_SESSIONS',
+        ),
+        'FTPS_REMOTE_MANAGER_FTP_MAX_CONCURRENT_SESSIONS',
         1,
         1,
         16,
       ),
     },
     upload: {
-      maximumBytes: integer(
-        environment,
-        'FTP_UPLOAD_MAX_BYTES',
+      maximumBytes: integerValue(
+        envValue(environment, 'FTPS_REMOTE_MANAGER_FTP_UPLOAD_MAX_BYTES'),
+        'FTPS_REMOTE_MANAGER_FTP_UPLOAD_MAX_BYTES',
         250 * 1024 * 1024,
         1,
       ),
     },
+    auth: loadAuthConfig(environment),
   };
 }
 
 function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
   if (environment !== process.env) return;
-  const path = resolve(process.cwd(), '.env');
-  if (existsSync(path)) loadEnvFile(path);
+  let directory = process.cwd();
+  while (true) {
+    if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
+      const path = resolve(directory, '.env');
+      if (existsSync(path)) loadEnvFile(path);
+      return;
+    }
+    const parent = resolve(directory, '..');
+    if (parent === directory) return;
+    directory = parent;
+  }
 }
 
 function requiredValue(environment: NodeJS.ProcessEnv, name: string): string {
-  const value = optionalValue(environment[name]);
+  const value = envValue(environment, name);
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 }
@@ -94,18 +129,53 @@ function optionalValue(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }
 
-function integer(
+function envValue(
   environment: NodeJS.ProcessEnv,
+  name: string,
+): string | undefined {
+  return optionalValue(environment[name]);
+}
+
+function integerValue(
+  input: string | undefined,
   name: string,
   fallback: number,
   minimum: number,
   maximum = Number.MAX_SAFE_INTEGER,
 ): number {
-  const value = Number(environment[name] ?? fallback);
+  const value = Number(input ?? fallback);
   if (!Number.isInteger(value) || value < minimum || value > maximum) {
     throw new Error(
       `${name} must be an integer between ${minimum} and ${maximum}`,
     );
   }
   return value;
+}
+
+function loadAuthConfig(environment: NodeJS.ProcessEnv): AuthConfig {
+  const mode = envValue(environment, 'CLOUDLESS_AUTH_MODE') ?? 'disabled';
+  if (mode !== 'disabled' && mode !== 'optional' && mode !== 'required') {
+    throw new Error(
+      'CLOUDLESS_AUTH_MODE must be disabled, optional, or required',
+    );
+  }
+
+  return {
+    mode,
+    serviceName: 'ftps-remote-manager',
+    sharedSecret: envValue(environment, 'CLOUDLESS_AUTH_SHARED_SECRET'),
+    tokenIssuerOrder: (
+      envValue(environment, 'CLOUDLESS_AUTH_SERVICE_ORDER') ??
+      'mqtt-puppeteer,ftps-remote-manager,video-service-hub'
+    )
+      .split(',')
+      .map((service) => service.trim())
+      .filter(Boolean),
+    tokenTtlSeconds: integerValue(
+      envValue(environment, 'CLOUDLESS_AUTH_TOKEN_TTL_SECONDS'),
+      'CLOUDLESS_AUTH_TOKEN_TTL_SECONDS',
+      86_400,
+      60,
+    ),
+  };
 }

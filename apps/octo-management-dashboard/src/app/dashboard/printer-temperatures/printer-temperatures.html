@@ -9,7 +9,10 @@
       (click)="openEditor($event, reading, temperaturePopover)"
     >
       <span class="temperature__icon"><i [class]="reading.icon" aria-hidden="true"></i></span>
-      <span><small>{{ reading.label }}</small><strong>{{ reading.value === null ? '—' : reading.value + '°C' }}</strong></span>
+      <span
+        ><small>{{ reading.label }}</small
+        ><strong>{{ reading.value === null ? '—' : reading.value + '°C' }}</strong></span
+      >
     </button>
   }
 </section>
@@ -17,7 +20,9 @@
 <p-popover #temperaturePopover styleClass="temperature-popover">
   @if (selected(); as reading) {
     <form class="temperature-editor" (submit)="$event.preventDefault(); save(temperaturePopover)">
-      <label class="temperature-editor__title" for="temperature-value">{{ i18n.t('temperatures.edit', { name: reading.label }) }}</label>
+      <label class="temperature-editor__title" for="temperature-value">{{
+        i18n.t('temperatures.edit', { name: reading.label })
+      }}</label>
       <p-inputnumber
         inputId="temperature-value"
         [ngModel]="draftValue()"
@@ -29,7 +34,13 @@
         [showButtons]="true"
         [autofocus]="true"
       />
-      <button pButton type="submit" size="small" icon="pi pi-check" [label]="i18n.t('temperatures.save')"></button>
+      <button
+        pButton
+        type="submit"
+        size="small"
+        icon="pi pi-check"
+        [label]="i18n.t('temperatures.save')"
+      ></button>
     </form>
   }
 </p-popover>

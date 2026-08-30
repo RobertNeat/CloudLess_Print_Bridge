@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { AuthConfig } from '../auth/auth.types';
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
@@ -33,80 +34,141 @@ export interface AppConfig {
   operations: {
     timeoutMs: number;
   };
+  http: {
+    host: string;
+    port: number;
+  };
+  auth: AuthConfig;
   stateTemplatePath?: string;
 }
 
 export function loadAppConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): AppConfig {
-  loadEnvFile(environment);
-  const serial = value(environment.PRINTER_SN);
+  loadWorkspaceEnv(environment);
+  const serial = envValue(environment, 'MQTT_PUPPETEER_PRINTER_SN');
 
   return {
+    http: {
+      host: envValue(environment, 'MQTT_PUPPETEER_HOST') ?? '0.0.0.0',
+      port: integer(
+        envValue(environment, 'MQTT_PUPPETEER_PORT'),
+        10220,
+        0,
+        65_535,
+      ),
+    },
     mqtt: {
-      host: value(environment.MQTT_HOST),
-      port: integer(environment.MQTT_PORT, 8883, 1, 65_535),
-      username: value(environment.MQTT_USERNAME) ?? 'bblp',
-      password: value(environment.BAMBU_MQTT_PASSWORD),
+      host: envValue(environment, 'MQTT_PUPPETEER_MQTT_HOST'),
+      port: integer(
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_PORT'),
+        8883,
+        1,
+        65_535,
+      ),
+      username: envValue(environment, 'MQTT_PUPPETEER_MQTT_USERNAME') ?? 'bblp',
+      password: envValue(environment, 'MQTT_PUPPETEER_MQTT_PASSWORD'),
       printerSerial: serial,
       reportTopic:
-        value(environment.MQTT_REPORT_TOPIC) ??
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_REPORT_TOPIC') ??
         (serial ? `device/${serial}/report` : undefined),
       commandTopic:
-        value(environment.MQTT_COMMAND_TOPIC) ??
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_COMMAND_TOPIC') ??
         (serial ? `device/${serial}/request` : undefined),
-      rejectUnauthorized: boolean(environment.MQTT_REJECT_UNAUTHORIZED, false),
-      connectTimeoutMs: integer(environment.MQTT_CONNECT_TIMEOUT_MS, 10_000, 1),
+      rejectUnauthorized: boolean(
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_REJECT_UNAUTHORIZED'),
+        false,
+      ),
+      connectTimeoutMs: integer(
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_CONNECT_TIMEOUT_MS'),
+        10_000,
+        1,
+      ),
       reconnectPeriodMs: integer(
-        environment.MQTT_RECONNECT_PERIOD_MS,
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_RECONNECT_PERIOD_MS'),
         4_000,
         0,
       ),
-      keepaliveSeconds: integer(environment.MQTT_KEEPALIVE_SECONDS, 60, 0),
+      keepaliveSeconds: integer(
+        envValue(environment, 'MQTT_PUPPETEER_MQTT_KEEPALIVE_SECONDS'),
+        60,
+        0,
+      ),
     },
     commands: {
-      catalogPath: value(environment.COMMAND_CATALOG_PATH),
+      catalogPath: envValue(environment, 'MQTT_PUPPETEER_COMMAND_CATALOG_PATH'),
       catalogMode:
-        value(environment.COMMAND_CATALOG_MODE) === 'extend'
+        envValue(environment, 'MQTT_PUPPETEER_COMMAND_CATALOG_MODE') ===
+        'extend'
           ? 'extend'
           : 'replace',
     },
     filaments: {
-      catalogPath: value(environment.FILAMENT_CATALOG_PATH),
+      catalogPath: envValue(
+        environment,
+        'MQTT_PUPPETEER_FILAMENT_CATALOG_PATH',
+      ),
       catalogMode:
-        value(environment.FILAMENT_CATALOG_MODE) === 'extend'
+        envValue(environment, 'MQTT_PUPPETEER_FILAMENT_CATALOG_MODE') ===
+        'extend'
           ? 'extend'
           : 'replace',
     },
     filamentSystem: {
-      amsUnitCount: integer(environment.AMS_UNIT_COUNT, 1, 0, 64),
-      slotsPerUnit: integer(environment.AMS_SLOTS_PER_UNIT, 4, 1, 256),
-      externalSpool: boolean(environment.EXTERNAL_SPOOL_ENABLED, true),
+      amsUnitCount: integer(
+        envValue(environment, 'MQTT_PUPPETEER_AMS_UNIT_COUNT'),
+        1,
+        0,
+        64,
+      ),
+      slotsPerUnit: integer(
+        envValue(environment, 'MQTT_PUPPETEER_AMS_SLOTS_PER_UNIT'),
+        4,
+        1,
+        256,
+      ),
+      externalSpool: boolean(
+        envValue(environment, 'MQTT_PUPPETEER_EXTERNAL_SPOOL_ENABLED'),
+        true,
+      ),
     },
     operations: {
       timeoutMs: integer(
-        environment.OPERATION_TIMEOUT_MS,
+        envValue(environment, 'MQTT_PUPPETEER_OPERATION_TIMEOUT_MS'),
         30_000,
         100,
         600_000,
       ),
     },
-    stateTemplatePath: value(environment.PRINTER_STATE_TEMPLATE_PATH),
+    auth: loadAuthConfig(environment),
+    stateTemplatePath: envValue(
+      environment,
+      'MQTT_PUPPETEER_PRINTER_STATE_TEMPLATE_PATH',
+    ),
   };
 }
 
-function loadEnvFile(environment: NodeJS.ProcessEnv): void {
-  const path = resolve(process.cwd(), '.env');
-  if (!existsSync(path)) return;
-
-  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const separator = trimmed.indexOf('=');
-    if (separator < 1) continue;
-    const key = trimmed.slice(0, separator).trim();
-    if (environment[key] !== undefined) continue;
-    environment[key] = unquote(trimmed.slice(separator + 1).trim());
+function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
+  if (environment !== process.env) return;
+  let directory = process.cwd();
+  while (true) {
+    if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
+      const path = resolve(directory, '.env');
+      if (!existsSync(path)) return;
+      for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const separator = trimmed.indexOf('=');
+        if (separator < 1) continue;
+        const key = trimmed.slice(0, separator).trim();
+        if (environment[key] !== undefined) continue;
+        environment[key] = unquote(trimmed.slice(separator + 1).trim());
+      }
+      return;
+    }
+    const parent = resolve(directory, '..');
+    if (parent === directory) return;
+    directory = parent;
   }
 }
 
@@ -122,6 +184,41 @@ function unquote(valueToUnquote: string): string {
 
 function value(input: string | undefined): string | undefined {
   return input?.trim() || undefined;
+}
+
+function envValue(
+  environment: NodeJS.ProcessEnv,
+  name: string,
+): string | undefined {
+  return value(environment[name]);
+}
+
+function loadAuthConfig(environment: NodeJS.ProcessEnv): AuthConfig {
+  const mode = envValue(environment, 'CLOUDLESS_AUTH_MODE') ?? 'disabled';
+  if (mode !== 'disabled' && mode !== 'optional' && mode !== 'required') {
+    throw new Error(
+      'CLOUDLESS_AUTH_MODE must be disabled, optional, or required',
+    );
+  }
+  const tokenIssuerOrder = (
+    envValue(environment, 'CLOUDLESS_AUTH_SERVICE_ORDER') ??
+    'mqtt-puppeteer,ftps-remote-manager,video-service-hub'
+  )
+    .split(',')
+    .map((service) => service.trim())
+    .filter(Boolean);
+
+  return {
+    mode,
+    serviceName: 'mqtt-puppeteer',
+    sharedSecret: envValue(environment, 'CLOUDLESS_AUTH_SHARED_SECRET'),
+    tokenIssuerOrder,
+    tokenTtlSeconds: integer(
+      envValue(environment, 'CLOUDLESS_AUTH_TOKEN_TTL_SECONDS'),
+      86_400,
+      60,
+    ),
+  };
 }
 
 function integer(

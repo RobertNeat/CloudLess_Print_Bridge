@@ -15,8 +15,8 @@ describe('MediaStorageService', () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'video-service-hub-'));
     service = new MediaStorageService(
       loadServiceConfig({
-        STORAGE_PATH: storageRoot,
-        MQTT_PORT: '0',
+        VIDEO_SERVICE_HUB_STORAGE_PATH: storageRoot,
+        VIDEO_SERVICE_HUB_MQTT_PORT: '0',
       }),
     );
     await service.initialize();
@@ -66,7 +66,10 @@ describe('MediaStorageService', () => {
     );
 
     const restarted = new MediaStorageService(
-      loadServiceConfig({ STORAGE_PATH: storageRoot, MQTT_PORT: '0' }),
+      loadServiceConfig({
+        VIDEO_SERVICE_HUB_STORAGE_PATH: storageRoot,
+        VIDEO_SERVICE_HUB_MQTT_PORT: '0',
+      }),
     );
     await restarted.initialize();
 

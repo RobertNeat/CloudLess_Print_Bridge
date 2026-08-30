@@ -54,12 +54,11 @@ describe('coordinate utilities', () => {
 
   it('rejects non-numeric, NaN and infinite coordinates', () => {
     expect(() => validateCoordinates({ X: Number.NaN, Y: 0, Z: 0 })).toThrowError(TypeError);
-    expect(() =>
-      validateCoordinates({ X: 0, Y: Number.POSITIVE_INFINITY, Z: 0 }),
-    ).toThrowError(TypeError);
-    expect(() =>
-      validateCoordinates({ X: 0, Y: 0, Z: '1' as unknown as number }),
-    ).toThrowError(TypeError);
+    expect(() => validateCoordinates({ X: 0, Y: Number.POSITIVE_INFINITY, Z: 0 })).toThrowError(
+      TypeError,
+    );
+    expect(() => validateCoordinates({ X: 0, Y: 0, Z: '1' as unknown as number })).toThrowError(
+      TypeError,
+    );
   });
 });
-

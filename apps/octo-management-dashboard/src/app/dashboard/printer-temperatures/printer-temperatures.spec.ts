@@ -7,7 +7,9 @@ describe('PrinterTemperatures', () => {
     fixture.componentRef.setInput('temperatures', { chamber: null, bed: 60, nozzle: 215 });
     fixture.detectChanges();
 
-    const buttons = fixture.nativeElement.querySelectorAll('.temperature') as NodeListOf<HTMLButtonElement>;
+    const buttons = fixture.nativeElement.querySelectorAll(
+      '.temperature',
+    ) as NodeListOf<HTMLButtonElement>;
     expect(buttons[0].disabled).toBe(true);
     expect(buttons[1].disabled).toBe(false);
     expect(buttons[2].disabled).toBe(false);

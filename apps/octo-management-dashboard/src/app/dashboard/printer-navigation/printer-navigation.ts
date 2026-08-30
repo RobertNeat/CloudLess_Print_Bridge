@@ -142,16 +142,18 @@ export class PrinterNavigation {
       if (!points.positive || !points.negative) {
         return [];
       }
-      return [{
-        axis,
-        positive: points.positive,
-        negative: points.negative,
-        midpoint: {
-          x: (points.positive.x + points.negative.x) / 2,
-          y: (points.positive.y + points.negative.y) / 2,
+      return [
+        {
+          axis,
+          positive: points.positive,
+          negative: points.negative,
+          midpoint: {
+            x: (points.positive.x + points.negative.x) / 2,
+            y: (points.positive.y + points.negative.y) / 2,
+          },
+          angle: this.lineAngle(points.negative, points.positive),
         },
-        angle: this.lineAngle(points.negative, points.positive),
-      }];
+      ];
     }),
   );
 
@@ -171,9 +173,7 @@ export class PrinterNavigation {
     }
     const axis = this.selectedAxis();
     const direction = this.awaitingDirection();
-    return axis && direction
-      ? this.labels().activePointHint(axis, direction)
-      : null;
+    return axis && direction ? this.labels().activePointHint(axis, direction) : null;
   });
 
   protected readonly movementMenus = computed<Record<MovementMenuKey, MenuItem[]>>(() => {
@@ -216,11 +216,13 @@ export class PrinterNavigation {
       this.activePoint() === null,
   );
 
-  protected readonly configurationComplete = computed(() =>
-    this.draftHotendPoint() !== null && PRINTER_AXES.every((axis) => {
-      const points = this.draftPoints()[axis];
-      return points.positive !== null && points.negative !== null;
-    }),
+  protected readonly configurationComplete = computed(
+    () =>
+      this.draftHotendPoint() !== null &&
+      PRINTER_AXES.every((axis) => {
+        const points = this.draftPoints()[axis];
+        return points.positive !== null && points.negative !== null;
+      }),
   );
 
   protected readonly instruction = computed(() => {
@@ -493,9 +495,7 @@ export class PrinterNavigation {
       return this.labels().pointLabel(axis, direction);
     }
     const points = this.draftPoints()[axis];
-    return points.positive && points.negative
-      ? this.labels().configured
-      : this.labels().incomplete;
+    return points.positive && points.negative ? this.labels().configured : this.labels().incomplete;
   }
 
   protected pointAriaLabel(axis: PrinterAxis, direction: AxisDirection): string {
@@ -521,25 +521,32 @@ export class PrinterNavigation {
     if (active) {
       const current = this.draftPoints()[active.axis][active.direction];
       if (current) {
-        this.updatePoint(active, this.clampPoint({
-          x: current.x + offset.x,
-          y: current.y + offset.y,
-        }));
+        this.updatePoint(
+          active,
+          this.clampPoint({
+            x: current.x + offset.x,
+            y: current.y + offset.y,
+          }),
+        );
       }
       return;
     }
     if (this.awaitingDirection()) {
       const current = this.cursorPoint() ?? this.viewBoxCenter();
-      this.cursorPoint.set(this.clampPoint({
-        x: current.x + offset.x,
-        y: current.y + offset.y,
-      }));
+      this.cursorPoint.set(
+        this.clampPoint({
+          x: current.x + offset.x,
+          y: current.y + offset.y,
+        }),
+      );
     } else if (this.configuringHotend()) {
       const current = this.cursorPoint() ?? this.viewBoxCenter();
-      this.cursorPoint.set(this.clampPoint({
-        x: current.x + offset.x,
-        y: current.y + offset.y,
-      }));
+      this.cursorPoint.set(
+        this.clampPoint({
+          x: current.x + offset.x,
+          y: current.y + offset.y,
+        }),
+      );
     }
   }
 
@@ -613,10 +620,7 @@ export class PrinterNavigation {
       !steps.length ||
       steps.some(
         (step) =>
-          typeof step !== 'number' ||
-          !Number.isFinite(step) ||
-          Number.isNaN(step) ||
-          step <= 0,
+          typeof step !== 'number' || !Number.isFinite(step) || Number.isNaN(step) || step <= 0,
       )
     ) {
       throw new RangeError('Lista kroków musi zawierać wyłącznie dodatnie, skończone liczby.');

@@ -1,10 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PrinterNavigation } from './printer-navigation';
-import {
-  DEFAULT_LABELS,
-  DEFAULT_VIEWPORT,
-  EMPTY_AXIS_POINTS,
-} from './printer-navigation.defaults';
+import { DEFAULT_LABELS, DEFAULT_VIEWPORT, EMPTY_AXIS_POINTS } from './printer-navigation.defaults';
 import {
   AxisPointResetEvent,
   Coordinates,
@@ -315,7 +311,9 @@ describe('PrinterNavigation', () => {
     fixture.detectChanges();
 
     const canvas = fixture.nativeElement.querySelector('.printer-navigation') as HTMLElement;
-    const image = fixture.nativeElement.querySelector('.printer-navigation__image') as HTMLImageElement;
+    const image = fixture.nativeElement.querySelector(
+      '.printer-navigation__image',
+    ) as HTMLImageElement;
     const svg = fixture.nativeElement.querySelector('svg') as SVGSVGElement;
     expect(canvas.style.getPropertyValue('--printer-canvas-width')).toBe('800px');
     expect(svg.getAttribute('viewBox')).toBe('10 20 1600 1000');

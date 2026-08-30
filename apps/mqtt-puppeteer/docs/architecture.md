@@ -57,7 +57,7 @@ Globalny provider konfiguracji. Odpowiada za:
 
 - wczytanie opcjonalnego `.env`;
 - walidację liczb i wartości logicznych;
-- zbudowanie domyślnych topiców z `PRINTER_SN`;
+- zbudowanie domyślnych topiców z `MQTT_PUPPETEER_PRINTER_SN`;
 - konfigurację zewnętrznego katalogu komend;
 - konfigurację katalogu filamentów i topologii AMS;
 - wskazanie opcjonalnego template'u stanu.
@@ -117,7 +117,7 @@ stanem raw, następnie mapper tworzy od nowa projekcję domenową i publikuje
 - `__proto__`, `constructor`, `prototype`: ignorowanie.
 
 Stan zaczyna się od `{}`. Jeżeli ustawiono
-`PRINTER_STATE_TEMPLATE_PATH`, zaczyna się od niezależnej kopii wskazanego
+`MQTT_PUPPETEER_PRINTER_STATE_TEMPLATE_PATH`, zaczyna się od niezależnej kopii wskazanego
 obiektu JSON.
 
 Każdy publiczny odczyt zwraca kopię, aby konsument nie mógł zmienić stanu
@@ -169,7 +169,7 @@ Oddziela dane materiałowe od komend i konkretnej drukarki:
 
 `FilamentCatalogService` jest używany przez profil komend podczas
 `load-filament` oraz `set-filament`. Katalog może zostać zastąpiony lub
-rozszerzony plikiem wskazanym przez `FILAMENT_CATALOG_PATH`.
+rozszerzony plikiem wskazanym przez `MQTT_PUPPETEER_FILAMENT_CATALOG_PATH`.
 
 ### `PrinterCommandProfile`
 
@@ -186,10 +186,10 @@ Inny model może dostarczyć własny provider bez zmiany API frontendu.
 
 #### Wymiana profilu komend
 
-`COMMAND_CATALOG_PATH` wskazuje plik JSON z definicjami:
+`MQTT_PUPPETEER_COMMAND_CATALOG_PATH` wskazuje plik JSON z definicjami:
 
-- `COMMAND_CATALOG_MODE=replace` — używany jest wyłącznie wskazany katalog;
-- `COMMAND_CATALOG_MODE=extend` — definicje są dołączane, a identyczne `id`
+- `MQTT_PUPPETEER_COMMAND_CATALOG_MODE=replace` — używany jest wyłącznie wskazany katalog;
+- `MQTT_PUPPETEER_COMMAND_CATALOG_MODE=extend` — definicje są dołączane, a identyczne `id`
   nadpisują wbudowane.
 
 Payload może korzystać z placeholderów `{{parameter}}`. Pełny placeholder
@@ -318,14 +318,14 @@ acknowledgement nie jest równoznaczny z wykonaniem polecenia przez urządzenie.
 
 ### Inny zestaw komend, ten sam protokół raportów
 
-Wystarczy ustawić `COMMAND_CATALOG_PATH` oraz tryb katalogu. Kod nie wymaga
+Wystarczy ustawić `MQTT_PUPPETEER_COMMAND_CATALOG_PATH` oraz tryb katalogu. Kod nie wymaga
 przebudowy.
 
 ### Inny model drukarki z podobnym transportem
 
 Należy:
 
-1. skonfigurować topics przez `MQTT_REPORT_TOPIC` i `MQTT_COMMAND_TOPIC`;
+1. skonfigurować topics przez `MQTT_PUPPETEER_MQTT_REPORT_TOPIC` i `MQTT_PUPPETEER_MQTT_COMMAND_TOPIC`;
 2. dostarczyć katalog komend;
 3. dodać mapper do `PrinterDomainModelDto`;
 4. opcjonalnie wskazać template raw.

@@ -29,17 +29,17 @@ Skopiuj wartości z `apps/ftps-remote-manager/.env.example` do głównego pliku
 
 | Zmienna | Domyślnie | Znaczenie |
 | --- | --- | --- |
-| `HOST` | `127.0.0.1` | interfejs HTTP |
-| `PORT` | `3000` | port HTTP |
-| `FTP_HOST` | wymagane | adres IP drukarki |
-| `FTP_PORT` | `990` | port FTPS |
-| `FTP_USER` | wymagane (`bblp` dla A1) | użytkownik FTPS |
-| `FTP_PASSWORD` | wymagane | kod dostępu LAN drukarki |
-| `FTP_TLS_MODE` | `implicit` | `implicit` albo `explicit` |
-| `FTP_TLS_FINGERPRINT256` | wymagane | SHA-256 certyfikatu drukarki |
-| `FTP_TIMEOUT_MS` | `10000` | timeout klienta FTPS |
-| `FTP_MAX_CONCURRENT_SESSIONS` | `1` | maksymalna liczba równoległych sesji |
-| `FTP_UPLOAD_MAX_BYTES` | `262144000` | maksymalny rozmiar uploadu |
+| `FTPS_REMOTE_MANAGER_HOST` | `127.0.0.1` | interfejs HTTP |
+| `FTPS_REMOTE_MANAGER_PORT` | `10221` | port HTTP |
+| `FTPS_REMOTE_MANAGER_FTP_HOST` | wymagane | adres IP drukarki |
+| `FTPS_REMOTE_MANAGER_FTP_PORT` | `990` | port FTPS |
+| `FTPS_REMOTE_MANAGER_FTP_USER` | wymagane (`bblp` dla A1) | użytkownik FTPS |
+| `FTPS_REMOTE_MANAGER_FTP_PASSWORD` | wymagane | kod dostępu LAN drukarki |
+| `FTPS_REMOTE_MANAGER_FTP_TLS_MODE` | `implicit` | `implicit` albo `explicit` |
+| `FTPS_REMOTE_MANAGER_FTP_TLS_FINGERPRINT256` | wymagane | SHA-256 certyfikatu drukarki |
+| `FTPS_REMOTE_MANAGER_FTP_TIMEOUT_MS` | `10000` | timeout klienta FTPS |
+| `FTPS_REMOTE_MANAGER_FTP_MAX_CONCURRENT_SESSIONS` | `1` | maksymalna liczba równoległych sesji |
+| `FTPS_REMOTE_MANAGER_FTP_UPLOAD_MAX_BYTES` | `262144000` | maksymalny rozmiar uploadu |
 
 Drukarka używa certyfikatu samopodpisanego. `rejectUnauthorized` jest wyłączone
 wyłącznie po to, aby dopuścić ten certyfikat; klient sprawdza jego przypięty
@@ -193,5 +193,5 @@ pnpm --filter @cloudless/ftps-remote-manager build
 Testy jednostkowe i e2e używają atrap transportu i nie łączą się z drukarką.
 
 Serwis nie ma własnego uwierzytelniania HTTP i domyślnie nasłuchuje wyłącznie
-na `127.0.0.1`. Ustawienie `HOST=0.0.0.0` jest bezpieczne dopiero po ograniczeniu
+na `127.0.0.1`. Ustawienie `FTPS_REMOTE_MANAGER_HOST=0.0.0.0` jest bezpieczne dopiero po ograniczeniu
 dostępu firewallem albo umieszczeniu serwisu za uwierzytelnionym reverse proxy.

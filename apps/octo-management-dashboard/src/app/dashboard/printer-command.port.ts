@@ -6,10 +6,20 @@ import type { TemperatureChange } from './printer-temperatures/printer-temperatu
 
 export type PrinterCommand =
   | { readonly type: 'set-print-status'; readonly status: PrintJobStatus }
-  | { readonly type: 'set-control'; readonly key: keyof ManagementDashboardData['controls']; readonly value: boolean | number | string }
-  | { readonly type: 'set-coordinates'; readonly coordinates: ManagementDashboardData['coordinates'] }
+  | {
+      readonly type: 'set-control';
+      readonly key: keyof ManagementDashboardData['controls'];
+      readonly value: boolean | number | string;
+    }
+  | {
+      readonly type: 'set-coordinates';
+      readonly coordinates: ManagementDashboardData['coordinates'];
+    }
   | { readonly type: 'set-navigation'; readonly configuration: PrinterNavigationConfiguration }
-  | { readonly type: 'set-preview'; readonly change: Partial<ManagementDashboardData['livePreview']> }
+  | {
+      readonly type: 'set-preview';
+      readonly change: Partial<ManagementDashboardData['livePreview']>;
+    }
   | { readonly type: 'set-temperature'; readonly change: TemperatureChange };
 
 export interface PrinterCommandPort {
@@ -34,9 +44,8 @@ export class PrinterCommandFacade {
   private readonly access = inject(AccessPolicy);
 
   async execute(command: PrinterCommand): Promise<void> {
-    const permission: Permission = command.type === 'set-navigation'
-      ? 'printer.configure'
-      : 'printer.control';
+    const permission: Permission =
+      command.type === 'set-navigation' ? 'printer.configure' : 'printer.control';
     if (!this.access.can(permission)) throw new Error('Operation is not permitted.');
     await this.port.execute(command);
   }

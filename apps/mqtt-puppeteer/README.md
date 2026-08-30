@@ -27,34 +27,34 @@ Publiczny kontrakt jest podzielony według odpowiedzialności:
 Minimalny `.env` w katalogu głównym monorepo:
 
 ```env
-MQTT_HOST=192.168.1.103
-MQTT_PORT=8883
-MQTT_USERNAME=bblp
-BAMBU_MQTT_PASSWORD=your_lan_access_code
-PRINTER_SN=03919D581204433
-PORT=3000
+MQTT_PUPPETEER_MQTT_HOST=192.168.1.103
+MQTT_PUPPETEER_MQTT_PORT=8883
+MQTT_PUPPETEER_MQTT_USERNAME=bblp
+MQTT_PUPPETEER_MQTT_PASSWORD=your_lan_access_code
+MQTT_PUPPETEER_PRINTER_SN=03919D581204433
+MQTT_PUPPETEER_PORT=10220
 ```
 
-Domyślne topics to `device/${PRINTER_SN}/report` i
-`device/${PRINTER_SN}/request`. Można je zastąpić przez `MQTT_REPORT_TOPIC`
-i `MQTT_COMMAND_TOPIC`.
+Domyślne topics to `device/${MQTT_PUPPETEER_PRINTER_SN}/report` i
+`device/${MQTT_PUPPETEER_PRINTER_SN}/request`. Można je zastąpić przez `MQTT_PUPPETEER_MQTT_REPORT_TOPIC`
+i `MQTT_PUPPETEER_MQTT_COMMAND_TOPIC`.
 
 | Zmienna | Domyślnie | Znaczenie |
 | --- | --- | --- |
-| `HOST` | `0.0.0.0` | host HTTP |
-| `MQTT_REJECT_UNAUTHORIZED` | `false` | weryfikacja certyfikatu TLS |
-| `MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout połączenia |
-| `MQTT_RECONNECT_PERIOD_MS` | `4000` | odstęp reconnect |
-| `MQTT_KEEPALIVE_SECONDS` | `60` | keepalive MQTT |
-| `PRINTER_STATE_TEMPLATE_PATH` | brak | opcjonalny początkowy obiekt JSON |
-| `COMMAND_CATALOG_PATH` | brak | zewnętrzny katalog komend JSON |
-| `COMMAND_CATALOG_MODE` | `replace` | `replace` albo `extend` |
-| `FILAMENT_CATALOG_PATH` | brak | zewnętrzny katalog typów i metatypów |
-| `FILAMENT_CATALOG_MODE` | `replace` | `replace` albo `extend` |
-| `AMS_UNIT_COUNT` | `1` | liczba urządzeń AMS |
-| `AMS_SLOTS_PER_UNIT` | `4` | liczba slotów w jednym AMS |
-| `EXTERNAL_SPOOL_ENABLED` | `true` | dostępność zewnętrznej szpuli |
-| `OPERATION_TIMEOUT_MS` | `30000` | czas oczekiwania na odpowiedź z tym samym `sequence_id` |
+| `MQTT_PUPPETEER_HOST` | `0.0.0.0` | host HTTP |
+| `MQTT_PUPPETEER_MQTT_REJECT_UNAUTHORIZED` | `false` | weryfikacja certyfikatu TLS |
+| `MQTT_PUPPETEER_MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout połączenia |
+| `MQTT_PUPPETEER_MQTT_RECONNECT_PERIOD_MS` | `4000` | odstęp reconnect |
+| `MQTT_PUPPETEER_MQTT_KEEPALIVE_SECONDS` | `60` | keepalive MQTT |
+| `MQTT_PUPPETEER_PRINTER_STATE_TEMPLATE_PATH` | brak | opcjonalny początkowy obiekt JSON |
+| `MQTT_PUPPETEER_COMMAND_CATALOG_PATH` | brak | zewnętrzny katalog komend JSON |
+| `MQTT_PUPPETEER_COMMAND_CATALOG_MODE` | `replace` | `replace` albo `extend` |
+| `MQTT_PUPPETEER_FILAMENT_CATALOG_PATH` | brak | zewnętrzny katalog typów i metatypów |
+| `MQTT_PUPPETEER_FILAMENT_CATALOG_MODE` | `replace` | `replace` albo `extend` |
+| `MQTT_PUPPETEER_AMS_UNIT_COUNT` | `1` | liczba urządzeń AMS |
+| `MQTT_PUPPETEER_AMS_SLOTS_PER_UNIT` | `4` | liczba slotów w jednym AMS |
+| `MQTT_PUPPETEER_EXTERNAL_SPOOL_ENABLED` | `true` | dostępność zewnętrznej szpuli |
+| `MQTT_PUPPETEER_OPERATION_TIMEOUT_MS` | `30000` | czas oczekiwania na odpowiedź z tym samym `sequence_id` |
 
 Bez pełnej konfiguracji MQTT aplikacja uruchamia REST i Socket.IO w trybie
 offline. Odczyty, katalogi i symulacja ruchu pozostają wtedy dostępne.
@@ -102,7 +102,7 @@ Content-Type: application/json
 
 ## Katalog komend
 
-`COMMAND_CATALOG_PATH` wskazuje tablicę definicji JSON. Tryb `replace`
+`MQTT_PUPPETEER_COMMAND_CATALOG_PATH` wskazuje tablicę definicji JSON. Tryb `replace`
 zastępuje profil A1, a `extend` dodaje lub nadpisuje komendy po `id`.
 Endpointy domenowe delegują do identyfikatorów w tym samym katalogu, dlatego
 korzystają z identycznej walidacji i budowania payloadu co `/commands/:id`.

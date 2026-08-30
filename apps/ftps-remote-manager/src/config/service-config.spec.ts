@@ -2,10 +2,10 @@ import { loadServiceConfig } from './service-config';
 
 describe('service configuration', () => {
   const validEnvironment = {
-    FTP_HOST: '192.168.1.100',
-    FTP_USER: 'bblp',
-    FTP_PASSWORD: 'secret',
-    FTP_TLS_FINGERPRINT256: 'AA:'.repeat(31) + 'AA',
+    FTPS_REMOTE_MANAGER_FTP_HOST: '192.168.1.100',
+    FTPS_REMOTE_MANAGER_FTP_USER: 'bblp',
+    FTPS_REMOTE_MANAGER_FTP_PASSWORD: 'secret',
+    FTPS_REMOTE_MANAGER_FTP_TLS_FINGERPRINT256: 'AA:'.repeat(31) + 'AA',
   };
 
   it('loads A1-compatible defaults and normalizes the fingerprint', () => {
@@ -28,14 +28,17 @@ describe('service configuration', () => {
     expect(() =>
       loadServiceConfig({
         ...validEnvironment,
-        FTP_TLS_FINGERPRINT256: 'untrusted',
+        FTPS_REMOTE_MANAGER_FTP_TLS_FINGERPRINT256: 'untrusted',
       }),
     ).toThrow('64 hexadecimal');
   });
 
   it('rejects a port outside the TCP range', () => {
     expect(() =>
-      loadServiceConfig({ ...validEnvironment, FTP_PORT: '70000' }),
-    ).toThrow('FTP_PORT');
+      loadServiceConfig({
+        ...validEnvironment,
+        FTPS_REMOTE_MANAGER_FTP_PORT: '70000',
+      }),
+    ).toThrow('FTPS_REMOTE_MANAGER_FTP_PORT');
   });
 });

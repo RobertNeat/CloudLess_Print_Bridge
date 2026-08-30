@@ -72,10 +72,12 @@ export class TelemetryChart {
           display: chart.datasets.length > 1,
           position: 'bottom',
           onHover: (event) => {
-            if (event.native?.target instanceof HTMLElement) event.native.target.style.cursor = 'pointer';
+            if (event.native?.target instanceof HTMLElement)
+              event.native.target.style.cursor = 'pointer';
           },
           onLeave: (event) => {
-            if (event.native?.target instanceof HTMLElement) event.native.target.style.cursor = 'default';
+            if (event.native?.target instanceof HTMLElement)
+              event.native.target.style.cursor = 'default';
           },
           labels: {
             boxWidth: 9,
@@ -154,7 +156,9 @@ export class TelemetryChart {
     };
 
     if (dataset.gradientColorTokens) {
-      const colors = dataset.gradientColorTokens.map((token) => this.cssColor(token, 'currentColor')) as [string, string];
+      const colors = dataset.gradientColorTokens.map((token) =>
+        this.cssColor(token, 'currentColor'),
+      ) as [string, string];
       prepared.borderColor = (context) => this.createVerticalGradient(context, colors);
     }
 
@@ -174,7 +178,9 @@ export class TelemetryChart {
   }
 
   private cssColor(token: string, fallback: string): string {
-    return getComputedStyle(this.document.documentElement).getPropertyValue(token).trim() || fallback;
+    return (
+      getComputedStyle(this.document.documentElement).getPropertyValue(token).trim() || fallback
+    );
   }
 
   private createVerticalGradient(

@@ -18,16 +18,20 @@ export class ExternalMqttBrokerService implements MqttBrokerEndpointProvider {
   open(): Promise<MqttBrokerEndpoint> {
     const value = this.config.mqtt.externalUrl;
     if (!value) {
-      throw new Error('MQTT_URL is required for external broker mode');
+      throw new Error(
+        'VIDEO_SERVICE_HUB_MQTT_URL is required for external broker mode',
+      );
     }
     let url: URL;
     try {
       url = new URL(value);
     } catch {
-      throw new Error('MQTT_URL must be a valid URL');
+      throw new Error('VIDEO_SERVICE_HUB_MQTT_URL must be a valid URL');
     }
     if (!protocols.has(url.protocol)) {
-      throw new Error('MQTT_URL must use mqtt, mqtts, ws, or wss');
+      throw new Error(
+        'VIDEO_SERVICE_HUB_MQTT_URL must use mqtt, mqtts, ws, or wss',
+      );
     }
     return Promise.resolve({
       url: value,

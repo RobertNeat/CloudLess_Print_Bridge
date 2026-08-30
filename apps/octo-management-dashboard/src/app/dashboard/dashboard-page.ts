@@ -17,7 +17,16 @@ import { TelemetryChart } from './telemetry-chart/telemetry-chart';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CurrentPrintJob, Gridster, GridsterItem, LivePreview, PrinterNavigation, PrinterQuickControls, PrinterTemperatures, TelemetryChart],
+  imports: [
+    CurrentPrintJob,
+    Gridster,
+    GridsterItem,
+    LivePreview,
+    PrinterNavigation,
+    PrinterQuickControls,
+    PrinterTemperatures,
+    TelemetryChart,
+  ],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })
@@ -101,9 +110,15 @@ export class DashboardPage {
     return null;
   }
 
-  protected async updateControl(key: 'lightEnabled' | 'fansEnabled' | 'fanSpeed' | 'printSpeed', value: boolean | number | PrintSpeedMode): Promise<void> {
+  protected async updateControl(
+    key: 'lightEnabled' | 'fansEnabled' | 'fanSpeed' | 'printSpeed',
+    value: boolean | number | PrintSpeedMode,
+  ): Promise<void> {
     await this.runCommand({ type: 'set-control', key, value }, () =>
-      this.dashboard.update((data) => data ? ({ ...data, controls: { ...data.controls, [key]: value } }) : data));
+      this.dashboard.update((data) =>
+        data ? { ...data, controls: { ...data.controls, [key]: value } } : data,
+      ),
+    );
   }
 
   protected moveWidgetByKeyboard(widget: DashboardWidget, event: KeyboardEvent): void {
@@ -117,50 +132,78 @@ export class DashboardPage {
     const delta = movement[event.key];
     if (!delta) return;
     event.preventDefault();
-    this.widgets.update((widgets) => widgets.map((item) => item.id === widget.id ? {
-      ...item,
-      x: Math.max(0, Math.min(12 - item.cols, item.x + delta.x)),
-      y: Math.max(0, item.y + delta.y),
-    } : item));
+    this.widgets.update((widgets) =>
+      widgets.map((item) =>
+        item.id === widget.id
+          ? {
+              ...item,
+              x: Math.max(0, Math.min(12 - item.cols, item.x + delta.x)),
+              y: Math.max(0, item.y + delta.y),
+            }
+          : item,
+      ),
+    );
   }
 
-  protected async updateCoordinates(coordinates: ManagementDashboardData['coordinates']): Promise<void> {
+  protected async updateCoordinates(
+    coordinates: ManagementDashboardData['coordinates'],
+  ): Promise<void> {
     await this.runCommand({ type: 'set-coordinates', coordinates }, () =>
-      this.dashboard.update((data) => data ? ({ ...data, coordinates }) : data));
+      this.dashboard.update((data) => (data ? { ...data, coordinates } : data)),
+    );
   }
 
-  protected async updateNavigationConfiguration(configuration: PrinterNavigationConfiguration): Promise<void> {
-    await this.runCommand({ type: 'set-navigation', configuration }, () => this.dashboard.update((data) =>
-      data
-        ? {
-            ...data,
-            navigation: {
-              axisPoints: configuration.axisPoints,
-              hotendPoint: configuration.hotendPoint,
-              steps: [...configuration.steps],
-              viewport: configuration.viewport,
-            },
-          }
-        : data,
-    ));
+  protected async updateNavigationConfiguration(
+    configuration: PrinterNavigationConfiguration,
+  ): Promise<void> {
+    await this.runCommand({ type: 'set-navigation', configuration }, () =>
+      this.dashboard.update((data) =>
+        data
+          ? {
+              ...data,
+              navigation: {
+                axisPoints: configuration.axisPoints,
+                hotendPoint: configuration.hotendPoint,
+                steps: [...configuration.steps],
+                viewport: configuration.viewport,
+              },
+            }
+          : data,
+      ),
+    );
   }
 
-  protected async setPrintStatus(status: ManagementDashboardData['printJob']['status']): Promise<void> {
+  protected async setPrintStatus(
+    status: ManagementDashboardData['printJob']['status'],
+  ): Promise<void> {
     await this.runCommand({ type: 'set-print-status', status }, () =>
-      this.dashboard.update((data) => data ? ({ ...data, printJob: { ...data.printJob, status } }) : data));
+      this.dashboard.update((data) =>
+        data ? { ...data, printJob: { ...data.printJob, status } } : data,
+      ),
+    );
   }
 
-  protected async updatePreview(change: Partial<ManagementDashboardData['livePreview']>): Promise<void> {
+  protected async updatePreview(
+    change: Partial<ManagementDashboardData['livePreview']>,
+  ): Promise<void> {
     await this.runCommand({ type: 'set-preview', change }, () =>
-      this.dashboard.update((data) => data ? ({ ...data, livePreview: { ...data.livePreview, ...change } }) : data));
+      this.dashboard.update((data) =>
+        data ? { ...data, livePreview: { ...data.livePreview, ...change } } : data,
+      ),
+    );
   }
 
   protected async updateTemperature(change: TemperatureChange): Promise<void> {
     await this.runCommand({ type: 'set-temperature', change }, () =>
-      this.dashboard.update((data) => data ? ({
-        ...data,
-        temperatures: { ...data.temperatures, [change.sensor]: change.value },
-      }) : data));
+      this.dashboard.update((data) =>
+        data
+          ? {
+              ...data,
+              temperatures: { ...data.temperatures, [change.sensor]: change.value },
+            }
+          : data,
+      ),
+    );
   }
 
   private async loadData(): Promise<void> {
@@ -173,7 +216,10 @@ export class DashboardPage {
     }
   }
 
-  private async runCommand(command: Parameters<PrinterCommandFacade['execute']>[0], apply: () => void): Promise<void> {
+  private async runCommand(
+    command: Parameters<PrinterCommandFacade['execute']>[0],
+    apply: () => void,
+  ): Promise<void> {
     try {
       this.commandError.set(false);
       await this.commands.execute(command);

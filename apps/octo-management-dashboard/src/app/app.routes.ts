@@ -10,19 +10,24 @@ export const routes: Routes = [
   },
   {
     path: 'management',
-    loadComponent: () => import('./dashboard/dashboard-page').then(({ DashboardPage }) => DashboardPage),
+    loadComponent: () =>
+      import('./dashboard/dashboard-page').then(({ DashboardPage }) => DashboardPage),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'management' },
   },
   {
     path: 'files',
-    loadComponent: () => import('./files/files-dashboard-page').then(({ FilesDashboardPage }) => FilesDashboardPage),
+    loadComponent: () =>
+      import('./files/files-dashboard-page').then(({ FilesDashboardPage }) => FilesDashboardPage),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'files', permission: 'files.read' },
   },
   {
     path: 'videos',
-    loadComponent: () => import('./videos/videos-dashboard-page').then(({ VideosDashboardPage }) => VideosDashboardPage),
+    loadComponent: () =>
+      import('./videos/videos-dashboard-page').then(
+        ({ VideosDashboardPage }) => VideosDashboardPage,
+      ),
     canActivate: [dashboardAccessGuard],
     data: { dashboardId: 'videos' },
   },

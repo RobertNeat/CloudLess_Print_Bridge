@@ -40,7 +40,7 @@ describe('RemoteFileService', () => {
         ) => operation(client),
       ),
     } as unknown as jest.Mocked<Pick<FtpsSessionService, 'execute'>>;
-    service = new RemoteFileService(sessions as FtpsSessionService);
+    service = new RemoteFileService(sessions as unknown as FtpsSessionService);
   });
 
   it('maps storage entries to shared DTOs', async () => {

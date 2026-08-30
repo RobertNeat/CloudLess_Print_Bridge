@@ -1,6 +1,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AccessPolicy, AUTH_MODE, AUTH_SESSION, type AuthSessionPort } from './auth-session.service';
+import {
+  AccessPolicy,
+  AUTH_MODE,
+  AUTH_SESSION,
+  type AuthSessionPort,
+} from './auth-session.service';
 
 describe('AccessPolicy', () => {
   it('keeps development unblocked when authentication is disabled', () => {
@@ -11,7 +16,11 @@ describe('AccessPolicy', () => {
   it('enforces permissions when authentication is required', () => {
     const auth: AuthSessionPort = {
       ready: signal(true),
-      session: signal({ userId: 'operator', displayName: 'Operator', permissions: ['dashboard.view'] }),
+      session: signal({
+        userId: 'operator',
+        displayName: 'Operator',
+        permissions: ['dashboard.view'],
+      }),
     };
     TestBed.configureTestingModule({
       providers: [

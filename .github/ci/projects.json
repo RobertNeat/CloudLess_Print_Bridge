@@ -1,0 +1,102 @@
+{
+  "schema_version": 2,
+  "pipeline": {
+    "runner_labels": ["self-hosted", "Linux", "X64", "production"],
+    "project_roots": ["apps"]
+  },
+  "projects": [
+    {
+      "name": "mqtt-puppeteer",
+      "type": "node",
+      "framework": "nestjs",
+      "version": "24",
+      "path": "apps/mqtt-puppeteer",
+      "package_manager": "pnpm",
+      "build_tool": null,
+      "check_script": "check",
+      "dockerfile": ".github/docker/node.Dockerfile",
+      "image": "cloudless-print-bridge/mqtt-puppeteer",
+      "package_name": "@cloudless/mqtt-puppeteer",
+      "Trivy_exceptions": [
+        { "name": "brace-expansion (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "ip-address (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "tar (package.json)", "cause": "zależność pochodzenia obrazu bazowego" }
+      ],
+      "build_output": "dist",
+      "server_config": null,
+      "start_command": "node dist/main.js",
+      "ports": { "host": 10220, "container": 10220 }
+    },
+    {
+      "name": "ftps-remote-manager",
+      "type": "node",
+      "framework": "nestjs",
+      "version": "24",
+      "path": "apps/ftps-remote-manager",
+      "package_manager": "pnpm",
+      "build_tool": null,
+      "check_script": "check",
+      "dockerfile": ".github/docker/node.Dockerfile",
+      "image": "cloudless-print-bridge/ftps-remote-manager",
+      "package_name": "@cloudless/ftps-remote-manager",
+      "Trivy_exceptions": [
+        { "name": "brace-expansion (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "ip-address (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "tar (package.json)", "cause": "zależność pochodzenia obrazu bazowego" }
+      ],
+      "build_output": "dist",
+      "server_config": null,
+      "start_command": "node dist/main.js",
+      "ports": { "host": 10221, "container": 10221 }
+    },
+    {
+      "name": "video-service-hub",
+      "type": "node",
+      "framework": "nestjs",
+      "version": "24",
+      "path": "apps/video-service-hub",
+      "package_manager": "pnpm",
+      "build_tool": null,
+      "check_script": "check",
+      "dockerfile": ".github/docker/node.Dockerfile",
+      "image": "cloudless-print-bridge/video-service-hub",
+      "package_name": "@cloudless/video-service-hub",
+      "Trivy_exceptions": [
+        { "name": "brace-expansion (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "ip-address (package.json)", "cause": "zależność pochodzenia obrazu bazowego" },
+        { "name": "tar (package.json)", "cause": "zależność pochodzenia obrazu bazowego" }
+      ],
+      "build_output": "dist",
+      "server_config": null,
+      "start_command": "node dist/main.js",
+      "ports": { "host": 10222, "container": 10222 }
+    },
+    {
+      "name": "octo-management-dashboard",
+      "type": "node",
+      "framework": "angular",
+      "version": "24",
+      "path": "apps/octo-management-dashboard",
+      "package_manager": "pnpm",
+      "build_tool": null,
+      "check_script": "check",
+      "dockerfile": ".github/docker/angular.Dockerfile",
+      "image": "cloudless-print-bridge/octo-management-dashboard",
+      "package_name": "@cloudless/octo-management-dashboard",
+      "Trivy_exceptions": [],
+      "build_output": "apps/octo-management-dashboard/dist/octo-management-dashboard/browser",
+      "server_config": "apps/octo-management-dashboard/nginx.conf",
+      "start_command": null,
+      "ports": { "host": 10200, "container": 10200 }
+    }
+  ],
+  "deploy": {
+    "environment": "production",
+    "host": "192.168.1.160",
+    "user": "docker_deploy",
+    "registry": "192.168.1.162:5000",
+    "compose_file": "deploy/compose.yml",
+    "config_file": ".env.example",
+    "remote_dir": "/home/docker_deploy/cloudless-print-bridge"
+  }
+}

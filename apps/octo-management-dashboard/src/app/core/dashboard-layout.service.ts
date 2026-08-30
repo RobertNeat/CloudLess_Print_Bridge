@@ -28,7 +28,10 @@ export class DashboardLayoutService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return defaults;
-      const positions = JSON.parse(stored) as Record<string, Pick<DashboardWidget, 'x' | 'y' | 'cols' | 'rows'>>;
+      const positions = JSON.parse(stored) as Record<
+        string,
+        Pick<DashboardWidget, 'x' | 'y' | 'cols' | 'rows'>
+      >;
       return defaults.map((widget) => ({ ...widget, ...positions[widget.id] }));
     } catch {
       return defaults;

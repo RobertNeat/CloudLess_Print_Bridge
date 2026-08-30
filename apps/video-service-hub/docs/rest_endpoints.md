@@ -17,17 +17,18 @@ http://<host>:<port>
 Domyślnie aplikacja nasłuchuje na:
 
 ```text
-http://0.0.0.0:3000
+http://0.0.0.0:10222
 ```
 
-Adres nasłuchu zmienia `HOST`, a port `PORT`. Aplikacja nie ustawia globalnego
+Adres nasłuchu zmienia `VIDEO_SERVICE_HUB_HOST`, a port
+`VIDEO_SERVICE_HUB_PORT`. Aplikacja nie ustawia globalnego
 prefiksu ani automatycznego wersjonowania. Trasy domenowe same zawierają prefiks
 `/api/v1`.
 
 Przykładowy adres lokalny klienta:
 
 ```text
-http://localhost:3000
+http://localhost:10222
 ```
 
 W konfiguracji firmware `videoServiceIp` musi wskazywać adres LAN komputera
@@ -125,7 +126,7 @@ Serwis jest przeznaczony do zaufanej sieci LAN. Przed publicznym wystawieniem
 tej trasy należy dodać autoryzację i rejestr dozwolonych kamer.
 
 Domyślny timeout połączenia z kamerą wynosi 10 sekund i może być zmieniony przez
-`CAMERA_COMMAND_TIMEOUT_MS`.
+`VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS`.
 
 ### Mapowanie komend
 
@@ -316,7 +317,7 @@ X-Capture-Sequence: 0
 ```
 
 Serwis sprawdza znaczniki początku `FF D8` i końca `FF D9`. Domyślny limit
-wynosi 20 MiB (`CAPTURE_MAX_BYTES`).
+wynosi 20 MiB (`VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES`).
 
 Sukces: `201 Created`.
 
@@ -371,7 +372,7 @@ Warunki:
 - body rozpoczyna się od `--`, jak multipart MJPEG;
 - wszystkie części mają zgodne metadane.
 
-Domyślny limit części wynosi 16 MiB (`RECORDING_PART_MAX_BYTES`).
+Domyślny limit części wynosi 16 MiB (`VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES`).
 
 Przykład:
 
@@ -443,7 +444,7 @@ X-Duration-Seconds: 8.000
 ```
 
 Serwis sprawdza nagłówki `RIFF` oraz `WAVE`. Domyślny limit wynosi 10 MiB
-(`AUDIO_MAX_BYTES`).
+(`VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES`).
 
 Sukces: `201 Created`.
 
@@ -484,7 +485,7 @@ Wymagane nagłówki:
 
 Parametr `boundary` jest obowiązkowy i może mieć maksymalnie 70 znaków.
 Strumień musi zawierać co najmniej jedną granicę ramki. Domyślny limit całej
-transmisji wynosi 1 GiB (`LIVE_MAX_BYTES`).
+transmisji wynosi 1 GiB (`VIDEO_SERVICE_HUB_LIVE_MAX_BYTES`).
 
 Sukces po zakończeniu uploadu: `200 OK`.
 
@@ -546,7 +547,7 @@ X-Request-Id: live-001
 
 Gdy pasujący live nie jest aktywny, serwis zwraca `404 Not Found`.
 Odbiorca, który nie nadąża i przekroczy bufor, jest odłączany. Domyślny limit
-bufora wynosi 2 MiB (`LIVE_VIEWER_BUFFER_BYTES`).
+bufora wynosi 2 MiB (`VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES`).
 
 ## Kamery i telemetria MQTT
 
@@ -597,7 +598,8 @@ Sukces: `200 OK`.
 ```
 
 Kamera jest uznawana za online, jeśli od jej ostatniej dowolnej obsługiwanej
-wiadomości nie minął `MQTT_CAMERA_ONLINE_TTL_MS`. Domyślnie jest to 60 sekund.
+wiadomości nie minął `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS`. Domyślnie
+jest to 60 sekund.
 
 Pusta lista jest poprawną odpowiedzią:
 
@@ -724,7 +726,7 @@ storage/
 └── .tmp/
 ```
 
-Katalog główny zmienia `STORAGE_PATH`. Przy starcie serwis:
+Katalog główny zmienia `VIDEO_SERVICE_HUB_STORAGE_PATH`. Przy starcie serwis:
 
 1. tworzy brakujące katalogi;
 2. usuwa pozostałości z `.tmp`;
@@ -733,11 +735,11 @@ Katalog główny zmienia `STORAGE_PATH`. Przy starcie serwis:
 
 | Zmienna                    |    Domyślnie | Znaczenie                      |
 | -------------------------- | -----------: | ------------------------------ |
-| `CAPTURE_MAX_BYTES`        |   `20971520` | Maksymalny JPEG, 20 MiB        |
-| `RECORDING_PART_MAX_BYTES` |   `16777216` | Maksymalna część MJPEG, 16 MiB |
-| `AUDIO_MAX_BYTES`          |   `10485760` | Maksymalny WAV, 10 MiB         |
-| `LIVE_MAX_BYTES`           | `1073741824` | Maksymalny zapis live, 1 GiB   |
-| `LIVE_VIEWER_BUFFER_BYTES` |    `2097152` | Bufor odbiorcy live, 2 MiB     |
+| `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES`        |   `20971520` | Maksymalny JPEG, 20 MiB        |
+| `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES` |   `16777216` | Maksymalna część MJPEG, 16 MiB |
+| `VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES`          |   `10485760` | Maksymalny WAV, 10 MiB         |
+| `VIDEO_SERVICE_HUB_LIVE_MAX_BYTES`           | `1073741824` | Maksymalny zapis live, 1 GiB   |
+| `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES` |    `2097152` | Bufor odbiorcy live, 2 MiB     |
 
 Przekroczenie limitu uploadu zwraca `413 Payload Too Large`.
 

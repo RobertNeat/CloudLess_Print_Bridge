@@ -48,7 +48,7 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     if (!this.isConfigured()) {
       this.lastError =
-        'MQTT is disabled: configure MQTT_HOST, BAMBU_MQTT_PASSWORD, PRINTER_SN or explicit topics';
+        'MQTT is disabled: configure MQTT_PUPPETEER_MQTT_HOST, MQTT_PUPPETEER_MQTT_PASSWORD, MQTT_PUPPETEER_PRINTER_SN or explicit topics';
       this.logger.warn(this.lastError);
       this.emitStatus();
       return;

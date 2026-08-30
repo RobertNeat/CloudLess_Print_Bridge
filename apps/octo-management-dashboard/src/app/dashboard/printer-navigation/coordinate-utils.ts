@@ -24,11 +24,7 @@ export function validateAxisRanges(ranges: AxisRanges): void {
 export function validateCoordinates(values: Coordinates): void {
   for (const axis of PRINTER_AXES) {
     const value = values[axis];
-    if (
-      typeof value !== 'number' ||
-      !Number.isFinite(value) ||
-      Number.isNaN(value)
-    ) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || Number.isNaN(value)) {
       throw new TypeError(`Współrzędna osi ${axis} musi być skończoną liczbą.`);
     }
   }
@@ -65,4 +61,3 @@ export function adjustCoordinates(
     [axis]: clampAxisValue(values[axis] + delta, ranges[axis]),
   };
 }
-

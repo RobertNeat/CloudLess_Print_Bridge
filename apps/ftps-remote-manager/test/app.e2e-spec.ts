@@ -56,7 +56,7 @@ describe('remote file API (e2e, dry run)', () => {
       }),
     };
     const config: ServiceConfig = {
-      http: { host: '127.0.0.1', port: 3000 },
+      http: { host: '127.0.0.1', port: 10221 },
       ftps: {
         host: 'printer',
         port: 990,
@@ -68,6 +68,17 @@ describe('remote file API (e2e, dry run)', () => {
         maximumConcurrentSessions: 1,
       },
       upload: { maximumBytes: 1024 },
+      auth: {
+        mode: 'disabled',
+        serviceName: 'ftps-remote-manager',
+        sharedSecret: undefined,
+        tokenIssuerOrder: [
+          'mqtt-puppeteer',
+          'ftps-remote-manager',
+          'video-service-hub',
+        ],
+        tokenTtlSeconds: 86_400,
+      },
     };
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

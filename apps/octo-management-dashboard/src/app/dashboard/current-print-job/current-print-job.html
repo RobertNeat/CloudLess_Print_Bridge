@@ -8,19 +8,64 @@
       </div>
       <span class="status"><i aria-hidden="true"></i>{{ statusLabel() }}</span>
     </header>
-    <div class="progress-copy"><span>{{ i18n.t('printJob.progress') }}</span><strong>{{ progress() }}%</strong></div>
-    <div class="progress-track" role="progressbar" [attr.aria-label]="i18n.t('printJob.progressAria')" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="progress()" [style]="progressStyle()"><span></span></div>
+    <div class="progress-copy">
+      <span>{{ i18n.t('printJob.progress') }}</span
+      ><strong>{{ progress() }}%</strong>
+    </div>
+    <div
+      class="progress-track"
+      role="progressbar"
+      [attr.aria-label]="i18n.t('printJob.progressAria')"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="progress()"
+      [style]="progressStyle()"
+    >
+      <span></span>
+    </div>
     <dl>
-      <div><dt><i class="pi pi-clone" aria-hidden="true"></i> {{ i18n.t('printJob.layers') }}</dt><dd>{{ layer() }} / {{ job().totalLayers }}</dd></div>
-      <div><dt><i class="pi pi-clock" aria-hidden="true"></i> {{ i18n.t('printJob.remaining') }}</dt><dd>{{ job().estimatedPrintTime }}</dd></div>
+      <div>
+        <dt><i class="pi pi-clone" aria-hidden="true"></i> {{ i18n.t('printJob.layers') }}</dt>
+        <dd>{{ layer() }} / {{ job().totalLayers }}</dd>
+      </div>
+      <div>
+        <dt><i class="pi pi-clock" aria-hidden="true"></i> {{ i18n.t('printJob.remaining') }}</dt>
+        <dd>{{ job().estimatedPrintTime }}</dd>
+      </div>
     </dl>
     <footer>
       @if (job().status === 'paused') {
-        <button pButton type="button" size="small" icon="pi pi-play" [label]="i18n.t('printJob.resume')" (click)="resumeRequested.emit()"></button>
+        <button
+          pButton
+          type="button"
+          size="small"
+          icon="pi pi-play"
+          [label]="i18n.t('printJob.resume')"
+          (click)="resumeRequested.emit()"
+        ></button>
       } @else {
-        <button pButton type="button" size="small" severity="secondary" icon="pi pi-pause" [label]="i18n.t('printJob.pause')" [disabled]="terminal()" (click)="pauseRequested.emit()"></button>
+        <button
+          pButton
+          type="button"
+          size="small"
+          severity="secondary"
+          icon="pi pi-pause"
+          [label]="i18n.t('printJob.pause')"
+          [disabled]="terminal()"
+          (click)="pauseRequested.emit()"
+        ></button>
       }
-      <button pButton type="button" size="small" severity="danger" [outlined]="true" icon="pi pi-times" [label]="i18n.t('printJob.stop')" [disabled]="terminal()" (click)="cancelRequested.emit()"></button>
+      <button
+        pButton
+        type="button"
+        size="small"
+        severity="danger"
+        [outlined]="true"
+        icon="pi pi-times"
+        [label]="i18n.t('printJob.stop')"
+        [disabled]="terminal()"
+        (click)="cancelRequested.emit()"
+      ></button>
     </footer>
   </div>
 </article>

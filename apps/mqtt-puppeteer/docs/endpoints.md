@@ -1,7 +1,7 @@
 # Endpointy mqtt-puppeteer
 
-Domyślny adres HTTP to `http://localhost:3000`, a namespace Socket.IO to
-`http://localhost:3000/printer`.
+Domyślny adres HTTP to `http://localhost:10220`, a namespace Socket.IO to
+`http://localhost:10220/printer`.
 
 ## Wspólne zasady
 
@@ -298,7 +298,7 @@ dlatego obejmuje każdą publikację z endpointów REST, w tym komendy raw.
 
 `service.operation.result` jest emitowane raz dla operacji. Raport urządzenia
 z odpowiadającym `sequence_id` kończy ją jako `acknowledged` albo `rejected`.
-Brak odpowiedzi przez `OPERATION_TIMEOUT_MS` kończy ją jako `timed_out`.
+Brak odpowiedzi przez `MQTT_PUPPETEER_OPERATION_TIMEOUT_MS` kończy ją jako `timed_out`.
 
 `service.error` zawiera opcjonalny `operationId`, źródło `http` albo `mqtt`,
 czas, nazwę i komunikat błędu. Dla błędów HTTP zawiera również kod statusu,

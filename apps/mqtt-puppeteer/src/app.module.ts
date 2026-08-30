@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuthModule } from './auth/auth.module';
 import { OperationContextInterceptor } from './common/operation-context';
 import { CommandsModule } from './commands/commands.module';
 import { AppConfigModule } from './config/app-config.module';
@@ -16,6 +17,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 @Module({
   imports: [
     AppConfigModule,
+    AuthModule,
     BridgeEventsModule,
     FilamentsModule,
     PrinterStateModule,

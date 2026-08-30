@@ -202,8 +202,8 @@ flowchart LR
 Port `MqttBrokerEndpointProvider` rozdziela pozyskanie endpointu brokera od
 konsumpcji wiadomości:
 
-- bez `MQTT_URL` wybierany jest broker embedded oparty na Aedes;
-- z `MQTT_URL` wybierany jest adapter brokera zarządzanego zewnętrznie.
+- bez `VIDEO_SERVICE_HUB_MQTT_URL` wybierany jest broker embedded oparty na Aedes;
+- z `VIDEO_SERVICE_HUB_MQTT_URL` wybierany jest adapter brokera zarządzanego zewnętrznie.
 
 Port `MqttMessageSource` abstrahuje klienta subskrybującego. Obecna
 implementacja korzysta z MQTT.js.
@@ -465,7 +465,7 @@ Odbiorca:
 - nie otrzymuje niepełnego fragmentu klatki sprzed momentu połączenia.
 
 Każdy viewer posiada ograniczony bufor. Wolny odbiorca, którego bufor
-przekroczy `LIVE_VIEWER_BUFFER_BYTES`, jest odłączany. Dzięki temu pojedynczy
+przekroczy `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES`, jest odłączany. Dzięki temu pojedynczy
 klient nie zatrzymuje zapisu kamery ani pozostałych odbiorców.
 
 Po zakończeniu przychodzącego streamu:
@@ -500,7 +500,7 @@ Status online nie pochodzi ze stanu połączeń brokera. Jest obliczany na
 podstawie czasu ostatniej wiadomości:
 
 ```text
-online = now - lastSeenAt <= MQTT_CAMERA_ONLINE_TTL_MS
+online = now - lastSeenAt <= VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS
 ```
 
 Dzięki temu model działa identycznie z brokerem embedded i external.
@@ -509,22 +509,22 @@ Dzięki temu model działa identycznie z brokerem embedded i external.
 
 | Zmienna | Domyślnie | Odpowiedzialność |
 | --- | ---: | --- |
-| `HOST` | `0.0.0.0` | adres HTTP |
-| `PORT` | `3000` | port HTTP |
-| `STORAGE_PATH` | `./storage` | katalog materiałów |
-| `CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout wywołania firmware |
-| `MQTT_PORT` | `1883` | port brokera embedded |
-| `MQTT_URL` | brak | wybór brokera external |
-| `MQTT_USERNAME` | brak | użytkownik brokera external |
-| `MQTT_PASSWORD` | brak | hasło brokera external |
-| `MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia MQTT |
-| `MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
-| `MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
-| `CAPTURE_MAX_BYTES` | `20 MiB` | limit JPEG |
-| `RECORDING_PART_MAX_BYTES` | `16 MiB` | limit części MJPEG |
-| `AUDIO_MAX_BYTES` | `10 MiB` | limit WAV |
-| `LIVE_MAX_BYTES` | `1 GiB` | limit pojedynczego live |
-| `LIVE_VIEWER_BUFFER_BYTES` | `2 MiB` | bufor pojedynczego viewera |
+| `VIDEO_SERVICE_HUB_HOST` | `0.0.0.0` | adres HTTP |
+| `VIDEO_SERVICE_HUB_PORT` | `10222` | port HTTP |
+| `VIDEO_SERVICE_HUB_STORAGE_PATH` | `./storage` | katalog materiałów |
+| `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout wywołania firmware |
+| `VIDEO_SERVICE_HUB_MQTT_PORT` | `1883` | port brokera embedded |
+| `VIDEO_SERVICE_HUB_MQTT_URL` | brak | wybór brokera external |
+| `VIDEO_SERVICE_HUB_MQTT_USERNAME` | brak | użytkownik brokera external |
+| `VIDEO_SERVICE_HUB_MQTT_PASSWORD` | brak | hasło brokera external |
+| `VIDEO_SERVICE_HUB_MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia MQTT |
+| `VIDEO_SERVICE_HUB_MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
+| `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
+| `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES` | `20 MiB` | limit JPEG |
+| `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES` | `16 MiB` | limit części MJPEG |
+| `VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES` | `10 MiB` | limit WAV |
+| `VIDEO_SERVICE_HUB_LIVE_MAX_BYTES` | `1 GiB` | limit pojedynczego live |
+| `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES` | `2 MiB` | bufor pojedynczego viewera |
 
 Konfiguracja jest ładowana przy starcie procesu. Niepoprawna liczba, port lub
 limit zatrzymuje start aplikacji zamiast pozostawiać częściowo działający

@@ -23,7 +23,9 @@ export class CurrentPrintJob {
   protected readonly layer = computed(() =>
     Math.min(Math.max(0, Math.trunc(this.job().currentLayer)), Math.max(0, this.job().totalLayers)),
   );
-  protected readonly progressStyle = computed(() => ({ '--print-progress': `${this.progress()}%` }));
+  protected readonly progressStyle = computed(() => ({
+    '--print-progress': `${this.progress()}%`,
+  }));
   protected readonly terminal = computed(() =>
     ['completed', 'cancelled', 'error'].includes(this.job().status),
   );

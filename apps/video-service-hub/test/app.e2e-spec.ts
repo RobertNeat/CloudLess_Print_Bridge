@@ -11,14 +11,14 @@ describe('Video Service Hub (e2e)', () => {
   let app: INestApplication<App>;
   let storageRoot: string;
   const previousEnvironment = {
-    storagePath: process.env.STORAGE_PATH,
-    mqttPort: process.env.MQTT_PORT,
+    storagePath: process.env.VIDEO_SERVICE_HUB_STORAGE_PATH,
+    mqttPort: process.env.VIDEO_SERVICE_HUB_MQTT_PORT,
   };
 
   beforeAll(async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'video-service-hub-e2e-'));
-    process.env.STORAGE_PATH = storageRoot;
-    process.env.MQTT_PORT = '0';
+    process.env.VIDEO_SERVICE_HUB_STORAGE_PATH = storageRoot;
+    process.env.VIDEO_SERVICE_HUB_MQTT_PORT = '0';
     const module = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -29,8 +29,14 @@ describe('Video Service Hub (e2e)', () => {
   afterAll(async () => {
     await app.close();
     await rm(storageRoot, { recursive: true, force: true });
-    restoreEnvironment('STORAGE_PATH', previousEnvironment.storagePath);
-    restoreEnvironment('MQTT_PORT', previousEnvironment.mqttPort);
+    restoreEnvironment(
+      'VIDEO_SERVICE_HUB_STORAGE_PATH',
+      previousEnvironment.storagePath,
+    );
+    restoreEnvironment(
+      'VIDEO_SERVICE_HUB_MQTT_PORT',
+      previousEnvironment.mqttPort,
+    );
   });
 
   it('reports healthy storage and MQTT runtime', async () => {
