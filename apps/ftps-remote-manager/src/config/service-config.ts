@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { loadEnvFile } from 'node:process';
 import type { AuthConfig } from '../auth/auth.types';
 
 export type FtpsTlsMode = 'implicit' | 'explicit';
@@ -110,13 +109,58 @@ function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
   while (true) {
     if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
       const path = resolve(directory, '.env');
-      if (existsSync(path)) loadEnvFile(path);
+      if (!existsSync(path)) return;
+      const fileValues: Record<string, string> = {};
+      for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const separator = trimmed.indexOf('=');
+        if (separator < 1) continue;
+        fileValues[trimmed.slice(0, separator).trim()] = unquote(
+          trimmed.slice(separator + 1).trim(),
+        );
+      }
+      for (const [key, rawValue] of Object.entries(fileValues)) {
+        if (environment[key] !== undefined) continue;
+        environment[key] = resolveEnvReferences(rawValue, {
+          ...fileValues,
+          ...environment,
+        });
+      }
       return;
     }
     const parent = resolve(directory, '..');
     if (parent === directory) return;
     directory = parent;
   }
+}
+
+function unquote(value: string): string {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+export function resolveEnvReferences(
+  input: string,
+  values: Record<string, string | undefined>,
+  resolving = new Set<string>(),
+): string {
+  return input.replace(
+    /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g,
+    (match, name: string) => {
+      const value = values[name];
+      if (value === undefined) return match;
+      if (resolving.has(name)) {
+        throw new Error(`Circular environment variable reference: ${name}`);
+      }
+      return resolveEnvReferences(value, values, new Set(resolving).add(name));
+    },
+  );
 }
 
 function requiredValue(environment: NodeJS.ProcessEnv, name: string): string {

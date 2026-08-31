@@ -155,14 +155,22 @@ function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
     if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
       const path = resolve(directory, '.env');
       if (!existsSync(path)) return;
+      const fileValues: Record<string, string> = {};
       for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue;
         const separator = trimmed.indexOf('=');
         if (separator < 1) continue;
-        const key = trimmed.slice(0, separator).trim();
+        fileValues[trimmed.slice(0, separator).trim()] = unquote(
+          trimmed.slice(separator + 1).trim(),
+        );
+      }
+      for (const [key, rawValue] of Object.entries(fileValues)) {
         if (environment[key] !== undefined) continue;
-        environment[key] = unquote(trimmed.slice(separator + 1).trim());
+        environment[key] = resolveEnvReferences(rawValue, {
+          ...fileValues,
+          ...environment,
+        });
       }
       return;
     }
@@ -170,6 +178,24 @@ function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
     if (parent === directory) return;
     directory = parent;
   }
+}
+
+export function resolveEnvReferences(
+  input: string,
+  values: Record<string, string | undefined>,
+  resolving = new Set<string>(),
+): string {
+  return input.replace(
+    /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g,
+    (match, name: string) => {
+      const value = values[name];
+      if (value === undefined) return match;
+      if (resolving.has(name)) {
+        throw new Error(`Circular environment variable reference: ${name}`);
+      }
+      return resolveEnvReferences(value, values, new Set(resolving).add(name));
+    },
+  );
 }
 
 function unquote(valueToUnquote: string): string {

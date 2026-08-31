@@ -1,4 +1,38 @@
-import { loadServiceConfig } from './service-config';
+import { loadServiceConfig, resolveEnvReferences } from './service-config';
+
+describe('environment variable interpolation', () => {
+  it('resolves a printer host reference', () => {
+    expect(
+      resolveEnvReferences('${BAMBULAB_A1_IP}', {
+        BAMBULAB_A1_IP: '192.168.1.100',
+      }),
+    ).toBe('192.168.1.100');
+  });
+
+  it('resolves Bambu Lab FTPS port and username settings', () => {
+    expect(
+      resolveEnvReferences(
+        '${BAMBULAB_A1_FTPS_PORT}:${BAMBULAB_A1_FTPS_USERNAME}',
+        {
+          BAMBULAB_A1_FTPS_PORT: '990',
+          BAMBULAB_A1_FTPS_USERNAME: 'bblp',
+        },
+      ),
+    ).toBe('990:bblp');
+  });
+
+  it('resolves chained references', () => {
+    expect(resolveEnvReferences('${A}/${B}', { A: '${B}', B: 'value' })).toBe(
+      'value/value',
+    );
+  });
+
+  it('rejects circular references', () => {
+    expect(() =>
+      resolveEnvReferences('${A}', { A: '${B}', B: '${A}' }),
+    ).toThrow('Circular environment variable reference');
+  });
+});
 
 describe('service configuration', () => {
   const validEnvironment = {
