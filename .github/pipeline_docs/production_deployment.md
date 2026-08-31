@@ -17,5 +17,14 @@ Kroki są wykonywane sekwencyjnie:
 4. `deploy` kopiuje Compose/config przez SSH i uruchamia zestaw obrazów o tym
    samym SHA.
 
+## Konfiguracja produkcyjna
+
+Plik `config.env` w katalogu `remote_dir` jest trwałą konfiguracją produkcji.
+Przy pierwszym wdrożeniu, jeśli zdalny plik nie istnieje, pipeline kopiuje do
+niego plik wskazany przez `deploy.config_file`. Przy kolejnych wdrożeniach
+istniejący zdalny `config.env` pozostaje bez zmian i jest używany przez Docker
+Compose.
+(plik docker_deploy/cloudless-print-bridge/config.env)
+
 Adres hosta, użytkownik, rejestr, pliki i katalog zdalny są w sekcji `deploy`
 pliku [`../ci/projects.json`](../ci/projects.json).

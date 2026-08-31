@@ -14,6 +14,8 @@ test -f "$CONFIG_FILE"
 test -f .github/ci/projects.json
 remote="${DEPLOY_USER}@${DEPLOY_HOST}"
 remote_dir_q="$(printf '%q' "$REMOTE_DIR")"
+remote_config_file="${REMOTE_DIR%/}/config.env"
+remote_config_file_q="$(printf '%q' "$remote_config_file")"
 registry_q="$(printf '%q' "$REGISTRY")"
 sha_q="$(printf '%q' "$SHA")"
 projects_env="$(mktemp)"
@@ -29,7 +31,12 @@ test -s "$projects_env"
 
 ssh -o BatchMode=yes "$remote" "mkdir -p -- $remote_dir_q"
 scp "$COMPOSE_FILE" "$remote:$REMOTE_DIR/compose.yml"
-scp "$CONFIG_FILE" "$remote:$REMOTE_DIR/config.env"
+if ssh -o BatchMode=yes "$remote" "test -f $remote_config_file_q"; then
+  echo "Keeping existing remote config.env at $remote_config_file"
+else
+  echo "Installing repository config as remote config.env at $remote_config_file"
+  scp "$CONFIG_FILE" "$remote:$remote_config_file"
+fi
 scp "$projects_env" "$remote:$REMOTE_DIR/projects.env"
 ssh -o BatchMode=yes "$remote" \
   "cd $remote_dir_q && REGISTRY=$registry_q IMAGE_TAG=$sha_q docker compose --env-file config.env --env-file projects.env config --quiet && REGISTRY=$registry_q IMAGE_TAG=$sha_q docker compose --env-file config.env --env-file projects.env pull && REGISTRY=$registry_q IMAGE_TAG=$sha_q docker compose --env-file config.env --env-file projects.env up -d --remove-orphans"
