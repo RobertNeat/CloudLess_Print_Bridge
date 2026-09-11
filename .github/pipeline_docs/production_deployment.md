@@ -28,3 +28,19 @@ Compose.
 
 Adres hosta, użytkownik, rejestr, pliki i katalog zdalny są w sekcji `deploy`
 pliku [`../ci/projects.json`](../ci/projects.json).
+
+## `projects.env`
+
+`deploy/compose.yml` nie zawiera nazw obrazów ani portów na stałe — odwołuje
+się do zmiennych `<PROJECT>_IMAGE`, `<PROJECT>_HOST_PORT` i
+`<PROJECT>_CONTAINER_PORT`. Plik `deploy_compose_ssh.sh` generuje je z
+`projects.json` do `projects.env` i kopiuje na hosta obok `config.env`;
+`docker compose` musi być zawsze wywoływany z obydwoma plikami
+(`--env-file config.env --env-file projects.env`), inaczej obrazy i porty
+pozostaną nierozwiązane.
+
+Porty kontenerów backendów (`10220`/`10221`/`10222`) są też zaszyte na stałe w
+[`apps/octo-management-dashboard/nginx.conf`](../../apps/octo-management-dashboard/nginx.conf)
+w sekcjach `proxy_pass`. Zmiana `ports.container` danego backendu w
+`projects.json` nie jest tam odzwierciedlana automatycznie — `nginx.conf`
+trzeba zaktualizować ręcznie w tym samym commicie.

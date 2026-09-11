@@ -1,0 +1,9 @@
+window.__CLOUDLESS_AUTH__ = {
+  mode: '${CLOUDLESS_AUTH_MODE}',
+  serviceOrder: '${CLOUDLESS_AUTH_SERVICE_ORDER}'.split(',').map((s) => s.trim()).filter(Boolean),
+  serviceUrls: {
+    'mqtt-puppeteer': '/api/mqtt',
+    'ftps-remote-manager': '/api/ftps',
+    'video-service-hub': '/api/video',
+  },
+};
