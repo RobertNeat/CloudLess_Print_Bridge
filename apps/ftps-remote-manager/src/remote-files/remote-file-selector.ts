@@ -43,7 +43,8 @@ export class RemoteFileExtension {
   }
 }
 
-type GlobToken = { kind: 'any' } | { kind: 'one' } | { kind: 'literal'; character: string };
+type GlobToken =
+  { kind: 'any' } | { kind: 'one' } | { kind: 'literal'; character: string };
 
 export class RemoteFilePattern {
   readonly displayValue: string;
@@ -130,7 +131,10 @@ function matchesTokens(tokens: GlobToken[], text: string): boolean {
       starTokenIndex = tokenIndex;
       starTextIndex = textIndex;
       tokenIndex++;
-    } else if (token?.kind === 'literal' && token.character === textChars[textIndex]) {
+    } else if (
+      token?.kind === 'literal' &&
+      token.character === textChars[textIndex]
+    ) {
       tokenIndex++;
       textIndex++;
     } else if (starTokenIndex !== -1) {
