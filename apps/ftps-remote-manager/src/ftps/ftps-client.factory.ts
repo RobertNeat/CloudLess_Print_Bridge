@@ -19,6 +19,12 @@ export class FtpsClientFactory {
         user: config.username,
         password: config.password,
         secure: config.tlsMode === 'implicit' ? 'implicit' : true,
+        // Bambu Lab printers use self-signed certificates, so the Node.js CA
+        // chain check is disabled here. BambuFtpsClient.access() compensates
+        // by pinning the exact SHA-256 fingerprint (config.certificateFingerprint256,
+        // required and validated as 64 hex chars in service-config.ts) before
+        // any credentials are sent, so trust is still cryptographically verified.
+        // nosemgrep
         secureOptions: { rejectUnauthorized: false },
       },
       config.certificateFingerprint256,

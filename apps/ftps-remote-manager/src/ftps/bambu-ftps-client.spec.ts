@@ -55,7 +55,6 @@ describe('BambuFtpsClient', () => {
         user: 'bblp',
         password: 'secret',
         secure: 'implicit',
-        secureOptions: { rejectUnauthorized: false },
       },
       'A'.repeat(64),
     );

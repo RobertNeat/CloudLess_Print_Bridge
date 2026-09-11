@@ -42,4 +42,16 @@ describe('remote file selectors', () => {
     expect(pattern.matches('plate_(Niezapisany)_ab.gcode.3mf')).toBe(false);
     expect(pattern.matches('(Niezapisany)_a.gcode.3mf')).toBe(false);
   });
+
+  it('treats wildcard characters inside the file name as literal', () => {
+    const pattern = RemoteFilePattern.from(
+      RemoteFileName.from('a*b'),
+      undefined,
+      undefined,
+      '.log',
+    );
+
+    expect(pattern.matches('a*b.log')).toBe(true);
+    expect(pattern.matches('axxb.log')).toBe(false);
+  });
 });
