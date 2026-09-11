@@ -62,7 +62,7 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "host": "0.0.0.0",
-            "port": 10200
+            "port": 10300
           },
           "configurations": {
             "production": {

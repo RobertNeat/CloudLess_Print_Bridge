@@ -56,7 +56,7 @@ export function loadServiceConfig(
       port: integerValue(
         envValue(environment, 'FTPS_REMOTE_MANAGER_PORT'),
         'FTPS_REMOTE_MANAGER_PORT',
-        10221,
+        10321,
         0,
         65_535,
       ),

@@ -1,7 +1,7 @@
 # Endpointy mqtt-puppeteer
 
-Domyślny adres HTTP to `http://localhost:10220`, a namespace Socket.IO to
-`http://localhost:10220/printer`.
+Domyślny adres HTTP to `http://localhost:10320`, a namespace Socket.IO to
+`http://localhost:10320/printer`.
 
 ## Wspólne zasady
 

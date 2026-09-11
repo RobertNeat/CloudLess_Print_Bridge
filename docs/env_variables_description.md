@@ -29,7 +29,7 @@ odrzucane.
 | Zmienna | Jaką wartość ustawić |
 | --- | --- |
 | `MQTT_PUPPETEER_HOST` | Interfejs, na którym backend udostępnia HTTP. Ustaw `0.0.0.0` dla dostępu z sieci lub kontenera albo `127.0.0.1` tylko dla dostępu lokalnego. |
-| `MQTT_PUPPETEER_PORT` | Port HTTP backendu MQTT Puppeteer. Standardowo `10220`; musi być wolny i zgodny z konfiguracją proxy oraz kontenera. |
+| `MQTT_PUPPETEER_PORT` | Port HTTP backendu MQTT Puppeteer. Standardowo `10320`; musi być wolny i zgodny z konfiguracją proxy oraz kontenera. |
 | `MQTT_PUPPETEER_MQTT_HOST` | Adres IP lub nazwa hosta drukarki udostępniającej broker MQTT w trybie LAN. |
 | `MQTT_PUPPETEER_MQTT_PORT` | Port MQTT drukarki. Dla szyfrowanego połączenia Bambu Lab zazwyczaj `8883`. |
 | `MQTT_PUPPETEER_MQTT_USERNAME` | Nazwa użytkownika MQTT drukarki. Dla Bambu Lab w trybie LAN zwykle `bblp`. |
@@ -46,7 +46,7 @@ odrzucane.
 | Zmienna | Jaką wartość ustawić |
 | --- | --- |
 | `FTPS_REMOTE_MANAGER_HOST` | Interfejs, na którym backend udostępnia HTTP. Ustaw `0.0.0.0` dla dostępu z sieci lub kontenera albo `127.0.0.1` tylko lokalnie. |
-| `FTPS_REMOTE_MANAGER_PORT` | Port HTTP backendu FTPS. Standardowo `10221`; musi być wolny i zgodny z proxy oraz kontenerem. |
+| `FTPS_REMOTE_MANAGER_PORT` | Port HTTP backendu FTPS. Standardowo `10321`; musi być wolny i zgodny z proxy oraz kontenerem. |
 | `FTPS_REMOTE_MANAGER_FTP_HOST` | Adres IP lub nazwa hosta drukarki udostępniającej kartę pamięci przez FTPS. |
 | `FTPS_REMOTE_MANAGER_FTP_PORT` | Port FTPS drukarki. Dla połączenia implicit FTPS zazwyczaj `990`. |
 | `FTPS_REMOTE_MANAGER_FTP_USER` | Nazwa użytkownika FTPS drukarki. Dla Bambu Lab zwykle `bblp`. |
@@ -62,7 +62,7 @@ odrzucane.
 | Zmienna | Jaką wartość ustawić |
 | --- | --- |
 | `VIDEO_SERVICE_HUB_HOST` | Interfejs, na którym backend udostępnia HTTP. Ustaw `0.0.0.0` dla dostępu z sieci lub kontenera albo `127.0.0.1` tylko lokalnie. |
-| `VIDEO_SERVICE_HUB_PORT` | Port HTTP usługi wideo. Standardowo `10222`; musi być wolny i zgodny z proxy oraz kontenerem. |
+| `VIDEO_SERVICE_HUB_PORT` | Port HTTP usługi wideo. Standardowo `10322`; musi być wolny i zgodny z proxy oraz kontenerem. |
 | `VIDEO_SERVICE_HUB_STORAGE_PATH` | Katalog przechowywania nagrań, zdjęć, audio i transmisji. Podaj ścieżkę zapisywalną przez proces; w Dockerze używany jest trwały wolumen. |
 | `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES` | Maksymalny rozmiar pojedynczego zdjęcia JPEG. `20971520` oznacza 20 MiB. |
 | `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES` | Maksymalny rozmiar jednej części nagrania MJPEG. `16777216` oznacza 16 MiB. |

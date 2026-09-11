@@ -22,7 +22,7 @@ pnpm install
 pnpm --filter @cloudless/video-service-hub start:dev
 ```
 
-Domyślnie HTTP działa na `0.0.0.0:10222`, MQTT na `0.0.0.0:1883`, a pliki
+Domyślnie HTTP działa na `0.0.0.0:10322`, MQTT na `0.0.0.0:1883`, a pliki
 trafiają do `./storage` względem katalogu roboczego procesu. W konfiguracji
 kamery `videoServiceIp` musi wskazywać adres LAN hosta serwisu.
 
@@ -123,7 +123,7 @@ otrzymaniu wszystkich kolejnych części.
 | Zmienna | Domyślnie | Znaczenie |
 | --- | ---: | --- |
 | `VIDEO_SERVICE_HUB_HOST` | `0.0.0.0` | adres nasłuchu HTTP |
-| `VIDEO_SERVICE_HUB_PORT` | `10222` | port HTTP |
+| `VIDEO_SERVICE_HUB_PORT` | `10322` | port HTTP |
 | `VIDEO_SERVICE_HUB_STORAGE_PATH` | `./storage` | katalog danych |
 | `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout proxy do kamery |
 | `VIDEO_SERVICE_HUB_MQTT_PORT` | `1883` | port brokera embedded (`0` w testach) |

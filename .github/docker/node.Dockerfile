@@ -16,6 +16,7 @@ ARG START_COMMAND
 WORKDIR /app
 COPY --from=build /opt/app ./
 ENV START_COMMAND=${START_COMMAND}
+RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE ${APP_PORT}
 CMD ["sh", "-c", "exec ${START_COMMAND}"]

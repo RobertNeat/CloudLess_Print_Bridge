@@ -510,7 +510,7 @@ Dzięki temu model działa identycznie z brokerem embedded i external.
 | Zmienna | Domyślnie | Odpowiedzialność |
 | --- | ---: | --- |
 | `VIDEO_SERVICE_HUB_HOST` | `0.0.0.0` | adres HTTP |
-| `VIDEO_SERVICE_HUB_PORT` | `10222` | port HTTP |
+| `VIDEO_SERVICE_HUB_PORT` | `10322` | port HTTP |
 | `VIDEO_SERVICE_HUB_STORAGE_PATH` | `./storage` | katalog materiałów |
 | `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout wywołania firmware |
 | `VIDEO_SERVICE_HUB_MQTT_PORT` | `1883` | port brokera embedded |

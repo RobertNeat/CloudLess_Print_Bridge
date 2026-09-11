@@ -34,9 +34,9 @@ export const CLOUDLESS_AUTH_CONFIG = new InjectionToken<CloudlessAuthFrontendCon
           'video-service-hub',
         ],
         serviceUrls: runtime.serviceUrls ?? {
-          'mqtt-puppeteer': 'http://localhost:10220',
-          'ftps-remote-manager': 'http://localhost:10221',
-          'video-service-hub': 'http://localhost:10222',
+          'mqtt-puppeteer': 'http://localhost:10320',
+          'ftps-remote-manager': 'http://localhost:10321',
+          'video-service-hub': 'http://localhost:10322',
         },
       };
     },

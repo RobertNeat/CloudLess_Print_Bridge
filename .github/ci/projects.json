@@ -25,7 +25,7 @@
       "build_output": "dist",
       "server_config": null,
       "start_command": "node dist/main.js",
-      "ports": { "host": 10220, "container": 10220 }
+      "ports": { "host": 10320, "container": 10320 }
     },
     {
       "name": "ftps-remote-manager",
@@ -47,7 +47,7 @@
       "build_output": "dist",
       "server_config": null,
       "start_command": "node dist/main.js",
-      "ports": { "host": 10221, "container": 10221 }
+      "ports": { "host": 10321, "container": 10321 }
     },
     {
       "name": "video-service-hub",
@@ -69,7 +69,7 @@
       "build_output": "dist",
       "server_config": null,
       "start_command": "node dist/main.js",
-      "ports": { "host": 10222, "container": 10222 }
+      "ports": { "host": 10322, "container": 10322 }
     },
     {
       "name": "octo-management-dashboard",
@@ -87,7 +87,7 @@
       "build_output": "apps/octo-management-dashboard/dist/octo-management-dashboard/browser",
       "server_config": "apps/octo-management-dashboard/nginx.conf",
       "start_command": null,
-      "ports": { "host": 10200, "container": 10200 }
+      "ports": { "host": 10300, "container": 10300 }
     }
   ],
   "deploy": {

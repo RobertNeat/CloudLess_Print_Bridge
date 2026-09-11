@@ -53,7 +53,7 @@ export function loadAppConfig(
       host: envValue(environment, 'MQTT_PUPPETEER_HOST') ?? '0.0.0.0',
       port: integer(
         envValue(environment, 'MQTT_PUPPETEER_PORT'),
-        10220,
+        10320,
         0,
         65_535,
       ),

@@ -17,7 +17,7 @@ http://<host>:<port>
 Domyślnie aplikacja nasłuchuje na:
 
 ```text
-http://0.0.0.0:10222
+http://0.0.0.0:10322
 ```
 
 Adres nasłuchu zmienia `VIDEO_SERVICE_HUB_HOST`, a port
@@ -28,7 +28,7 @@ prefiksu ani automatycznego wersjonowania. Trasy domenowe same zawierają prefik
 Przykładowy adres lokalny klienta:
 
 ```text
-http://localhost:10222
+http://localhost:10322
 ```
 
 W konfiguracji firmware `videoServiceIp` musi wskazywać adres LAN komputera

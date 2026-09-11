@@ -56,7 +56,7 @@ describe('remote file API (e2e, dry run)', () => {
       }),
     };
     const config: ServiceConfig = {
-      http: { host: '127.0.0.1', port: 10221 },
+      http: { host: '127.0.0.1', port: 10321 },
       ftps: {
         host: 'printer',
         port: 990,

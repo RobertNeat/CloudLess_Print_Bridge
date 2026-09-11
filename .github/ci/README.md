@@ -87,7 +87,7 @@ Wartosci `name`, `path`, `image`, `ports.host` oraz nazwa zmiennej wyliczana z
   "build_output": "dist",
   "server_config": null,
   "start_command": "node dist/main.js",
-  "ports": { "host": 10220, "container": 10220 }
+  "ports": { "host": 10320, "container": 10320 }
 }
 ```
 
@@ -114,7 +114,7 @@ wskazany skrypt aplikacji.
   "build_output": "apps/new_angular_app/dist/new_angular_app/browser",
   "server_config": "apps/new_angular_app/nginx.conf",
   "start_command": null,
-  "ports": { "host": 10221, "container": 80 }
+  "ports": { "host": 10321, "container": 80 }
 }
 ```
 
@@ -140,7 +140,7 @@ Dla `framework: "angular"` wymagane sa `build_output` i `server_config`, a
   "build_output": null,
   "server_config": null,
   "start_command": "python main.py",
-  "ports": { "host": 10222, "container": 10222 }
+  "ports": { "host": 10322, "container": 10322 }
 }
 ```
 
@@ -166,7 +166,7 @@ Aplikacja Python musi miec `pyproject.toml`. Check uruchamia `uv sync`, `ruff`,
   "build_output": "target/*.jar",
   "server_config": null,
   "start_command": "java -jar /app/app.jar",
-  "ports": { "host": 10223, "container": 10223 }
+  "ports": { "host": 10323, "container": 10323 }
 }
 ```
 

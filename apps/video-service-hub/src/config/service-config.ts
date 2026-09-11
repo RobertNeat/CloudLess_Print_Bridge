@@ -39,7 +39,7 @@ export function loadServiceConfig(
       port: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_PORT'),
         'VIDEO_SERVICE_HUB_PORT',
-        10222,
+        10322,
         0,
         65_535,
       ),

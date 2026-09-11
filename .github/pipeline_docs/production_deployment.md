@@ -39,7 +39,7 @@ się do zmiennych `<PROJECT>_IMAGE`, `<PROJECT>_HOST_PORT` i
 (`--env-file config.env --env-file projects.env`), inaczej obrazy i porty
 pozostaną nierozwiązane.
 
-Porty kontenerów backendów (`10220`/`10221`/`10222`) są też zaszyte na stałe w
+Porty kontenerów backendów (`10320`/`10321`/`10322`) są też zaszyte na stałe w
 [`apps/octo-management-dashboard/nginx.conf`](../../apps/octo-management-dashboard/nginx.conf)
 w sekcjach `proxy_pass`. Zmiana `ports.container` danego backendu w
 `projects.json` nie jest tam odzwierciedlana automatycznie — `nginx.conf`
