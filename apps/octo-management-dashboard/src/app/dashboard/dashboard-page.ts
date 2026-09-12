@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Gridster, GridsterItem, type GridsterConfig } from 'angular-gridster2';
 import { DashboardLayoutService } from '../core/dashboard-layout.service';
 import { I18nService } from '../core/i18n.service';
+import { PrinterNavigationCalibrationService } from '../core/printer-navigation-calibration.service';
 import { DashboardPollingService, PollSuppressionWindow } from './backend/dashboard-polling.service';
 import { CommandExecutionError, type CommandError } from './backend/http-error-mapping';
 import { TelemetryPollingService } from './backend/telemetry-polling.service';
@@ -20,7 +21,7 @@ import { createPrinterNavigationLabels } from './printer-navigation/printer-navi
 import { PrinterCommandFacade } from './printer-command.port';
 import { PrinterQuickControls } from './printer-quick-controls/printer-quick-controls';
 import { PrinterTemperatures } from './printer-temperatures/printer-temperatures';
-import type { TemperatureChange } from './printer-temperatures/printer-temperatures';
+import type { TemperatureChange, TemperatureSensor } from './printer-temperatures/printer-temperatures';
 import { TelemetryChart } from './telemetry-chart/telemetry-chart';
 
 @Component({
@@ -46,6 +47,7 @@ export class DashboardPage {
   private readonly controlsSuppression = new PollSuppressionWindow();
   protected readonly i18n = inject(I18nService);
   protected readonly layout = inject(DashboardLayoutService);
+  private readonly navigationCalibration = inject(PrinterNavigationCalibrationService);
 
   protected readonly dashboard = signal<ManagementDashboardData | null>(null);
   protected readonly widgets = signal<DashboardWidget[]>([]);
@@ -62,6 +64,20 @@ export class DashboardPage {
   protected readonly navigationLabels = computed(() => {
     this.i18n.language();
     return createPrinterNavigationLabels(this.i18n);
+  });
+
+  /**
+   * Which temperature sensors the popover editor lets the user set. Bed and
+   * nozzle are settable on every profile mqtt-puppeteer supports today; the
+   * chamber only becomes settable when the ACTIVE printer profile reports a
+   * chamber heater (GET /device_config/profile -> heaterCapabilities). This
+   * must stay derived from that flag rather than a hardcoded literal array,
+   * so a future printer profile with a chamber heater becomes editable here
+   * with zero frontend code changes.
+   */
+  protected readonly settableTemperatureSensors = computed<readonly TemperatureSensor[]>(() => {
+    const hasChamberHeater = this.dashboard()?.deviceCapabilities.hasChamberHeater ?? false;
+    return hasChamberHeater ? ['chamber', 'bed', 'nozzle'] : ['bed', 'nozzle'];
   });
 
   protected readonly gridsterOptions = computed<GridsterConfig>(() => {
@@ -138,7 +154,21 @@ export class DashboardPage {
             coordinates = { X: x, Y: y, Z: z };
           }
         }
-        return { ...data, controls, coordinates, positionSource };
+        // Live current-temperature readings — this is the actual fix for
+        // "temperature-reading-* never updates": previously this effect
+        // patched controls/coordinates but silently dropped
+        // state.temperatures on the floor, so the three readings stayed
+        // frozen at whatever load() returned. Suppressed the same way as
+        // every other optimistically-set field, so the next poll tick
+        // doesn't visibly snap a just-submitted target back to the
+        // not-yet-caught-up current reading.
+        const temperatures = { ...data.temperatures };
+        if (!this.controlsSuppression.isSuppressed('temperatures') && state.temperatures) {
+          temperatures.chamber = state.temperatures.chamber?.current ?? temperatures.chamber;
+          temperatures.bed = state.temperatures.bed?.current ?? temperatures.bed;
+          temperatures.nozzle = state.temperatures.nozzle?.current ?? temperatures.nozzle;
+        }
+        return { ...data, controls, coordinates, positionSource, temperatures };
       });
     });
     effect(() => {
@@ -174,11 +204,28 @@ export class DashboardPage {
     key: 'lightEnabled' | 'fansEnabled' | 'fanSpeed' | 'printSpeed',
     value: boolean | number | PrintSpeedMode,
   ): Promise<void> {
+    /**
+     * When fanSpeed changes, automatically derive fansEnabled from it
+     * (enabled if > 0, disabled if = 0). This keeps the two fields in
+     * sync locally and at the API level (the adapter only takes a
+     * percent, never a separate on/off command). Skip updating when key
+     * is already fansEnabled (for backward compatibility if the parent
+     * ever calls this directly with that key, though the template no
+     * longer does).
+     */
+    const shouldUpdateFansEnabled = key === 'fanSpeed';
+    const fansEnabledValue = shouldUpdateFansEnabled ? (value as number) > 0 : undefined;
+
     await this.runCommand({ type: 'set-control', key, value }, () => {
-      this.controlsSuppression.suppress(key === 'fansEnabled' ? 'fanSpeed' : key);
-      this.dashboard.update((data) =>
-        data ? { ...data, controls: { ...data.controls, [key]: value } } : data,
-      );
+      this.controlsSuppression.suppress(key);
+      this.dashboard.update((data) => {
+        if (!data) return data;
+        const updates: Record<string, unknown> = { [key]: value };
+        if (shouldUpdateFansEnabled) {
+          updates['fansEnabled'] = fansEnabledValue;
+        }
+        return { ...data, controls: { ...data.controls, ...updates } };
+      });
     });
   }
 
@@ -215,24 +262,29 @@ export class DashboardPage {
     });
   }
 
+  /**
+   * Axis-point calibration (drag-to-place jog-button positions) is a
+   * UI-only concern the backend has no model for — set-navigation is a
+   * permanent client-side no-op (see http-printer-command.adapter.ts).
+   * Without an explicit durable store here, every calibration edit would
+   * live only in the `dashboard` signal and revert to
+   * STATIC_NAVIGATION_DEFAULTS on the next load(). Persist it the same way
+   * DashboardLayoutService persists widget layout (localStorage-backed
+   * restore()/save()) rather than inventing a new mechanism.
+   */
   protected async updateNavigationConfiguration(
     configuration: PrinterNavigationConfiguration,
   ): Promise<void> {
-    await this.runCommand({ type: 'set-navigation', configuration }, () =>
-      this.dashboard.update((data) =>
-        data
-          ? {
-              ...data,
-              navigation: {
-                axisPoints: configuration.axisPoints,
-                hotendPoint: configuration.hotendPoint,
-                steps: [...configuration.steps],
-                viewport: configuration.viewport,
-              },
-            }
-          : data,
-      ),
-    );
+    await this.runCommand({ type: 'set-navigation', configuration }, () => {
+      const navigation = {
+        axisPoints: configuration.axisPoints,
+        hotendPoint: configuration.hotendPoint,
+        steps: [...configuration.steps],
+        viewport: configuration.viewport,
+      };
+      this.navigationCalibration.save(navigation);
+      this.dashboard.update((data) => (data ? { ...data, navigation } : data));
+    });
   }
 
   /**
@@ -240,7 +292,9 @@ export class DashboardPage {
    * (where the +X/-X etc. buttons are drawn on the bed image) — it is not
    * a machine command and must never trigger a physical home. It reuses
    * the set-navigation command path since that's the same local/UI-only
-   * persistence axesReset always needed.
+   * persistence axesReset always needed, and must persist the cleared
+   * state too (otherwise reload would resurrect the old points from
+   * localStorage and the reset would look broken).
    */
   protected async resetAxes(event: AxisPointResetEvent): Promise<void> {
     const data = this.dashboard();
@@ -259,16 +313,28 @@ export class DashboardPage {
           viewport: data.navigation.viewport,
         },
       },
-      () =>
-        this.dashboard.update((current) =>
-          current
-            ? {
-                ...current,
-                navigation: { ...current.navigation, axisPoints: event.axisPoints },
-              }
-            : current,
-        ),
+      () => {
+        const navigation = { ...data.navigation, axisPoints: event.axisPoints };
+        this.navigationCalibration.save(navigation);
+        this.dashboard.update((current) => (current ? { ...current, navigation } : current));
+      },
     );
+  }
+
+  /**
+   * Unconditional physical home command — resolves the "position unknown"
+   * blocking banner. No optimistic local state patch: the next poll tick
+   * picks up the real position/positionSource once the printer actually
+   * homes and reports back (see the `latestDomainState()` effect above),
+   * which is what naturally re-enables jogDisabled-gated controls. Must
+   * never suppress the 'coordinates' poll key — doing so would delay that
+   * very unlock. Must never touch axis-point calibration state: homing and
+   * UI calibration persistence are independent concerns.
+   */
+  protected async home(): Promise<void> {
+    await this.runCommand({ type: 'home' }, () => {
+      // Intentionally empty: see doc comment above.
+    });
   }
 
   protected async jogHotend(action: HotendActionEvent): Promise<void> {
@@ -302,7 +368,12 @@ export class DashboardPage {
   }
 
   protected async updateTemperature(change: TemperatureChange): Promise<void> {
-    await this.runCommand({ type: 'set-temperature', change }, () =>
+    await this.runCommand({ type: 'set-temperature', change }, () => {
+      // Suppress the next poll tick(s) for this field like every other
+      // optimistically-patched control: the backend won't reach the new
+      // target instantly, so an immediate poll would otherwise snap the
+      // just-submitted value back to the stale current reading.
+      this.controlsSuppression.suppress('temperatures');
       this.dashboard.update((data) =>
         data
           ? {
@@ -310,14 +381,17 @@ export class DashboardPage {
               temperatures: { ...data.temperatures, [change.sensor]: change.value },
             }
           : data,
-      ),
-    );
+      );
+    });
   }
 
   private async loadData(): Promise<void> {
     try {
       const data = await this.dataSource.load();
-      this.dashboard.set(data);
+      this.dashboard.set({
+        ...data,
+        navigation: this.navigationCalibration.restore(data.navigation),
+      });
       this.widgets.set(this.layout.restore(data.widgets));
     } catch {
       this.loadingError.set(true);

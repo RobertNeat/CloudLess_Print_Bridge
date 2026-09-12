@@ -52,7 +52,6 @@
                   [lightEnabled]="data.controls.lightEnabled"
                   (lightEnabledChange)="updateControl('lightEnabled', $event)"
                   [fansEnabled]="data.controls.fansEnabled"
-                  (fansEnabledChange)="updateControl('fansEnabled', $event)"
                   [fanSpeed]="data.controls.fanSpeed"
                   (fanSpeedChange)="updateControl('fanSpeed', $event)"
                   [printSpeed]="data.controls.printSpeed"
@@ -80,6 +79,7 @@
                   (configurationSaved)="updateNavigationConfiguration($event)"
                   (axesReset)="resetAxes($event)"
                   (hotendAction)="jogHotend($event)"
+                  (homeRequested)="home()"
                 />
               }
               @case ('live-preview') {
