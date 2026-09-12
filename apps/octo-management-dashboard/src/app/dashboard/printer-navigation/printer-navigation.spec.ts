@@ -174,9 +174,7 @@ describe('PrinterNavigation', () => {
     fixture.componentRef.setInput('jogDisabled', false);
     fixture.detectChanges();
 
-    expect(
-      fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint'),
-    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint')).toBeNull();
   });
 
   it('configures the hotend as one point with keyboard support', () => {
@@ -365,9 +363,7 @@ describe('PrinterNavigation', () => {
     fixture.componentRef.setInput('jogDisabled', false);
     fixture.detectChanges();
 
-    expect(
-      fixture.nativeElement.querySelector('#printer-navigation-home-button'),
-    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('#printer-navigation-home-button')).toBeNull();
   });
 
   it('does not touch axis-point calibration state when home is requested', () => {

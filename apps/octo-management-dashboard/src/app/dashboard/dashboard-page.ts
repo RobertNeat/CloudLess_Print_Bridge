@@ -3,7 +3,10 @@ import { Gridster, GridsterItem, type GridsterConfig } from 'angular-gridster2';
 import { DashboardLayoutService } from '../core/dashboard-layout.service';
 import { I18nService } from '../core/i18n.service';
 import { PrinterNavigationCalibrationService } from '../core/printer-navigation-calibration.service';
-import { DashboardPollingService, PollSuppressionWindow } from './backend/dashboard-polling.service';
+import {
+  DashboardPollingService,
+  PollSuppressionWindow,
+} from './backend/dashboard-polling.service';
 import { CommandExecutionError, type CommandError } from './backend/http-error-mapping';
 import { TelemetryPollingService } from './backend/telemetry-polling.service';
 import { mapFanChart, mapProgressChart, mapTemperatureChart } from './backend/telemetry-mapping';
@@ -21,7 +24,10 @@ import { createPrinterNavigationLabels } from './printer-navigation/printer-navi
 import { PrinterCommandFacade } from './printer-command.port';
 import { PrinterQuickControls } from './printer-quick-controls/printer-quick-controls';
 import { PrinterTemperatures } from './printer-temperatures/printer-temperatures';
-import type { TemperatureChange, TemperatureSensor } from './printer-temperatures/printer-temperatures';
+import type {
+  TemperatureChange,
+  TemperatureSensor,
+} from './printer-temperatures/printer-temperatures';
 import { TelemetryChart } from './telemetry-chart/telemetry-chart';
 
 @Component({
@@ -141,7 +147,10 @@ export class DashboardPage {
         if (!this.controlsSuppression.isSuppressed('lightEnabled') && state.lightOn !== undefined) {
           controls.lightEnabled = state.lightOn;
         }
-        if (!this.controlsSuppression.isSuppressed('fanSpeed') && state.fans?.coolingPercent !== undefined) {
+        if (
+          !this.controlsSuppression.isSuppressed('fanSpeed') &&
+          state.fans?.coolingPercent !== undefined
+        ) {
           controls.fanSpeed = state.fans.coolingPercent;
           controls.fansEnabled = state.fans.coolingPercent > 0;
         }

@@ -444,7 +444,8 @@ const messages = {
     'navigation.bottomRight': 'Bottom right',
     'navigation.alternativeStep': 'Alternative {{direction}} step for axis {{axis}}',
     'navigation.hotendStep': 'Alternative hotend step towards {{direction}}',
-    'navigation.jogDisabledHint': 'Printer position is unknown. Home the printer to enable movement controls.',
+    'navigation.jogDisabledHint':
+      'Printer position is unknown. Home the printer to enable movement controls.',
     'navigation.homeButton': 'Home printer',
     'navigation.homeButtonAria': 'Home the printer to unlock movement controls',
     'chart.timeTooltip': 'Time: {{value}} min',

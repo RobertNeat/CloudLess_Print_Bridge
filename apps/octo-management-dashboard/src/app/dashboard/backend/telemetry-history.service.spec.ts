@@ -33,7 +33,10 @@ describe('TelemetryHistoryService', () => {
 
     httpMock
       .expectOne('http://localhost:10320/telemetry/history')
-      .flush({ statusCode: 503, message: 'MQTT client is not connected' }, { status: 503, statusText: 'x' });
+      .flush(
+        { statusCode: 503, message: 'MQTT client is not connected' },
+        { status: 503, statusText: 'x' },
+      );
 
     await expect(promise).rejects.toBeTruthy();
   });

@@ -6,7 +6,11 @@ import { CommandExecutionError } from './backend/http-error-mapping';
 import { MANAGEMENT_DASHBOARD_DATA_SOURCE } from './dashboard-data.service';
 import type { ManagementDashboardData } from './dashboard.models';
 import { DashboardPage } from './dashboard-page';
-import { PRINTER_COMMAND_PORT, type PrinterCommand, type PrinterCommandPort } from './printer-command.port';
+import {
+  PRINTER_COMMAND_PORT,
+  type PrinterCommand,
+  type PrinterCommandPort,
+} from './printer-command.port';
 
 function sampleData(): ManagementDashboardData {
   return {
@@ -141,7 +145,9 @@ describe('DashboardPage', () => {
 
     await fixture.componentInstance['updateControl']('lightEnabled', true);
 
-    expect(commandPort.executed).toEqual([{ type: 'set-control', key: 'lightEnabled', value: true }]);
+    expect(commandPort.executed).toEqual([
+      { type: 'set-control', key: 'lightEnabled', value: true },
+    ]);
     expect(fixture.componentInstance['dashboard']()?.controls.lightEnabled).toBe(true);
   });
 
@@ -265,7 +271,11 @@ describe('DashboardPage', () => {
     expect(commandPort.executed).toEqual([
       { type: 'set-coordinates', coordinates: { X: 125, Y: 125, Z: 20 } },
     ]);
-    expect(fixture.componentInstance['dashboard']()?.coordinates).toEqual({ X: 125, Y: 125, Z: 20 });
+    expect(fixture.componentInstance['dashboard']()?.coordinates).toEqual({
+      X: 125,
+      Y: 125,
+      Z: 20,
+    });
   });
 
   it('leaves coordinates at their pre-command value when the backend rejects an out-of-bounds move — never corrupts local state', async () => {
@@ -312,9 +322,7 @@ describe('DashboardPage', () => {
 
     await fixture.componentInstance['resetAxes']({ axisPoints: emptyPoints, hotendPoint: null });
 
-    expect(commandPort.executed).toEqual([
-      expect.objectContaining({ type: 'set-navigation' }),
-    ]);
+    expect(commandPort.executed).toEqual([expect.objectContaining({ type: 'set-navigation' })]);
     expect(fixture.componentInstance['dashboard']()?.navigation.axisPoints).toEqual(emptyPoints);
     expect(fixture.componentInstance['dashboard']()?.coordinates).toEqual({ X: 0, Y: 0, Z: 20 });
   });
@@ -401,7 +409,11 @@ describe('DashboardPage', () => {
         mainStep: 10,
         positionPanelPlacement: 'top-right' as const,
         steps: [1, 10],
-        axisRanges: { X: { min: 0, max: 9999 }, Y: { min: 0, max: 9999 }, Z: { min: 0, max: 9999 } },
+        axisRanges: {
+          X: { min: 0, max: 9999 },
+          Y: { min: 0, max: 9999 },
+          Z: { min: 0, max: 9999 },
+        },
         axisColor: 'red',
         viewport: sampleData().navigation.viewport,
       };

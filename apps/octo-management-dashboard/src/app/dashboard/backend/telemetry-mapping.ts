@@ -19,7 +19,10 @@ function minuteLabels(samples: readonly TelemetrySampleDto[]): string[] {
   });
 }
 
-function seriesData(samples: readonly TelemetrySampleDto[], pick: (s: TelemetrySampleDto) => number | null): number[] {
+function seriesData(
+  samples: readonly TelemetrySampleDto[],
+  pick: (s: TelemetrySampleDto) => number | null,
+): number[] {
   return samples.map((sample) => pick(sample) ?? 0);
 }
 
@@ -39,9 +42,14 @@ export function mapProgressChart(samples: readonly TelemetrySampleDto[]): {
   return {
     labels: minuteLabels(samples),
     datasets: [
-      dataset('chart.series.progress', '--semantic-chart-series-1', seriesData(samples, (s) => s.progressPercent), {
-        tension: 0.25,
-      }),
+      dataset(
+        'chart.series.progress',
+        '--semantic-chart-series-1',
+        seriesData(samples, (s) => s.progressPercent),
+        {
+          tension: 0.25,
+        },
+      ),
     ],
   };
 }

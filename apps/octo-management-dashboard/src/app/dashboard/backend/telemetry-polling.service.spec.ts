@@ -47,22 +47,24 @@ describe('TelemetryPollingService', () => {
     service.start(1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [
-        {
-          capturedAt: '2026-09-12T10:00:00.000Z',
-          progressPercent: 50,
-          nozzleTemperatureCurrent: 210,
-          nozzleTemperatureTarget: 220,
-          bedTemperatureCurrent: 55,
-          bedTemperatureTarget: 60,
-          chamberTemperatureCurrent: null,
-          coolingFanPercent: 30,
-          auxiliaryFanPercent: 10,
-        },
-      ],
-    } as TelemetryHistoryResponseDto);
+    httpMock
+      .expectOne((req) => req.url.includes('/telemetry/history'))
+      .flush({
+        capacity: 10,
+        samples: [
+          {
+            capturedAt: '2026-09-12T10:00:00.000Z',
+            progressPercent: 50,
+            nozzleTemperatureCurrent: 210,
+            nozzleTemperatureTarget: 220,
+            bedTemperatureCurrent: 55,
+            bedTemperatureTarget: 60,
+            chamberTemperatureCurrent: null,
+            coolingFanPercent: 30,
+            auxiliaryFanPercent: 10,
+          },
+        ],
+      } as TelemetryHistoryResponseDto);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(service.latestHistory()?.samples).toHaveLength(1);
@@ -72,19 +74,26 @@ describe('TelemetryPollingService', () => {
     service.start(1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [{ ...sampleAt('2026-09-12T10:00:00.000Z', 0) }],
-    });
+    httpMock
+      .expectOne((req) => req.url.includes('/telemetry/history'))
+      .flush({
+        capacity: 10,
+        samples: [{ ...sampleAt('2026-09-12T10:00:00.000Z', 0) }],
+      });
     await vi.advanceTimersByTimeAsync(0);
     const firstHistory = service.latestHistory();
     expect(firstHistory?.samples).toHaveLength(1);
 
     await vi.advanceTimersByTimeAsync(1000);
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [sampleAt('2026-09-12T10:00:00.000Z', 0), sampleAt('2026-09-12T10:00:10.000Z', 10)],
-    });
+    httpMock
+      .expectOne((req) => req.url.includes('/telemetry/history'))
+      .flush({
+        capacity: 10,
+        samples: [
+          sampleAt('2026-09-12T10:00:00.000Z', 0),
+          sampleAt('2026-09-12T10:00:10.000Z', 10),
+        ],
+      });
     await vi.advanceTimersByTimeAsync(0);
 
     const secondHistory = service.latestHistory();

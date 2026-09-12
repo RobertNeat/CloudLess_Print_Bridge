@@ -31,7 +31,12 @@ describe('TelemetryChart', () => {
       sampleChart({
         labels: ['0', '1', '2'],
         datasets: [
-          { labelKey: 'chart.series.progress', colorToken: '--semantic-chart-series-1', data: [0, 40, 80], fill: false },
+          {
+            labelKey: 'chart.series.progress',
+            colorToken: '--semantic-chart-series-1',
+            data: [0, 40, 80],
+            fill: false,
+          },
         ],
       }),
     );
