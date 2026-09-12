@@ -7,6 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get<AppConfig>(APP_CONFIG);
 
+  app.setGlobalPrefix('api/mqtt');
+
   app.enableCors({
     origin: config.http.corsOrigins,
     credentials: true,
