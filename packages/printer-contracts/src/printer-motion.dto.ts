@@ -15,6 +15,17 @@ export interface MachineEnvelopeDto {
   z: AxisRangeDto;
 }
 
+/**
+ * Per-model heater capabilities that generic (model-agnostic) code must read
+ * instead of assuming — mirrors how MachineEnvelopeDto keeps travel limits
+ * out of shared code. Today only the chamber heater varies across profiles
+ * (the Bambu Lab A1 has none; bed/nozzle heaters are assumed universal), but
+ * this is a dedicated shape so a future flag has an obvious home.
+ */
+export interface HeaterCapabilitiesDto {
+  hasChamberHeater: boolean;
+}
+
 export type PrinterPositionSource = 'unknown' | 'homed' | 'commanded';
 
 /**

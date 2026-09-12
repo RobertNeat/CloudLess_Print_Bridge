@@ -53,6 +53,9 @@ export class HttpPrinterCommandAdapter implements PrinterCommandPort {
       case 'jog-hotend':
         await this.jogHotend(command.action);
         return;
+      case 'home':
+        await this.post('/movement/home', {});
+        return;
       // Local/UI-only concern: axis-overlay calibration, not a machine
       // command. See dashboard-page.ts — axesReset routes here too, both
       // persisted purely client-side (no backend concept of this).

@@ -20,6 +20,14 @@ describe('BambuLabA1CommandProfile', () => {
     });
   });
 
+  describe('getHeaterCapabilities', () => {
+    it('reports no chamber heater, matching the real A1 hardware', () => {
+      expect(createProfile().getHeaterCapabilities()).toEqual({
+        hasChamberHeater: false,
+      });
+    });
+  });
+
   describe('inspectPayload', () => {
     it('accepts a payload with no gcode to inspect', () => {
       const profile = createProfile();

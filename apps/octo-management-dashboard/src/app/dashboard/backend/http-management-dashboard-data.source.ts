@@ -3,7 +3,12 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { I18nService } from '../../core/i18n.service';
 import { isManagementDashboardData } from '../dashboard-data.service';
-import type { ManagementDashboardData, PrintJobStatus, PrinterPositionSource } from '../dashboard.models';
+import type {
+  DeviceCapabilities,
+  ManagementDashboardData,
+  PrintJobStatus,
+  PrinterPositionSource,
+} from '../dashboard.models';
 import type { ManagementDashboardDataSource } from '../dashboard-data.service';
 import type { AxisRanges } from '../printer-navigation/printer-navigation.models';
 import {
@@ -19,6 +24,7 @@ import type {
   PrinterDomainModelDto,
   PrinterJobStatusDto,
   PrinterPositionSource as BackendPositionSource,
+  TelemetryHistoryResponseDto,
 } from './mqtt-puppeteer-api.types';
 import { mapFanChart, mapProgressChart, mapTemperatureChart } from './telemetry-mapping';
 import { TelemetryHistoryService } from './telemetry-history.service';
@@ -37,6 +43,30 @@ const UNAVAILABLE_AXIS_RANGES: AxisRanges = {
 };
 
 /**
+ * Empty domain snapshot used only when GET /device_config/state/domain could
+ * not be reached (backend down, or its MQTT client hasn't connected yet —
+ * onModuleInit() connects asynchronously and doesn't block startup). Every
+ * field is optional on PrinterDomainModelDto and every read site below
+ * already falls back safely (?? false / ?? 0 / ?? null), so this composes
+ * into an honest "nothing known yet" dashboard instead of failing the whole
+ * load over one transient endpoint — the same reasoning as the profile
+ * fallback below, just for a different leg of the same Promise.all.
+ */
+const EMPTY_DOMAIN_STATE: PrinterDomainModelDto = {};
+
+/** Same reasoning as EMPTY_DOMAIN_STATE, for GET /telemetry/history. */
+const EMPTY_TELEMETRY_HISTORY: TelemetryHistoryResponseDto = { capacity: 0, samples: [] };
+
+/**
+ * Capabilities used only when GET /device_config/profile could not be
+ * reached. Unlike UNAVAILABLE_AXIS_RANGES (which fails closed to "block
+ * movement"), an unreachable profile here just means "assume no chamber
+ * heater" — the same fail-closed default DeviceProfileService.fetchProfile()
+ * already applies to a present-but-malformed flag.
+ */
+const UNAVAILABLE_DEVICE_CAPABILITIES: DeviceCapabilities = { hasChamberHeater: false };
+
+/**
  * Composes ManagementDashboardData from real mqtt-puppeteer state plus the
  * static UI-only defaults (layout, calibration, chart metadata, camera
  * name) that the backend has no concept of. This is not a passthrough: the
@@ -53,19 +83,37 @@ export class HttpManagementDashboardDataSource implements ManagementDashboardDat
   private readonly deviceProfile = inject(DeviceProfileService);
 
   async load(): Promise<ManagementDashboardData> {
-    const [domain, history, axisRanges] = await Promise.all([
+    // Each of these three requests fails independently: one being down (or
+    // mqtt-puppeteer's MQTT client still connecting — see EMPTY_DOMAIN_STATE)
+    // must never blank the whole dashboard behind a generic load error. Only
+    // the profile fallback is safety-sensitive (fails closed to a zero-width
+    // axis range); domain/telemetry fall back to honest "nothing known yet"
+    // empty shapes that every downstream read already tolerates.
+    const [domain, history, profile] = await Promise.all([
       firstValueFrom(
         this.http.get<PrinterDomainModelDto>(`${this.config.baseUrl}/device_config/state/domain`),
-      ),
-      this.telemetry.fetchHistory(),
-      // Fail closed, not silently wrong: an unreachable envelope becomes a
-      // zero-width one (see UNAVAILABLE_AXIS_RANGES) rather than
+      ).catch((error: unknown) => {
+        console.error('[dashboard] failed to load device_config/state/domain:', error);
+        return EMPTY_DOMAIN_STATE;
+      }),
+      this.telemetry.fetchHistory().catch((error: unknown) => {
+        console.error('[dashboard] failed to load telemetry/history:', error);
+        return EMPTY_TELEMETRY_HISTORY;
+      }),
+      // Fail closed, not silently wrong: an unreachable profile becomes a
+      // zero-width envelope (see UNAVAILABLE_AXIS_RANGES) rather than
       // DEFAULT_AXIS_RANGES, which would let the UI offer an unsafe Z:0
-      // target the real backend has to reject.
-      this.deviceProfile.fetchMachineEnvelope().catch(() => UNAVAILABLE_AXIS_RANGES),
+      // target the real backend has to reject — and "no chamber heater"
+      // (see UNAVAILABLE_DEVICE_CAPABILITIES), which only ever disables an
+      // editor rather than blocking anything.
+      this.deviceProfile.fetchProfile().catch((error: unknown) => {
+        console.error('[dashboard] failed to load device_config/profile:', error);
+        return { axisRanges: UNAVAILABLE_AXIS_RANGES, deviceCapabilities: UNAVAILABLE_DEVICE_CAPABILITIES };
+      }),
     ]);
     const samples = history.samples;
     const position = domain.position;
+    const { axisRanges, deviceCapabilities } = profile;
 
     const data: ManagementDashboardData = {
       printJob: {
@@ -103,6 +151,7 @@ export class HttpManagementDashboardDataSource implements ManagementDashboardDat
       },
       positionSource: mapPositionSource(position?.source),
       axisRanges,
+      deviceCapabilities,
       navigation: STATIC_NAVIGATION_DEFAULTS,
       livePreview: STATIC_LIVE_PREVIEW_DEFAULTS,
       widgets: STATIC_WIDGET_LAYOUT,

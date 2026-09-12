@@ -5,6 +5,7 @@
   "coordinates": { "X": 128, "Y": 96, "Z": 42 },
   "positionSource": "commanded",
   "axisRanges": { "X": { "min": 0, "max": 255 }, "Y": { "min": 0, "max": 255 }, "Z": { "min": 0, "max": 255 } },
+  "deviceCapabilities": { "hasChamberHeater": false },
   "navigation": {
     "axisPoints": {
       "X": { "negative": { "x": 205, "y": 392 }, "positive": { "x": 790, "y": 392 } },

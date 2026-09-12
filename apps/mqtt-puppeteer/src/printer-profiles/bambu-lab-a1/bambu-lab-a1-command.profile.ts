@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type {
   AmsTopologyDto,
+  HeaterCapabilitiesDto,
   MachineEnvelopeDto,
   PrintSpeedMode,
 } from '@cloudless/printer-contracts';
@@ -30,6 +31,16 @@ const machineEnvelope: MachineEnvelopeDto = {
   x: { minimum: 0, maximum: 256 },
   y: { minimum: 0, maximum: 256 },
   z: { minimum: 20, maximum: 240 },
+};
+
+/**
+ * The Bambu Lab A1 has no chamber heater (it is a bed-slinger with only bed
+ * and nozzle heaters) — this is a genuine hardware fact, not a placeholder.
+ * Kept alongside machineEnvelope as the single place this model's heater
+ * capabilities are declared.
+ */
+const heaterCapabilities: HeaterCapabilitiesDto = {
+  hasChamberHeater: false,
 };
 
 interface ResolvedSource {
@@ -208,6 +219,10 @@ export class BambuLabA1CommandProfile implements PrinterCommandProfile {
 
   getMachineEnvelope(): MachineEnvelopeDto {
     return machineEnvelope;
+  }
+
+  getHeaterCapabilities(): HeaterCapabilitiesDto {
+    return heaterCapabilities;
   }
 
   /**

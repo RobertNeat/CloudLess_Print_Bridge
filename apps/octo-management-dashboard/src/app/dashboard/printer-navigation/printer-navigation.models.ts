@@ -70,6 +70,8 @@ export interface PrinterNavigationLabels {
   alternativeStepAriaLabel: (axis: PrinterAxis, direction: AxisDirection) => string;
   hotendStepAriaLabel: (direction: HotendDirection) => string;
   jogDisabledHint: string;
+  homeButtonLabel: string;
+  homeButtonAriaLabel: string;
 }
 
 export interface PrinterNavigationConfiguration {

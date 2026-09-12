@@ -61,7 +61,7 @@
               @case ('temperatures') {
                 <app-printer-temperatures
                   [temperatures]="data.temperatures"
-                  [settableSensors]="['bed', 'nozzle']"
+                  [settableSensors]="settableTemperatureSensors()"
                   (temperatureChange)="updateTemperature($event)"
                 />
               }

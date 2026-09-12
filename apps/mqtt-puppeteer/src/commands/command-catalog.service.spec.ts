@@ -53,6 +53,21 @@ describe('CommandCatalogService', () => {
     );
   });
 
+  it('includes heater capabilities alongside topology and envelope in getProfile', () => {
+    const service = createService();
+
+    expect(service.getProfile()).toEqual({
+      id: 'bambu-lab-a1',
+      topology: { unitCount: 2, slotsPerUnit: 4, externalSpool: true },
+      machineEnvelope: {
+        x: { minimum: 0, maximum: 256 },
+        y: { minimum: 0, maximum: 256 },
+        z: { minimum: 20, maximum: 240 },
+      },
+      heaterCapabilities: { hasChamberHeater: false },
+    });
+  });
+
   it('builds the shared command preview response', () => {
     const service = createService();
 

@@ -11,10 +11,13 @@ export class DeviceConfigController {
   @ApiOperation({
     summary: 'Get the active printer profile identity and machine envelope',
     description:
-      'Includes the AMS topology and the safe travel envelope (X/Y/Z ' +
-      'minimum/maximum) for the currently active printer profile. A ' +
+      'Includes the AMS topology, the safe travel envelope (X/Y/Z ' +
+      'minimum/maximum), and heater capabilities (e.g. whether the model ' +
+      'has a chamber heater) for the currently active printer profile. A ' +
       'dashboard should use this to pre-validate jog input client-side, in ' +
-      'addition to the server-side enforcement every command already gets.',
+      'addition to the server-side enforcement every command already gets, ' +
+      'and to enable/disable heater-specific UI without hard-coding ' +
+      'per-model assumptions.',
   })
   @ApiOkResponse({
     schema: {
@@ -53,6 +56,12 @@ export class DeviceConfigController {
                 maximum: { type: 'number' },
               },
             },
+          },
+        },
+        heaterCapabilities: {
+          type: 'object',
+          properties: {
+            hasChamberHeater: { type: 'boolean' },
           },
         },
       },

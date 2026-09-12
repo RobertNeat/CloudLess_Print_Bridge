@@ -25,7 +25,8 @@ export type PrinterCommand =
       readonly change: Partial<ManagementDashboardData['livePreview']>;
     }
   | { readonly type: 'set-temperature'; readonly change: TemperatureChange }
-  | { readonly type: 'jog-hotend'; readonly action: HotendActionEvent };
+  | { readonly type: 'jog-hotend'; readonly action: HotendActionEvent }
+  | { readonly type: 'home' };
 
 export interface PrinterCommandPort {
   execute(command: PrinterCommand): Promise<void>;
