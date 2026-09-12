@@ -88,7 +88,12 @@ function isAxisRanges(value: unknown): boolean {
   if (!isRecord(value)) return false;
   return ['X', 'Y', 'Z'].every((axis) => {
     const range = value[axis];
-    return isRecord(range) && isNumber(range['min']) && isNumber(range['max']) && range['min'] <= range['max'];
+    return (
+      isRecord(range) &&
+      isNumber(range['min']) &&
+      isNumber(range['max']) &&
+      range['min'] <= range['max']
+    );
   });
 }
 

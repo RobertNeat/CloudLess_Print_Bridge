@@ -3,8 +3,15 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { Coordinates, PrintJobStatus } from '../dashboard.models';
 import { clampCoordinates, validateAxisRanges } from '../printer-navigation/coordinate-utils';
-import type { AxisRanges, HotendActionEvent } from '../printer-navigation/printer-navigation.models';
-import { MockPrinterCommandAdapter, type PrinterCommand, type PrinterCommandPort } from '../printer-command.port';
+import type {
+  AxisRanges,
+  HotendActionEvent,
+} from '../printer-navigation/printer-navigation.models';
+import {
+  MockPrinterCommandAdapter,
+  type PrinterCommand,
+  type PrinterCommandPort,
+} from '../printer-command.port';
 import type { TemperatureChange } from '../printer-temperatures/printer-temperatures';
 import { DeviceProfileService } from './device-profile.service';
 import { CommandExecutionError, mapHttpError } from './http-error-mapping';
@@ -182,7 +189,8 @@ export class HttpPrinterCommandAdapter implements PrinterCommandPort {
     } catch {
       throw new CommandExecutionError({
         kind: 'unavailable',
-        message: 'The machine travel envelope could not be verified — movement is disabled until it can be.',
+        message:
+          'The machine travel envelope could not be verified — movement is disabled until it can be.',
       });
     }
   }

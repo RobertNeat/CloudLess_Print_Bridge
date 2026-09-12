@@ -43,7 +43,10 @@ export class DeviceProfileService {
    * capability flag should only ever disable an editor (chamber becomes
    * non-settable), never block axis-range-dependent features like jogging.
    */
-  async fetchProfile(): Promise<{ axisRanges: AxisRanges; deviceCapabilities: DeviceCapabilities }> {
+  async fetchProfile(): Promise<{
+    axisRanges: AxisRanges;
+    deviceCapabilities: DeviceCapabilities;
+  }> {
     const response = await firstValueFrom(
       this.http.get<DeviceProfileResponseDto>(`${this.config.baseUrl}/device_config/profile`),
     );
@@ -67,10 +70,16 @@ export class DeviceProfileService {
 const UNSUPPORTED_DEVICE_CAPABILITIES: DeviceCapabilities = { hasChamberHeater: false };
 
 function isValidDeviceCapabilities(value: unknown): value is DeviceCapabilities {
-  return !!value && typeof value === 'object' && typeof (value as DeviceCapabilities).hasChamberHeater === 'boolean';
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as DeviceCapabilities).hasChamberHeater === 'boolean'
+  );
 }
 
-function isValidEnvelope(envelope: unknown): envelope is DeviceProfileResponseDto['machineEnvelope'] {
+function isValidEnvelope(
+  envelope: unknown,
+): envelope is DeviceProfileResponseDto['machineEnvelope'] {
   if (!envelope || typeof envelope !== 'object') return false;
   const candidate = envelope as Partial<DeviceProfileResponseDto['machineEnvelope']>;
   return (['x', 'y', 'z'] as const).every((axis) => {

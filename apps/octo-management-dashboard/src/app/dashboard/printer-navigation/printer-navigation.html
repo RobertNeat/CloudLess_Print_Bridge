@@ -120,7 +120,13 @@
     </svg>
 
     @if (activePointHint(); as hint) {
-      <div id="printer-navigation-point-hint" class="active-point-hint" data-testid="printer-navigation-point-hint" role="status" aria-live="polite">
+      <div
+        id="printer-navigation-point-hint"
+        class="active-point-hint"
+        data-testid="printer-navigation-point-hint"
+        role="status"
+        aria-live="polite"
+      >
         {{ hint }}
       </div>
     }
@@ -180,7 +186,11 @@
         }
       </aside>
 
-      <div id="printer-navigation-jog-controls" class="printer-navigation__controls" data-testid="printer-navigation-jog-controls">
+      <div
+        id="printer-navigation-jog-controls"
+        class="printer-navigation__controls"
+        data-testid="printer-navigation-jog-controls"
+      >
         @for (view of axisViews(); track view.axis) {
           <div
             class="axis-control"
@@ -228,7 +238,12 @@
         }
 
         @if (hotendPoint(); as point) {
-          <div id="printer-navigation-hotend-control" class="hotend-control" data-testid="printer-navigation-hotend-control" [style]="pointStyle(point, 0)">
+          <div
+            id="printer-navigation-hotend-control"
+            class="hotend-control"
+            data-testid="printer-navigation-hotend-control"
+            [style]="pointStyle(point, 0)"
+          >
             <span class="hotend-label">{{ labels().hotend }}</span>
             <div class="hotend-actions">
               <p-splitbutton
@@ -268,7 +283,12 @@
     }
 
     @if (configurationPanelVisible()) {
-      <aside id="printer-navigation-configuration-panel" class="configuration-panel" data-testid="printer-navigation-configuration-panel" (pointerdown)="$event.stopPropagation()">
+      <aside
+        id="printer-navigation-configuration-panel"
+        class="configuration-panel"
+        data-testid="printer-navigation-configuration-panel"
+        (pointerdown)="$event.stopPropagation()"
+      >
         <h2>{{ labels().configurationTitle }}</h2>
         <p>{{ instruction() }}</p>
 

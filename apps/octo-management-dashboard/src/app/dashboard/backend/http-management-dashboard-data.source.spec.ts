@@ -30,7 +30,9 @@ describe('HttpManagementDashboardDataSource', () => {
 
   function flushDomain(domain: PrinterDomainModelDto, samples: TelemetrySampleDto[] = []): void {
     httpMock.expectOne('http://localhost:10320/device_config/state/domain').flush(domain);
-    httpMock.expectOne('http://localhost:10320/telemetry/history').flush({ capacity: 720, samples });
+    httpMock
+      .expectOne('http://localhost:10320/telemetry/history')
+      .flush({ capacity: 720, samples });
     httpMock.expectOne('http://localhost:10320/device_config/profile').flush(validEnvelope);
   }
 
@@ -113,12 +115,12 @@ describe('HttpManagementDashboardDataSource', () => {
     ]);
 
     const data = await promise;
-    expect(data.charts.temperature.datasets.some((d) => d.labelKey === 'chart.series.chamberTarget')).toBe(
-      false,
-    );
-    expect(data.charts.temperature.datasets.some((d) => d.labelKey === 'chart.series.chamberCurrent')).toBe(
-      true,
-    );
+    expect(
+      data.charts.temperature.datasets.some((d) => d.labelKey === 'chart.series.chamberTarget'),
+    ).toBe(false);
+    expect(
+      data.charts.temperature.datasets.some((d) => d.labelKey === 'chart.series.chamberCurrent'),
+    ).toBe(true);
   });
 
   it('falls back to an empty domain snapshot (not a total load failure) when device_config/state/domain fails', async () => {
@@ -130,8 +132,13 @@ describe('HttpManagementDashboardDataSource', () => {
 
     httpMock
       .expectOne('http://localhost:10320/device_config/state/domain')
-      .flush({ statusCode: 503, message: 'MQTT client is not connected' }, { status: 503, statusText: 'x' });
-    httpMock.expectOne('http://localhost:10320/telemetry/history').flush({ capacity: 720, samples: [] });
+      .flush(
+        { statusCode: 503, message: 'MQTT client is not connected' },
+        { status: 503, statusText: 'x' },
+      );
+    httpMock
+      .expectOne('http://localhost:10320/telemetry/history')
+      .flush({ capacity: 720, samples: [] });
     httpMock.expectOne('http://localhost:10320/device_config/profile').flush(validEnvelope);
 
     const data = await promise;
@@ -146,7 +153,10 @@ describe('HttpManagementDashboardDataSource', () => {
     httpMock.expectOne('http://localhost:10320/device_config/state/domain').flush({});
     httpMock
       .expectOne('http://localhost:10320/telemetry/history')
-      .flush({ statusCode: 503, message: 'MQTT client is not connected' }, { status: 503, statusText: 'x' });
+      .flush(
+        { statusCode: 503, message: 'MQTT client is not connected' },
+        { status: 503, statusText: 'x' },
+      );
     httpMock.expectOne('http://localhost:10320/device_config/profile').flush(validEnvelope);
 
     const data = await promise;
@@ -182,10 +192,15 @@ describe('HttpManagementDashboardDataSource', () => {
     const promise = source.load();
 
     httpMock.expectOne('http://localhost:10320/device_config/state/domain').flush({});
-    httpMock.expectOne('http://localhost:10320/telemetry/history').flush({ capacity: 720, samples: [] });
+    httpMock
+      .expectOne('http://localhost:10320/telemetry/history')
+      .flush({ capacity: 720, samples: [] });
     httpMock
       .expectOne('http://localhost:10320/device_config/profile')
-      .flush({ statusCode: 503, message: 'MQTT client is not connected' }, { status: 503, statusText: 'x' });
+      .flush(
+        { statusCode: 503, message: 'MQTT client is not connected' },
+        { status: 503, statusText: 'x' },
+      );
 
     const data = await promise;
     expect(data.axisRanges).toEqual({
@@ -199,7 +214,14 @@ describe('HttpManagementDashboardDataSource', () => {
     const promise = source.load();
 
     flushDomain({
-      position: { x: 125, y: 100, z: 30, homed: true, source: 'commanded', updatedAt: '2026-09-12T10:00:00.000Z' },
+      position: {
+        x: 125,
+        y: 100,
+        z: 30,
+        homed: true,
+        source: 'commanded',
+        updatedAt: '2026-09-12T10:00:00.000Z',
+      },
     });
 
     const data = await promise;
@@ -224,7 +246,9 @@ describe('HttpManagementDashboardDataSource', () => {
       const promise = source.load();
 
       httpMock.expectOne('http://localhost:10320/device_config/state/domain').flush({});
-      httpMock.expectOne('http://localhost:10320/telemetry/history').flush({ capacity: 720, samples: [] });
+      httpMock
+        .expectOne('http://localhost:10320/telemetry/history')
+        .flush({ capacity: 720, samples: [] });
       httpMock.expectOne('http://localhost:10320/device_config/profile').flush({
         ...validEnvelope,
         heaterCapabilities: { hasChamberHeater: true },
@@ -247,10 +271,15 @@ describe('HttpManagementDashboardDataSource', () => {
       const promise = source.load();
 
       httpMock.expectOne('http://localhost:10320/device_config/state/domain').flush({});
-      httpMock.expectOne('http://localhost:10320/telemetry/history').flush({ capacity: 720, samples: [] });
+      httpMock
+        .expectOne('http://localhost:10320/telemetry/history')
+        .flush({ capacity: 720, samples: [] });
       httpMock
         .expectOne('http://localhost:10320/device_config/profile')
-        .flush({ statusCode: 503, message: 'MQTT client is not connected' }, { status: 503, statusText: 'x' });
+        .flush(
+          { statusCode: 503, message: 'MQTT client is not connected' },
+          { status: 503, statusText: 'x' },
+        );
 
       const data = await promise;
       expect(data.deviceCapabilities).toEqual({ hasChamberHeater: false });

@@ -61,10 +61,12 @@ describe('DeviceProfileService', () => {
   it('rejects on HTTP failure instead of returning any numeric fallback', async () => {
     const promise = service.fetchMachineEnvelope();
 
-    httpMock.expectOne('http://localhost:10320/device_config/profile').flush(
-      { statusCode: 503, message: 'MQTT client is not connected' },
-      { status: 503, statusText: 'Service Unavailable' },
-    );
+    httpMock
+      .expectOne('http://localhost:10320/device_config/profile')
+      .flush(
+        { statusCode: 503, message: 'MQTT client is not connected' },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
 
     await expect(promise).rejects.toBeTruthy();
   });

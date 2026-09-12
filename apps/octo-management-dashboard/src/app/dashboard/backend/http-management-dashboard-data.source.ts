@@ -108,7 +108,10 @@ export class HttpManagementDashboardDataSource implements ManagementDashboardDat
       // editor rather than blocking anything.
       this.deviceProfile.fetchProfile().catch((error: unknown) => {
         console.error('[dashboard] failed to load device_config/profile:', error);
-        return { axisRanges: UNAVAILABLE_AXIS_RANGES, deviceCapabilities: UNAVAILABLE_DEVICE_CAPABILITIES };
+        return {
+          axisRanges: UNAVAILABLE_AXIS_RANGES,
+          deviceCapabilities: UNAVAILABLE_DEVICE_CAPABILITIES,
+        };
       }),
     ]);
     const samples = history.samples;

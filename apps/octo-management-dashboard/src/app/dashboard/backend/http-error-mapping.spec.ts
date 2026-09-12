@@ -40,7 +40,11 @@ describe('mapHttpError', () => {
       error: { statusCode: 500, message: 'boom' },
     });
 
-    expect(mapHttpError(error)).toEqual({ kind: 'unknown', message: 'boom', operationId: undefined });
+    expect(mapHttpError(error)).toEqual({
+      kind: 'unknown',
+      message: 'boom',
+      operationId: undefined,
+    });
   });
 
   it('maps a non-HttpErrorResponse to unknown without throwing', () => {

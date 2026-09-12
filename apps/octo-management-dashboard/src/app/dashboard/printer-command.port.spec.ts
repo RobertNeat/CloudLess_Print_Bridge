@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { AccessPolicy } from '../core/auth-session.service';
 import { CommandExecutionError } from './backend/http-error-mapping';
-import { PRINTER_COMMAND_PORT, PrinterCommandFacade, type PrinterCommandPort } from './printer-command.port';
+import {
+  PRINTER_COMMAND_PORT,
+  PrinterCommandFacade,
+  type PrinterCommandPort,
+} from './printer-command.port';
 
 describe('PrinterCommandFacade', () => {
   it('delegates to the port when the access policy allows the command', async () => {
