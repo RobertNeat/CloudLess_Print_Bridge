@@ -1,0 +1,10 @@
+{
+  "/api/mqtt": {
+    "target": "http://localhost:10320",
+    "secure": false,
+    "pathRewrite": {
+      "^/api/mqtt": "/api/mqtt"
+    },
+    "changeOrigin": true
+  }
+}

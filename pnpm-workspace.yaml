@@ -4,8 +4,8 @@ packages:
 overrides:
   multer: ^2.3.0
 allowBuilds:
-  '@parcel/watcher': true
-  '@scarf/scarf': set this to true or false
+  "@parcel/watcher": true
+  "@scarf/scarf": true
   esbuild: true
   lmdb: true
   msgpackr-extract: true
