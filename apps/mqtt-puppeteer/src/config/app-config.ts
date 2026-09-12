@@ -37,6 +37,10 @@ export interface AppConfig {
   http: {
     host: string;
     port: number;
+    corsOrigins: string[] | true;
+  };
+  telemetry: {
+    historyCapacity: number;
   };
   auth: AuthConfig;
   stateTemplatePath?: string;
@@ -56,6 +60,9 @@ export function loadAppConfig(
         10320,
         0,
         65_535,
+      ),
+      corsOrigins: parseCorsOrigins(
+        envValue(environment, 'MQTT_PUPPETEER_CORS_ORIGINS'),
       ),
     },
     mqtt: {
@@ -138,6 +145,14 @@ export function loadAppConfig(
         30_000,
         100,
         600_000,
+      ),
+    },
+    telemetry: {
+      historyCapacity: integer(
+        envValue(environment, 'MQTT_PUPPETEER_TELEMETRY_HISTORY_CAPACITY'),
+        720,
+        1,
+        100_000,
       ),
     },
     auth: loadAuthConfig(environment),
@@ -265,4 +280,20 @@ function boolean(input: string | undefined, fallback: boolean): boolean {
   if (input === 'true') return true;
   if (input === 'false') return false;
   throw new Error(`Invalid boolean configuration value: ${input}`);
+}
+
+/**
+ * Comma-separated list of allowed dashboard origins, e.g.
+ * "http://localhost:4200,https://dashboard.example.com". The literal value
+ * "*" opts into reflecting any origin (development convenience only).
+ * Defaults to the octo-management-dashboard's local dev origin so the
+ * dashboard can reach this service out of the box.
+ */
+function parseCorsOrigins(input: string | undefined): string[] | true {
+  const value = input ?? 'http://localhost:4200';
+  if (value === '*') return true;
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }

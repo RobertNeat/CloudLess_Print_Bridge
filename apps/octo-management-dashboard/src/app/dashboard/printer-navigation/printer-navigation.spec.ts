@@ -26,6 +26,7 @@ type TestableNavigation = {
   saveConfiguration(): void;
   configureHotend(): void;
   emitHotendAction(direction: 'up' | 'down', step?: number): void;
+  requestHome(): void;
   draftPoints(): PrinterAxisPoints;
   points(): PrinterAxisPoints;
   configurationOpen(): boolean;
@@ -132,6 +133,48 @@ describe('PrinterNavigation', () => {
     ]);
     expect(component.coordinates()).toEqual({ X: 1, Y: 2, Z: 3 });
     expect(coordinateChanges).toEqual([]);
+  });
+
+  it('does not jog coordinates or emit hotend actions while jogDisabled is true', () => {
+    fixture.componentRef.setInput('coordinates', { X: 1, Y: 2, Z: 3 });
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+    const coordinateChanges: Coordinates[] = [];
+    const actions: HotendActionEvent[] = [];
+    component.coordinates.subscribe((value) => coordinateChanges.push(value));
+    component.hotendAction.subscribe((value) => actions.push(value));
+
+    testable.changeCoordinate('X', 10);
+    testable.emitHotendAction('up');
+
+    expect(coordinateChanges).toEqual([]);
+    expect(actions).toEqual([]);
+    expect(component.coordinates()).toEqual({ X: 1, Y: 2, Z: 3 });
+  });
+
+  it('disables the jog and hotend split-buttons and shows the disabled hint while jogDisabled is true', () => {
+    fixture.componentRef.setInput('initialAxisPoints', COMPLETE_POINTS);
+    fixture.componentRef.setInput('initialHotendPoint', { x: 400, y: 300 });
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+
+    const hint = fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint');
+    expect(hint).not.toBeNull();
+    const jogButton = fixture.nativeElement.querySelector(
+      '#printer-navigation-jog-X-positive p-splitbutton button',
+    ) as HTMLButtonElement | null;
+    expect(jogButton?.disabled).toBe(true);
+    const hotendUp = fixture.nativeElement.querySelector(
+      '#printer-navigation-hotend-up button',
+    ) as HTMLButtonElement | null;
+    expect(hotendUp?.disabled).toBe(true);
+  });
+
+  it('does not show the disabled hint when jogging is enabled', () => {
+    fixture.componentRef.setInput('jogDisabled', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint')).toBeNull();
   });
 
   it('configures the hotend as one point with keyboard support', () => {
@@ -298,6 +341,71 @@ describe('PrinterNavigation', () => {
 
     expect(fixture.nativeElement.querySelector('h1')).toBeNull();
     expect(document.title).toBe(initialTitle);
+  });
+
+  it('shows a home button only while jogDisabled is true and emits homeRequested on click', () => {
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+    let homeRequests = 0;
+    component.homeRequested.subscribe(() => homeRequests++);
+
+    const homeButton = fixture.nativeElement.querySelector(
+      '#printer-navigation-home-button',
+    ) as HTMLButtonElement | null;
+    expect(homeButton).not.toBeNull();
+
+    homeButton!.click();
+
+    expect(homeRequests).toBe(1);
+  });
+
+  it('does not show the home button when jogging is enabled (position is known)', () => {
+    fixture.componentRef.setInput('jogDisabled', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#printer-navigation-home-button')).toBeNull();
+  });
+
+  it('does not touch axis-point calibration state when home is requested', () => {
+    fixture.componentRef.setInput('initialAxisPoints', COMPLETE_POINTS);
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+
+    testable.requestHome();
+
+    expect(testable.points()).toEqual(COMPLETE_POINTS);
+    expect(testable.draftPoints()).toEqual(COMPLETE_POINTS);
+  });
+
+  it('maps a pointer position on a non-square rendered widget to the correct viewBox point (preserveAspectRatio="none" stretch mapping)', () => {
+    fixture.detectChanges();
+    testable.toggleConfiguration();
+    testable.configureAxis('X');
+    // Widget rendered at 800x400 while the viewBox is 1000x1000 (the default
+    // square viewBox) — this asymmetric rect is exactly what a
+    // dashboard-layout resize produces, and only a stretch (independent
+    // x/y scale) mapping recovers the correct point on it.
+    const pointerEvent = (clientX: number, clientY: number) =>
+      ({
+        clientX,
+        clientY,
+        isPrimary: true,
+        pointerType: 'mouse',
+        currentTarget: {
+          getBoundingClientRect: () => ({
+            left: 0,
+            top: 0,
+            width: 800,
+            height: 400,
+          }),
+        },
+      }) as unknown as PointerEvent;
+
+    // (200, 100) is 25% across and 25% down the 800x400 rendered rect,
+    // which must map to (250, 250) in the 1000x1000 viewBox.
+    testable.onCanvasPointerDown(pointerEvent(200, 100));
+
+    expect(testable.draftPoints().X.positive).toEqual({ x: 250, y: 250 });
   });
 
   it('uses configured image and canvas dimensions independently of image size', () => {

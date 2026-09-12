@@ -20,19 +20,22 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "docs:commands": "ts-node -r tsconfig-paths/register scripts/generate-command-catalog-doc.ts"
   },
   "dependencies": {
+    "@cloudless/printer-contracts": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-socket.io": "^11.1.28",
+    "@nestjs/swagger": "^11.4.7",
     "@nestjs/websockets": "^11.1.28",
-    "@cloudless/printer-contracts": "workspace:*",
     "mqtt": "^5.15.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

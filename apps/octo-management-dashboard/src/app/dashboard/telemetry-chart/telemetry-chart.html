@@ -1,15 +1,22 @@
-<section class="chart">
+<section
+  id="telemetry-chart"
+  class="chart"
+  data-testid="telemetry-chart"
+  [attr.data-chart-kind]="chart().kind"
+>
   <header>
     <div>
-      <h2>{{ title() }}</h2>
-      <p>{{ subtitle() }}</p>
+      <h2 id="telemetry-chart-title" data-testid="telemetry-chart-title">{{ title() }}</h2>
+      <p id="telemetry-chart-subtitle" data-testid="telemetry-chart-subtitle">{{ subtitle() }}</p>
     </div>
   </header>
   <div class="chart__canvas">
     <canvas
+      id="telemetry-chart-canvas"
       baseChart
       type="line"
       role="img"
+      data-testid="telemetry-chart-canvas"
       [attr.aria-label]="title() + '. ' + subtitle()"
       [data]="data()"
       [options]="options()"

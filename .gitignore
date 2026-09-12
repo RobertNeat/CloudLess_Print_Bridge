@@ -46,3 +46,5 @@ apps/video-service-hub/storage/
 *.orig
 *.rej
 *~
+docs/TMP*
+docs/tmp*

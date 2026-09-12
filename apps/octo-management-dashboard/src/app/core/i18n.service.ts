@@ -211,6 +211,10 @@ const messages = {
     'navigation.bottomRight': 'Prawy dolny',
     'navigation.alternativeStep': 'Inny krok {{direction}} osi {{axis}}',
     'navigation.hotendStep': 'Inny krok hotendu w kierunku {{direction}}',
+    'navigation.jogDisabledHint':
+      'Pozycja drukarki jest nieznana. Wybazuj drukarkę, aby odblokować sterowanie.',
+    'navigation.homeButton': 'Bazuj drukarkę',
+    'navigation.homeButtonAria': 'Bazuj drukarkę, aby odblokować sterowanie',
     'chart.timeTooltip': 'Czas: {{value}} min',
     'chart.progress.title': 'Postęp wydruku',
     'chart.progress.subtitle': 'Postęp zadania w czasie',
@@ -440,6 +444,10 @@ const messages = {
     'navigation.bottomRight': 'Bottom right',
     'navigation.alternativeStep': 'Alternative {{direction}} step for axis {{axis}}',
     'navigation.hotendStep': 'Alternative hotend step towards {{direction}}',
+    'navigation.jogDisabledHint':
+      'Printer position is unknown. Home the printer to enable movement controls.',
+    'navigation.homeButton': 'Home printer',
+    'navigation.homeButtonAria': 'Home the printer to unlock movement controls',
     'chart.timeTooltip': 'Time: {{value}} min',
     'chart.progress.title': 'Print progress',
     'chart.progress.subtitle': 'Job progress over time',

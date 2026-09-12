@@ -1,9 +1,11 @@
-<div class="app-shell">
-  <header class="app-header">
-    <p-menubar [model]="menuItems" [attr.aria-label]="t('mainNavigation')">
+<div id="app-shell" class="app-shell">
+  <header id="app-header" class="app-header">
+    <p-menubar id="app-main-menu" [model]="menuItems" [attr.aria-label]="t('mainNavigation')">
       <ng-template #start>
         <p-select
+          id="dashboard-select"
           inputId="dashboard-select"
+          data-testid="dashboard-select"
           class="dashboard-select"
           [options]="dashboardOptions()"
           [ngModel]="activeDashboardId()"
@@ -46,20 +48,24 @@
             />
           }
           <p-button
+            id="language-toggle-button"
             severity="secondary"
             [text]="true"
             [rounded]="true"
             [label]="languageLabel()"
+            data-testid="language-toggle-button"
             [attr.aria-label]="t('changeLanguage')"
             [pTooltip]="t('changeLanguage')"
             tooltipPosition="bottom"
             (onClick)="toggleLanguage()"
           />
           <p-button
+            id="theme-toggle-button"
             severity="secondary"
             [text]="true"
             [rounded]="true"
             [icon]="themeIcon()"
+            data-testid="theme-toggle-button"
             [attr.aria-label]="t('toggleTheme')"
             [pTooltip]="t('toggleTheme')"
             tooltipPosition="bottom"
@@ -69,5 +75,5 @@
       </ng-template>
     </p-menubar>
   </header>
-  <main class="app-content"><router-outlet /></main>
+  <main id="app-content" class="app-content" data-testid="app-content"><router-outlet /></main>
 </div>

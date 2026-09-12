@@ -1,19 +1,37 @@
-<article class="job-card" [class]="'job-card job-card--' + job().status">
-  <img class="job-card__thumbnail" [src]="job().thumbnailUrl" [alt]="job().thumbnailAlt" />
+<article
+  id="print-job-card"
+  class="job-card"
+  data-testid="print-job-card"
+  [class]="'job-card job-card--' + job().status"
+  [attr.data-status]="job().status"
+>
+  <img
+    id="print-job-thumbnail"
+    class="job-card__thumbnail"
+    data-testid="print-job-thumbnail"
+    [src]="job().thumbnailUrl"
+    [alt]="job().thumbnailAlt"
+  />
   <div class="job-card__body">
     <header>
       <div>
         <span class="eyebrow">{{ i18n.t('printJob.current') }}</span>
-        <h2>{{ job().name }}</h2>
+        <h2 id="print-job-name" data-testid="print-job-name">{{ job().name }}</h2>
       </div>
-      <span class="status"><i aria-hidden="true"></i>{{ statusLabel() }}</span>
+      <span id="print-job-status" class="status" data-testid="print-job-status"
+        ><i aria-hidden="true"></i>{{ statusLabel() }}</span
+      >
     </header>
     <div class="progress-copy">
       <span>{{ i18n.t('printJob.progress') }}</span
-      ><strong>{{ progress() }}%</strong>
+      ><strong id="print-job-progress-value" data-testid="print-job-progress-value"
+        >{{ progress() }}%</strong
+      >
     </div>
     <div
+      id="print-job-progress-bar"
       class="progress-track"
+      data-testid="print-job-progress-bar"
       role="progressbar"
       [attr.aria-label]="i18n.t('printJob.progressAria')"
       aria-valuemin="0"
@@ -26,42 +44,52 @@
     <dl>
       <div>
         <dt><i class="pi pi-clone" aria-hidden="true"></i> {{ i18n.t('printJob.layers') }}</dt>
-        <dd>{{ layer() }} / {{ job().totalLayers }}</dd>
+        <dd id="print-job-layers" data-testid="print-job-layers">
+          {{ layer() }} / {{ job().totalLayers }}
+        </dd>
       </div>
       <div>
         <dt><i class="pi pi-clock" aria-hidden="true"></i> {{ i18n.t('printJob.remaining') }}</dt>
-        <dd>{{ job().estimatedPrintTime }}</dd>
+        <dd id="print-job-remaining-time" data-testid="print-job-remaining-time">
+          {{ job().estimatedPrintTime }}
+        </dd>
       </div>
     </dl>
     <footer>
       @if (job().status === 'paused') {
         <button
+          id="print-job-resume-button"
           pButton
           type="button"
           size="small"
           icon="pi pi-play"
+          data-testid="print-job-resume-button"
           [label]="i18n.t('printJob.resume')"
           (click)="resumeRequested.emit()"
         ></button>
       } @else {
         <button
+          id="print-job-pause-button"
           pButton
           type="button"
           size="small"
           severity="secondary"
           icon="pi pi-pause"
+          data-testid="print-job-pause-button"
           [label]="i18n.t('printJob.pause')"
           [disabled]="terminal()"
           (click)="pauseRequested.emit()"
         ></button>
       }
       <button
+        id="print-job-cancel-button"
         pButton
         type="button"
         size="small"
         severity="danger"
         [outlined]="true"
         icon="pi pi-times"
+        data-testid="print-job-cancel-button"
         [label]="i18n.t('printJob.stop')"
         [disabled]="terminal()"
         (click)="cancelRequested.emit()"

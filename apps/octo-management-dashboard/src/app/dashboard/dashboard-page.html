@@ -1,8 +1,20 @@
-<section class="dashboard" [class.dashboard--editing]="layout.editing()">
-  @if (commandError()) {
-    <div class="dashboard-command-error" role="alert">
+<section
+  id="management-dashboard"
+  class="dashboard"
+  data-testid="management-dashboard"
+  [class.dashboard--editing]="layout.editing()"
+>
+  @if (commandError(); as error) {
+    <div
+      id="dashboard-command-error"
+      class="dashboard-command-error"
+      [class]="'dashboard-command-error dashboard-command-error--' + error.kind"
+      data-testid="dashboard-command-error"
+      [attr.data-error-kind]="error.kind"
+      role="alert"
+    >
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-      {{ i18n.t('dashboard.commandError') }}
+      {{ error.message }}
     </div>
   }
   @if (dashboard(); as data) {
@@ -40,7 +52,6 @@
                   [lightEnabled]="data.controls.lightEnabled"
                   (lightEnabledChange)="updateControl('lightEnabled', $event)"
                   [fansEnabled]="data.controls.fansEnabled"
-                  (fansEnabledChange)="updateControl('fansEnabled', $event)"
                   [fanSpeed]="data.controls.fanSpeed"
                   (fanSpeedChange)="updateControl('fanSpeed', $event)"
                   [printSpeed]="data.controls.printSpeed"
@@ -50,6 +61,7 @@
               @case ('temperatures') {
                 <app-printer-temperatures
                   [temperatures]="data.temperatures"
+                  [settableSensors]="settableTemperatureSensors()"
                   (temperatureChange)="updateTemperature($event)"
                 />
               }
@@ -57,12 +69,17 @@
                 <app-printer-navigation
                   [coordinates]="data.coordinates"
                   (coordinatesChange)="updateCoordinates($event)"
+                  [axisRanges]="data.axisRanges"
+                  [jogDisabled]="data.positionSource === 'unknown'"
                   [initialAxisPoints]="data.navigation.axisPoints"
                   [initialHotendPoint]="data.navigation.hotendPoint"
                   [steps]="data.navigation.steps"
                   [viewport]="data.navigation.viewport"
                   [labels]="navigationLabels()"
                   (configurationSaved)="updateNavigationConfiguration($event)"
+                  (axesReset)="resetAxes($event)"
+                  (hotendAction)="jogHotend($event)"
+                  (homeRequested)="home()"
                 />
               }
               @case ('live-preview') {
@@ -83,12 +100,12 @@
       }
     </gridster>
   } @else if (loadingError()) {
-    <div class="dashboard-state">
+    <div id="dashboard-load-error" class="dashboard-state" data-testid="dashboard-load-error">
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
       ><strong>{{ i18n.t('dashboard.loadError') }}</strong>
     </div>
   } @else {
-    <div class="dashboard-state">
+    <div id="dashboard-loading" class="dashboard-state" data-testid="dashboard-loading">
       <i class="pi pi-spin pi-spinner" aria-hidden="true"></i
       ><span>{{ i18n.t('dashboard.loading') }}</span>
     </div>

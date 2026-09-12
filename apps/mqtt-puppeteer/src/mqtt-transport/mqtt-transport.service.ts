@@ -17,6 +17,8 @@ import {
 } from '../events/bridge-events.service';
 import { applyOperationSequence } from '../operations/operation-payload';
 import { OperationTrackerService } from '../operations/operation-tracker.service';
+import { PRINTER_COMMAND_PROFILE } from '../printer-profiles/printer-command-profile';
+import type { PrinterCommandProfile } from '../printer-profiles/printer-command-profile';
 
 export interface PublishResult {
   published: true;
@@ -43,6 +45,8 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly events: BridgeEventsService,
     private readonly operations: OperationTrackerService,
+    @Inject(PRINTER_COMMAND_PROFILE)
+    private readonly profile: PrinterCommandProfile,
   ) {}
 
   onModuleInit(): void {
@@ -107,6 +111,20 @@ export class MqttTransportService implements OnModuleInit, OnModuleDestroy {
       this.operations.reject(context.operationId, message);
       throw new BadRequestException(message);
     }
+
+    // Single enforcement chokepoint: every payload reaching MQTT — whether
+    // built from the command catalog or submitted via the raw passthrough
+    // endpoint — is inspected by the active printer profile before it can be
+    // published, so machine safety limits cannot be bypassed from the API.
+    const safety = this.profile.inspectPayload(payload);
+    if (!safety.safe) {
+      const message =
+        safety.reason ?? 'Payload rejected by printer profile safety check';
+      this.emitPublicationFailure(context, message, payload);
+      this.operations.reject(context.operationId, message);
+      throw new BadRequestException(message);
+    }
+
     const operationPayload = applyOperationSequence(
       payload,
       context.operationId,
