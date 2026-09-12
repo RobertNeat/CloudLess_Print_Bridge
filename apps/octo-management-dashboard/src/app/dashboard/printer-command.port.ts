@@ -1,7 +1,11 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { AccessPolicy, type Permission } from '../core/auth-session.service';
+import { CommandExecutionError } from './backend/http-error-mapping';
 import type { ManagementDashboardData, PrintJobStatus } from './dashboard.models';
-import type { PrinterNavigationConfiguration } from './printer-navigation/printer-navigation.models';
+import type {
+  HotendActionEvent,
+  PrinterNavigationConfiguration,
+} from './printer-navigation/printer-navigation.models';
 import type { TemperatureChange } from './printer-temperatures/printer-temperatures';
 
 export type PrinterCommand =
@@ -20,7 +24,8 @@ export type PrinterCommand =
       readonly type: 'set-preview';
       readonly change: Partial<ManagementDashboardData['livePreview']>;
     }
-  | { readonly type: 'set-temperature'; readonly change: TemperatureChange };
+  | { readonly type: 'set-temperature'; readonly change: TemperatureChange }
+  | { readonly type: 'jog-hotend'; readonly action: HotendActionEvent };
 
 export interface PrinterCommandPort {
   execute(command: PrinterCommand): Promise<void>;
@@ -46,7 +51,12 @@ export class PrinterCommandFacade {
   async execute(command: PrinterCommand): Promise<void> {
     const permission: Permission =
       command.type === 'set-navigation' ? 'printer.configure' : 'printer.control';
-    if (!this.access.can(permission)) throw new Error('Operation is not permitted.');
+    if (!this.access.can(permission)) {
+      throw new CommandExecutionError({
+        kind: 'forbidden',
+        message: 'Operation is not permitted.',
+      });
+    }
     await this.port.execute(command);
   }
 }

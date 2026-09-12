@@ -112,6 +112,18 @@
       </div>
     }
 
+    @if (jogDisabled() && !configurationOpen()) {
+      <div
+        id="printer-navigation-jog-disabled-hint"
+        class="active-point-hint"
+        data-testid="printer-navigation-jog-disabled-hint"
+        role="status"
+        aria-live="polite"
+      >
+        {{ labels().jogDisabledHint }}
+      </div>
+    }
+
     <button
       id="printer-navigation-settings-button"
       pButton
@@ -157,6 +169,7 @@
             <p-splitbutton
               size="small"
               severity="secondary"
+              [disabled]="jogDisabled()"
               [label]="movementLabel('negative')"
               [model]="movementMenu(view.axis, 'negative')"
               [appendTo]="'body'"
@@ -180,6 +193,7 @@
             <p-splitbutton
               size="small"
               severity="secondary"
+              [disabled]="jogDisabled()"
               [label]="movementLabel('positive')"
               [model]="movementMenu(view.axis, 'positive')"
               [appendTo]="'body'"
@@ -201,6 +215,7 @@
                 dropdownIcon="pi pi-chevron-right"
                 styleClass="hotend-splitbutton"
                 data-testid="printer-navigation-hotend-up"
+                [disabled]="jogDisabled()"
                 [label]="hotendLabel('up')"
                 [model]="hotendMenu('up')"
                 [appendTo]="'body'"
@@ -215,6 +230,7 @@
                 dropdownIcon="pi pi-chevron-right"
                 styleClass="hotend-splitbutton"
                 data-testid="printer-navigation-hotend-down"
+                [disabled]="jogDisabled()"
                 [label]="hotendLabel('down')"
                 [model]="hotendMenu('down')"
                 [appendTo]="'body'"

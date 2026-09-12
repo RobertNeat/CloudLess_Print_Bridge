@@ -4,10 +4,17 @@
   data-testid="management-dashboard"
   [class.dashboard--editing]="layout.editing()"
 >
-  @if (commandError()) {
-    <div id="dashboard-command-error" class="dashboard-command-error" data-testid="dashboard-command-error" role="alert">
+  @if (commandError(); as error) {
+    <div
+      id="dashboard-command-error"
+      class="dashboard-command-error"
+      [class]="'dashboard-command-error dashboard-command-error--' + error.kind"
+      data-testid="dashboard-command-error"
+      [attr.data-error-kind]="error.kind"
+      role="alert"
+    >
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-      {{ i18n.t('dashboard.commandError') }}
+      {{ error.message }}
     </div>
   }
   @if (dashboard(); as data) {
@@ -55,6 +62,7 @@
               @case ('temperatures') {
                 <app-printer-temperatures
                   [temperatures]="data.temperatures"
+                  [settableSensors]="['bed', 'nozzle']"
                   (temperatureChange)="updateTemperature($event)"
                 />
               }
@@ -62,12 +70,16 @@
                 <app-printer-navigation
                   [coordinates]="data.coordinates"
                   (coordinatesChange)="updateCoordinates($event)"
+                  [axisRanges]="data.axisRanges"
+                  [jogDisabled]="data.positionSource === 'unknown'"
                   [initialAxisPoints]="data.navigation.axisPoints"
                   [initialHotendPoint]="data.navigation.hotendPoint"
                   [steps]="data.navigation.steps"
                   [viewport]="data.navigation.viewport"
                   [labels]="navigationLabels()"
                   (configurationSaved)="updateNavigationConfiguration($event)"
+                  (axesReset)="resetAxes($event)"
+                  (hotendAction)="jogHotend($event)"
                 />
               }
               @case ('live-preview') {

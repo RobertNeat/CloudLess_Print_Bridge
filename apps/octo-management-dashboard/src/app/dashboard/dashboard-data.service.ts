@@ -47,6 +47,8 @@ function isManagementDashboardData(value: unknown): value is ManagementDashboard
     controls,
     temperatures,
     coordinates,
+    positionSource,
+    axisRanges,
     navigation,
     livePreview,
     widgets,
@@ -69,6 +71,8 @@ function isManagementDashboardData(value: unknown): value is ManagementDashboard
     isRecord(temperatures) &&
     ['chamber', 'bed', 'nozzle'].every((key) => isNullableNumber(temperatures[key])) &&
     hasNumbers(coordinates, ['X', 'Y', 'Z']) &&
+    ['unknown', 'homed', 'commanded'].includes(String(positionSource)) &&
+    isAxisRanges(axisRanges) &&
     isNavigation(navigation) &&
     isLivePreview(livePreview) &&
     Array.isArray(widgets) &&
@@ -76,6 +80,14 @@ function isManagementDashboardData(value: unknown): value is ManagementDashboard
     isRecord(charts) &&
     ['progress', 'temperature', 'fan'].every((key) => isChart(charts[key]))
   );
+}
+
+function isAxisRanges(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return ['X', 'Y', 'Z'].every((axis) => {
+    const range = value[axis];
+    return isRecord(range) && isNumber(range['min']) && isNumber(range['max']) && range['min'] <= range['max'];
+  });
 }
 
 function isNavigation(value: unknown): boolean {

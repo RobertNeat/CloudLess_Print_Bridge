@@ -10,10 +10,15 @@
       [id]="'temperature-reading-' + reading.sensor"
       [attr.data-testid]="'temperature-reading-' + reading.sensor"
       [attr.data-sensor]="reading.sensor"
+      [attr.data-settable]="isSettable(reading.sensor)"
       [class]="'temperature temperature--' + reading.color"
-      [class.temperature--disabled]="reading.value === null"
-      [disabled]="reading.value === null"
-      [attr.aria-label]="i18n.t('temperatures.edit', { name: reading.label })"
+      [class.temperature--disabled]="reading.value === null || !isSettable(reading.sensor)"
+      [disabled]="reading.value === null || !isSettable(reading.sensor)"
+      [attr.aria-label]="
+        isSettable(reading.sensor)
+          ? i18n.t('temperatures.edit', { name: reading.label })
+          : reading.label
+      "
       (click)="openEditor($event, reading, temperaturePopover)"
     >
       <span class="temperature__icon"><i [class]="reading.icon" aria-hidden="true"></i></span>

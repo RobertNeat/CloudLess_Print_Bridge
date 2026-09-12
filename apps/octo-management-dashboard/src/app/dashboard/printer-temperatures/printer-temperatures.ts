@@ -39,6 +39,15 @@ interface TemperatureReading {
 export class PrinterTemperatures {
   protected readonly i18n = inject(I18nService);
   readonly temperatures = input.required<PrinterTemperatureData>();
+  /**
+   * Sensors whose displayed value can be edited (a target temperature set
+   * via the popover). Defaults to all three, preserving current/mock
+   * behavior. The real Bambu Lab A1 backend has no chamber-heater command —
+   * DashboardPage passes ['bed', 'nozzle'] once wired to it, so the chamber
+   * reading stays a display-only value even when it reports a non-null
+   * current temperature.
+   */
+  readonly settableSensors = input<readonly TemperatureSensor[]>(['chamber', 'bed', 'nozzle']);
   readonly temperatureChange = output<TemperatureChange>();
   protected readonly selected = signal<TemperatureReading | null>(null);
   protected readonly draftValue = signal<number | null>(null);
@@ -66,8 +75,12 @@ export class PrinterTemperatures {
     },
   ]);
 
+  protected isSettable(sensor: TemperatureSensor): boolean {
+    return this.settableSensors().includes(sensor);
+  }
+
   protected openEditor(event: Event, reading: TemperatureReading, popover: Popover): void {
-    if (reading.value === null) return;
+    if (reading.value === null || !this.isSettable(reading.sensor)) return;
     this.selected.set(reading);
     this.draftValue.set(reading.value);
     popover.toggle(event);

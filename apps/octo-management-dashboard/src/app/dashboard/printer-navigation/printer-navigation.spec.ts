@@ -134,6 +134,50 @@ describe('PrinterNavigation', () => {
     expect(coordinateChanges).toEqual([]);
   });
 
+  it('does not jog coordinates or emit hotend actions while jogDisabled is true', () => {
+    fixture.componentRef.setInput('coordinates', { X: 1, Y: 2, Z: 3 });
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+    const coordinateChanges: Coordinates[] = [];
+    const actions: HotendActionEvent[] = [];
+    component.coordinates.subscribe((value) => coordinateChanges.push(value));
+    component.hotendAction.subscribe((value) => actions.push(value));
+
+    testable.changeCoordinate('X', 10);
+    testable.emitHotendAction('up');
+
+    expect(coordinateChanges).toEqual([]);
+    expect(actions).toEqual([]);
+    expect(component.coordinates()).toEqual({ X: 1, Y: 2, Z: 3 });
+  });
+
+  it('disables the jog and hotend split-buttons and shows the disabled hint while jogDisabled is true', () => {
+    fixture.componentRef.setInput('initialAxisPoints', COMPLETE_POINTS);
+    fixture.componentRef.setInput('initialHotendPoint', { x: 400, y: 300 });
+    fixture.componentRef.setInput('jogDisabled', true);
+    fixture.detectChanges();
+
+    const hint = fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint');
+    expect(hint).not.toBeNull();
+    const jogButton = fixture.nativeElement.querySelector(
+      '#printer-navigation-jog-X-positive p-splitbutton button',
+    ) as HTMLButtonElement | null;
+    expect(jogButton?.disabled).toBe(true);
+    const hotendUp = fixture.nativeElement.querySelector(
+      '#printer-navigation-hotend-up button',
+    ) as HTMLButtonElement | null;
+    expect(hotendUp?.disabled).toBe(true);
+  });
+
+  it('does not show the disabled hint when jogging is enabled', () => {
+    fixture.componentRef.setInput('jogDisabled', false);
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('#printer-navigation-jog-disabled-hint'),
+    ).toBeNull();
+  });
+
   it('configures the hotend as one point with keyboard support', () => {
     fixture.detectChanges();
     testable.toggleConfiguration();

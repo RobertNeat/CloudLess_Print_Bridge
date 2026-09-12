@@ -56,5 +56,6 @@ export function createPrinterNavigationLabels(i18n: I18nService): PrinterNavigat
       i18n.t('navigation.alternativeStep', { axis, direction: directionName(direction) }),
     hotendStepAriaLabel: (direction) =>
       i18n.t('navigation.hotendStep', { direction: hotendDirection(direction) }),
+    jogDisabledHint: i18n.t('navigation.jogDisabledHint'),
   };
 }
