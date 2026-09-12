@@ -3,6 +3,11 @@
 Domyślny adres HTTP to `http://localhost:10320`, a namespace Socket.IO to
 `http://localhost:10320/printer`.
 
+Interaktywna dokumentacja Swagger/OpenAPI jest dostępna pod `/docs`
+(surowy dokument JSON pod `/docs-json`) i jest generowana bezpośrednio
+z adnotacji kontrolerów, więc nie może rozjechać się z kodem tak jak ten
+plik.
+
 ## Wspólne zasady
 
 - Body operacji przyjmujących parametry musi być obiektem JSON.
@@ -37,7 +42,8 @@ przed odebraniem pierwszego raportu.
 
 ### `GET /device_config/profile`
 
-Zwraca identyfikator aktywnego profilu oraz topologię AMS:
+Zwraca identyfikator aktywnego profilu, topologię AMS oraz bezpieczny
+zakres ruchu (`machineEnvelope`) tego profilu:
 
 ```json
 {
@@ -46,9 +52,21 @@ Zwraca identyfikator aktywnego profilu oraz topologię AMS:
     "unitCount": 1,
     "slotsPerUnit": 4,
     "externalSpool": true
+  },
+  "machineEnvelope": {
+    "x": { "minimum": 0, "maximum": 256 },
+    "y": { "minimum": 0, "maximum": 256 },
+    "z": { "minimum": 20, "maximum": 240 }
   }
 }
 ```
+
+`machineEnvelope` powinien być odczytany przez frontend przed
+wyrenderowaniem sterowania ruchem, aby ograniczyć suwaki/pola liczbowe do
+bezpiecznego zakresu (pierwsza warstwa weryfikacji). Backend egzekwuje ten
+sam zakres niezależnie — patrz sekcja „Podwójna weryfikacja granic ruchu”
+poniżej — więc żądanie poza zakresem zostanie odrzucone nawet jeśli
+frontend go nie ograniczy.
 
 ### `GET /device_config/state/merged`
 
@@ -105,6 +123,37 @@ AMS ma jawny kontrakt domenowy:
 Mapper przyjmuje tylko skończone liczby i niepuste teksty liczbowe. Odrzuca
 `null`, pusty tekst, wartości logiczne, liczby nieskończone oraz wartości poza
 zakresem domenowym temperatur, procentów, wentylatorów i warstw.
+
+Model domenowy zawiera również `position` — pozycję głowicy śledzoną metodą
+„dead reckoning" (na podstawie wysłanych komend `home`/`move-absolute`), a
+**nie** odczyt z czujnika:
+
+```json
+{
+  "position": {
+    "x": 125,
+    "y": 125,
+    "z": 20,
+    "homed": true,
+    "source": "commanded",
+    "updatedAt": "2026-09-12T10:00:00.000Z"
+  }
+}
+```
+
+Raport `pushall` drukarki Bambu Lab A1 nie zawiera aktualnej pozycji XYZ,
+dlatego `position` jest wyliczana wyłącznie na podstawie komend, które serwis
+sam opublikował:
+
+- `source: "unknown"` — jeszcze żadna komenda ruchu nie została opublikowana
+  (lub połączenie MQTT właśnie się zerwało — `mqttStatus$.connected === false`
+  unieważnia śledzoną pozycję);
+- `source: "homed"` — ostatnią potwierdzoną operacją było `home`;
+- `source: "commanded"` — ostatnią potwierdzoną operacją był `move-absolute`.
+
+Frontend nie powinien prezentować `position` jako pomiaru w czasie
+rzeczywistym — to najlepsze dostępne przybliżenie na podstawie historii
+komend.
 
 ## 3. Print job
 
@@ -193,6 +242,29 @@ i maksymalna mogą nadpisać wartości definicji.
 
 ## 5. Movement
 
+### Podwójna weryfikacja granic ruchu
+
+Granice `X: 0..256`, `Y: 0..256`, `Z: 20..240` (profil A1) są egzekwowane
+dwukrotnie, niezależnie od siebie:
+
+1. **Warstwa parametrów** — `CommandCatalogService` odrzuca żądanie z kodem
+   `400 Bad Request` zanim payload zostanie zbudowany, jeśli parametr
+   `x`/`y`/`z` komendy `move-absolute` wykracza poza zakres zdefiniowany
+   przez profil.
+2. **Warstwa transportu** — `MqttTransportService.publish()` wywołuje
+   `PrinterCommandProfile.inspectPayload()` na **każdym** payloadzie tuż
+   przed publikacją do MQTT, niezależnie od tego, czy payload powstał
+   z katalogu komend, czy trafił bezpośrednio przez `POST /commands/raw`.
+   Ten sam gcode ruchu (`G1 X.. Y.. Z..`) jest parsowany i porównywany
+   z `machineEnvelope` profilu.
+
+Dzięki warstwie 2 nie da się ominąć limitów osi wysyłając ręcznie
+spreparowany gcode przez `POST /commands/raw` — jest to jedyny endpoint,
+który omija walidację parametrów katalogu, ale nie omija sprawdzenia
+bezpieczeństwa payloadu. Żadna liczba graniczna nie jest zaszyta poza
+`printer-profiles/bambu-lab-a1/` — inny profil drukarki zmienia
+`machineEnvelope` bez zmian w generycznym kodzie transportu.
+
 ### `POST /movement/absolute`
 
 Waliduje i publikuje ruch jednej lub wielu osi w trybie absolutnym:
@@ -207,7 +279,9 @@ Waliduje i publikuje ruch jednej lub wielu osi w trybie absolutnym:
 ```
 
 Co najmniej jedna z osi jest wymagana. Profil A1 ogranicza X/Y do `0..256`,
-Z do `20..240`, a feedrate do `1..30000`.
+Z do `20..240`, a feedrate do `1..30000`. Zakres można też pobrać w runtime
+z `GET /device_config/profile` (`machineEnvelope`), by ograniczyć suwaki UI
+przed wysłaniem żądania.
 
 ### `POST /movement/absolute/simulate`
 
@@ -244,12 +318,107 @@ Ustawia pozycję domową wszystkich osi. Body nie jest wymagane.
 Ujemne `millimeters` oznacza retrakcję. Profil A1 dopuszcza zakres
 `-50..50`.
 
-## 6. Commands
+## 6. Printer controls
+
+Cienkie, gotowe pod widgety dashboardu endpointy, które jedynie przekazują
+żądanie do istniejącej komendy katalogu — nie zawierają własnej wiedzy
+o konkretnym modelu drukarki.
+
+### `POST /printer-controls/light`
+
+```json
+{ "enabled": true }
+```
+
+Deleguje do komendy `set-light`.
+
+### `POST /printer-controls/fan`
+
+```json
+{ "percent": 50 }
+```
+
+Zakres `0..100`. Deleguje do komendy `set-part-fan`.
+
+### `POST /printer-controls/print-speed`
+
+```json
+{ "mode": "sport" }
+```
+
+Deleguje do komendy `set-print-speed` (`silent`, `standard`, `sport`,
+`ludicrous`).
+
+### `POST /printer-controls/temperature/bed`
+
+```json
+{ "celsius": 55 }
+```
+
+Zakres `0..120`. Deleguje do komendy `set-bed-temperature`.
+
+### `POST /printer-controls/temperature/nozzle`
+
+```json
+{ "celsius": 220 }
+```
+
+Zakres `0..300`. Deleguje do komendy `set-nozzle-temperature`.
+
+> Komora (chamber) drukarki A1 nie ma grzałki — nie istnieje komenda
+> `set-chamber-temperature` i celowo nie ma tu endpointu
+> `printer-controls/temperature/chamber`. Odczyt temperatury komory
+> pozostaje dostępny wyłącznie do odczytu w modelu domenowym.
+
+## 7. Telemetry
+
+### `GET /telemetry/history`
+
+Zwraca ograniczony bufor historii (kołowy, rozmiar konfigurowalny przez
+`MQTT_PUPPETEER_TELEMETRY_HISTORY_CAPACITY`, domyślnie 720 próbek) wyliczany
+z modelu domenowego przy każdej aktualizacji stanu drukarki — nie z surowych
+pól protokołu, więc bufor pozostaje ważny niezależnie od aktywnego profilu:
+
+```json
+{
+  "capacity": 720,
+  "samples": [
+    {
+      "capturedAt": "2026-09-12T10:00:00.000Z",
+      "progressPercent": 42,
+      "nozzleTemperatureCurrent": 210,
+      "nozzleTemperatureTarget": 220,
+      "bedTemperatureCurrent": 55,
+      "bedTemperatureTarget": 60,
+      "chamberTemperatureCurrent": 30,
+      "coolingFanPercent": 80,
+      "auxiliaryFanPercent": 20
+    }
+  ]
+}
+```
+
+Służy do zasilenia wykresów dashboardu od razu po połączeniu, zamiast
+czekania na kolejne zdarzenia `device_config.state.domain` przez Socket.IO.
+
+### `DELETE /telemetry/history`
+
+Czyści bufor. Zwraca `204 No Content`. Przydatne głównie w testach.
+
+## 8. Commands
 
 ### `GET /commands`
 
 Zwraca listę wszystkich zaimportowanych definicji wraz z parametrami,
-uwagami bezpieczeństwa i źródłem.
+uwagami bezpieczeństwa i źródłem. Ta odpowiedź jest wystarczająca, by
+frontend wygenerował formularz dla każdej komendy bez zaszytej wiedzy
+o konkretnym modelu drukarki.
+
+Statyczna, czytelna dla człowieka wersja aktualnie załadowanego katalogu
+(dla domyślnego profilu Bambu Lab A1) jest utrzymywana w
+[command-catalog.md](./command-catalog.md) i generowana z tego samego kodu
+przez `pnpm docs:commands` — nie da się jej ręcznie rozjechać z tym, co
+faktycznie zwraca ten endpoint.
 
 ### `POST /commands/:id`
 
@@ -259,7 +428,8 @@ logiki.
 
 ### `POST /commands/raw`
 
-Jedyny endpoint REST publikujący surowy obiekt z pominięciem katalogu:
+Jedyny endpoint REST publikujący surowy obiekt z pominięciem katalogu i jego
+walidacji parametrów:
 
 ```json
 {
@@ -273,6 +443,32 @@ Jedyny endpoint REST publikujący surowy obiekt z pominięciem katalogu:
 
 Istniejące `sequence_id` jest zastępowane przez `operationId`. Jeżeli obiekt
 komendy nie ma tego pola, serwis je dodaje.
+
+Pominięcie katalogu **nie** oznacza pominięcia bezpieczeństwa: payload nadal
+przechodzi przez `PrinterCommandProfile.inspectPayload()` w
+`MqttTransportService.publish()` przed wysłaniem do MQTT. Gcode ruchu poza
+`machineEnvelope` profilu (patrz sekcja 5) zwraca `400 Bad Request` zamiast
+trafić do drukarki.
+
+## CORS
+
+Zarówno REST (`app.enableCors()` w `main.ts`), jak i Socket.IO (namespace
+`/printer`) czytają dozwolone originy z tej samej konfiguracji:
+`MQTT_PUPPETEER_CORS_ORIGINS` — lista adresów rozdzielonych przecinkiem, np.
+
+```
+MQTT_PUPPETEER_CORS_ORIGINS=http://localhost:4200,https://dashboard.example.com
+```
+
+Wartość `*` włącza tryb odbijania dowolnego originu (wygodne w
+developmencie, niezalecane produkcyjnie). Domyślnie skonfigurowany jest
+tylko lokalny adres deweloperski `octo-management-dashboard`
+(`http://localhost:4200`), więc dashboard działa "out of the box" bez
+dodatkowej konfiguracji w środowisku lokalnym.
+
+`credentials: true` jest włączone na obu warstwach, co jest wymagane, aby
+przeglądarka wysyłała nagłówek `Authorization` (bearer token z
+`POST /auth/token`) w żądaniach cross-origin z dashboardu.
 
 ## Socket.IO
 

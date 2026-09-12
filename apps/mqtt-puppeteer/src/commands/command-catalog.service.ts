@@ -55,6 +55,7 @@ export class CommandCatalogService {
     return {
       id: this.profile.id,
       topology: cloneJson(this.profile.topology),
+      machineEnvelope: cloneJson(this.profile.getMachineEnvelope()),
     };
   }
 

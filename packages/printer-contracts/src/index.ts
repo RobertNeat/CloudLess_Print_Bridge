@@ -42,3 +42,13 @@ export type {
   RemoteFileLocationExtensionDto,
   RemoteStorageConnectionDto,
 } from "./remote-storage.dto.js";
+export type {
+  AxisRangeDto,
+  MachineEnvelopeDto,
+  PrinterPositionDto,
+  PrinterPositionSource,
+} from "./printer-motion.dto.js";
+export type {
+  TelemetryHistoryDto,
+  TelemetrySampleDto,
+} from "./telemetry.dto.js";

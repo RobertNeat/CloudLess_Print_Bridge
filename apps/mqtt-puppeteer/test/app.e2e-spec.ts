@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { firstValueFrom } from 'rxjs';
@@ -17,6 +18,15 @@ describe('mqtt-puppeteer (e2e)', () => {
 
     events = moduleFixture.get(BridgeEventsService);
     app = moduleFixture.createNestApplication();
+    app.enableCors({ origin: ['http://localhost:4200'], credentials: true });
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder()
+        .setTitle('mqtt-puppeteer')
+        .setVersion('0.0.1')
+        .build(),
+    );
+    SwaggerModule.setup('docs', app, document);
     await app.init();
   });
 
@@ -128,7 +138,7 @@ describe('mqtt-puppeteer (e2e)', () => {
     ).toBe(true);
   });
 
-  it('exposes the printer profile and AMS topology', async () => {
+  it('exposes the printer profile, AMS topology and machine envelope', async () => {
     const response = await request(app.getHttpServer())
       .get('/device_config/profile')
       .expect(200);
@@ -139,6 +149,11 @@ describe('mqtt-puppeteer (e2e)', () => {
         unitCount: 1,
         slotsPerUnit: 4,
         externalSpool: true,
+      },
+      machineEnvelope: {
+        x: { minimum: 0, maximum: 256 },
+        y: { minimum: 0, maximum: 256 },
+        z: { minimum: 20, maximum: 240 },
       },
     });
   });
@@ -212,6 +227,148 @@ describe('mqtt-puppeteer (e2e)', () => {
       .post('/commands/raw')
       .send({ print: { command: 'test' } })
       .expect(503);
+  });
+
+  it('rejects an out-of-bounds move through the generic command endpoint', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/commands/move-absolute')
+      .send({ z: 500 })
+      .expect(400);
+
+    expect((response.body as { message: string }).message).toContain(
+      'z must be at most 240',
+    );
+  });
+
+  it('rejects an out-of-bounds move sent through the raw passthrough escape hatch', async () => {
+    // The catalog's parameter validation cannot see this payload at all —
+    // this is the bypass the profile's inspectPayload() hook exists to close.
+    const response = await request(app.getHttpServer())
+      .post('/commands/raw')
+      .send({ print: { command: 'gcode_line', param: 'G90\nG1 Z500 F3000\n' } })
+      .expect(400);
+
+    expect((response.body as { message: string }).message).toContain(
+      'Axis Z target 500 is outside the safe range 20..240',
+    );
+  });
+
+  it('rejects an out-of-bounds move through the dedicated movement endpoint', async () => {
+    await request(app.getHttpServer())
+      .post('/movement/absolute')
+      .send({ x: -5 })
+      .expect(400);
+  });
+
+  it('exposes a dead-reckoned, initially unknown position in the domain state', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/device_config/state/domain')
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      position: {
+        x: null,
+        y: null,
+        z: null,
+        homed: false,
+        source: 'unknown',
+        updatedAt: null,
+      },
+    });
+  });
+
+  it('routes quick-control endpoints to their catalog commands', async () => {
+    const light = await request(app.getHttpServer())
+      .post('/printer-controls/light')
+      .send({ enabled: true })
+      .expect(503); // no MQTT connection in tests, proves the command still reached publish
+    expect((light.body as { message: string }).message).toBe(
+      'MQTT client is not connected',
+    );
+
+    await request(app.getHttpServer())
+      .post('/printer-controls/fan')
+      .send({ percent: 50 })
+      .expect(503);
+
+    await request(app.getHttpServer())
+      .post('/printer-controls/print-speed')
+      .send({ mode: 'sport' })
+      .expect(503);
+
+    await request(app.getHttpServer())
+      .post('/printer-controls/temperature/bed')
+      .send({ celsius: 55 })
+      .expect(503);
+
+    await request(app.getHttpServer())
+      .post('/printer-controls/temperature/nozzle')
+      .send({ celsius: 220 })
+      .expect(503);
+  });
+
+  it('rejects out-of-range quick-control parameters before ever publishing', async () => {
+    await request(app.getHttpServer())
+      .post('/printer-controls/fan')
+      .send({ percent: 150 })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/printer-controls/temperature/nozzle')
+      .send({ celsius: 1000 })
+      .expect(400);
+  });
+
+  it('seeds the telemetry history buffer from startup state and accepts a clear request', async () => {
+    // PrinterStateService publishes its initial (empty) domain snapshot on
+    // module init, so the buffer already holds one all-null sample by the
+    // time the app is ready — this asserts the buffer is wired end-to-end,
+    // not that it starts literally empty.
+    const history = await request(app.getHttpServer())
+      .get('/telemetry/history')
+      .expect(200);
+    const body = history.body as {
+      capacity: number;
+      samples: Array<{ progressPercent: number | null }>;
+    };
+
+    expect(typeof body.capacity).toBe('number');
+    expect(body.samples.length).toBeGreaterThan(0);
+    expect(body.samples[0]).toMatchObject({ progressPercent: null });
+
+    await request(app.getHttpServer()).delete('/telemetry/history').expect(204);
+
+    const cleared = await request(app.getHttpServer())
+      .get('/telemetry/history')
+      .expect(200);
+    expect((cleared.body as { samples: unknown[] }).samples).toEqual([]);
+  });
+
+  it('reflects the configured dashboard origin in CORS headers', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/service/status')
+      .set('Origin', 'http://localhost:4200')
+      .expect(200);
+
+    expect(response.headers['access-control-allow-origin']).toBe(
+      'http://localhost:4200',
+    );
+    expect(response.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('serves the generated Swagger document', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/docs-json')
+      .expect(200);
+    const document = response.body as {
+      info: { title: string };
+      paths: Record<string, unknown>;
+    };
+
+    expect(document).toMatchObject({ info: { title: 'mqtt-puppeteer' } });
+    expect(document.paths).toHaveProperty('/commands');
+    expect(document.paths).toHaveProperty('/movement/absolute');
+    expect(document.paths).toHaveProperty('/telemetry/history');
   });
 
   afterEach(async () => {

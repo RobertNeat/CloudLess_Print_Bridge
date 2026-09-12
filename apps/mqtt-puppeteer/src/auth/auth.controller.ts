@@ -7,6 +7,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { AuthTokenService } from './auth-token.service';
 import type { AuthenticatedUser } from './auth.types';
@@ -21,6 +22,7 @@ const DEFAULT_PERMISSIONS = [
   'files.manage',
 ];
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -29,6 +31,8 @@ export class AuthController {
   ) {}
 
   @Get('config')
+  @ApiOperation({ summary: 'Get the non-secret auth configuration' })
+  @ApiOkResponse({ description: 'Auth mode, service name, ttl.' })
   getConfig() {
     const { mode, serviceName, tokenIssuerOrder, tokenTtlSeconds } =
       this.config.auth;
@@ -36,6 +40,10 @@ export class AuthController {
   }
 
   @Post('token')
+  @ApiOperation({
+    summary: 'Issue a bearer access token for a dashboard session',
+  })
+  @ApiOkResponse({ description: 'Access token, ttl, resolved user session.' })
   createToken(
     @Headers('x-cloudless-auth-key') authKey: string | undefined,
     @Body() body: Partial<AuthenticatedUser>,

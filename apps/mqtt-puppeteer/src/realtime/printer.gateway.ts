@@ -6,12 +6,22 @@ import {
 import type { Server, Socket } from 'socket.io';
 import { Subscription } from 'rxjs';
 import { BridgeEventsService } from '../events/bridge-events.service';
+import { loadAppConfig } from '../config/app-config';
 import { MqttTransportService } from '../mqtt-transport/mqtt-transport.service';
 import { PrinterStateService } from '../printer-state/printer-state.service';
 
+/**
+ * @WebSocketGateway's `cors` option is evaluated once, at class-decoration
+ * time, before Nest's DI container exists — it cannot receive AppConfig via
+ * injection. Reading the same environment-driven config loader used
+ * everywhere else keeps this the single source of truth for allowed
+ * dashboard origins instead of a second hard-coded allowlist.
+ */
+const gatewayCorsOrigins = loadAppConfig().http.corsOrigins;
+
 @WebSocketGateway({
   namespace: 'printer',
-  cors: { origin: '*' },
+  cors: { origin: gatewayCorsOrigins, credentials: true },
 })
 export class PrinterGateway implements OnGatewayConnection {
   @WebSocketServer()

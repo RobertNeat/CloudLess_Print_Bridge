@@ -1,20 +1,36 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type {
   AmsTopologyDto,
+  MachineEnvelopeDto,
   PrintSpeedMode,
 } from '@cloudless/printer-contracts';
-import type { JsonObject } from '../../common/json';
+import { isJsonObject, type JsonObject } from '../../common/json';
 import type {
   CommandDefinition,
   CommandParameters,
 } from '../../commands/command.types';
 import { APP_CONFIG, type AppConfig } from '../../config/app-config';
 import { FilamentCatalogService } from '../../filaments/filament-catalog.service';
-import type { PrinterCommandProfile } from '../printer-command-profile';
+import type {
+  PayloadSafetyResult,
+  PrinterCommandProfile,
+} from '../printer-command-profile';
 
 const source = 'profile:bambu-lab-a1';
 const externalAmsId = 255;
 const externalTrayId = 254;
+
+/**
+ * Physical travel envelope for the Bambu Lab A1, confirmed safe with wiggle
+ * room in docs/TMP_bambulab_A1_commands.md. This is the ONLY place these
+ * numbers should appear — every other layer reads them through
+ * getMachineEnvelope()/inspectPayload() instead of repeating literals.
+ */
+const machineEnvelope: MachineEnvelopeDto = {
+  x: { minimum: 0, maximum: 256 },
+  y: { minimum: 0, maximum: 256 },
+  z: { minimum: 20, maximum: 240 },
+};
 
 interface ResolvedSource {
   kind: 'ams' | 'external';
@@ -190,6 +206,40 @@ export class BambuLabA1CommandProfile implements PrinterCommandProfile {
     ];
   }
 
+  getMachineEnvelope(): MachineEnvelopeDto {
+    return machineEnvelope;
+  }
+
+  /**
+   * Rejects any fully-rendered payload that would move the tool head
+   * outside machineEnvelope, regardless of how the payload was produced.
+   * This is what closes the `POST /commands/raw` bypass: hand-crafted gcode
+   * is inspected the same way a catalog-built command's gcode would be.
+   */
+  inspectPayload(payload: JsonObject): PayloadSafetyResult {
+    const gcodeLine = extractGcodeLine(payload);
+    if (gcodeLine === undefined) return { safe: true };
+
+    const target = parseAbsoluteMoveTarget(gcodeLine);
+    if (!target) return { safe: true };
+
+    for (const [axis, range] of Object.entries(machineEnvelope) as Array<
+      [keyof MachineEnvelopeDto, MachineEnvelopeDto[keyof MachineEnvelopeDto]]
+    >) {
+      const value = target[axis];
+      if (value === undefined) continue;
+      if (value < range.minimum || value > range.maximum) {
+        return {
+          safe: false,
+          reason: `Axis ${axis.toUpperCase()} target ${value} is outside the safe range ${range.minimum}..${range.maximum}`,
+          targetPosition: target,
+        };
+      }
+    }
+
+    return { safe: true, targetPosition: target };
+  }
+
   private loadFilament(parameters: CommandParameters): JsonObject {
     const sourceLocation = this.resolveSource(parameters);
     const filament = optionalString(parameters, 'filamentId');
@@ -339,9 +389,21 @@ export class BambuLabA1CommandProfile implements PrinterCommandProfile {
       'move-absolute',
       'Move one or more axes in absolute coordinate mode',
       {
-        x: { type: 'number', minimum: 0, maximum: 256 },
-        y: { type: 'number', minimum: 0, maximum: 256 },
-        z: { type: 'number', minimum: 20, maximum: 240 },
+        x: {
+          type: 'number',
+          minimum: machineEnvelope.x.minimum,
+          maximum: machineEnvelope.x.maximum,
+        },
+        y: {
+          type: 'number',
+          minimum: machineEnvelope.y.minimum,
+          maximum: machineEnvelope.y.maximum,
+        },
+        z: {
+          type: 'number',
+          minimum: machineEnvelope.z.minimum,
+          maximum: machineEnvelope.z.maximum,
+        },
         feedrate: {
           type: 'number',
           minimum: 1,
@@ -410,6 +472,55 @@ function gcode(line: string): JsonObject {
   return {
     print: { sequence_id: '0', command: 'gcode_line', param: line },
   };
+}
+
+/**
+ * Extracts the `param` string of a `print.gcode_line` command, the only
+ * A1 command shape that can carry free-form motion gcode. Returns undefined
+ * for every other payload shape (nothing to inspect).
+ */
+function extractGcodeLine(payload: JsonObject): string | undefined {
+  const print = payload.print;
+  if (!isJsonObject(print)) return undefined;
+  if (print.command !== 'gcode_line') return undefined;
+  return typeof print.param === 'string' ? print.param : undefined;
+}
+
+/**
+ * Parses absolute-mode (G90) G0/G1 linear moves out of a raw gcode block and
+ * returns the last commanded X/Y/Z target for each axis mentioned. Axes not
+ * present in any G1/G0 line are omitted (that axis is not moving).
+ * Relative-mode (G91) segments are ignored, since they don't set an absolute
+ * target this profile can validate against the machine envelope.
+ */
+function parseAbsoluteMoveTarget(
+  gcodeBlock: string,
+): { x?: number; y?: number; z?: number } | undefined {
+  let mode: 'absolute' | 'relative' = 'absolute';
+  const target: { x?: number; y?: number; z?: number } = {};
+  let found = false;
+
+  for (const rawLine of gcodeBlock.split('\n')) {
+    const line = rawLine.split(';')[0].trim();
+    if (!line) continue;
+    if (/^G90\b/i.test(line)) {
+      mode = 'absolute';
+      continue;
+    }
+    if (/^G91\b/i.test(line)) {
+      mode = 'relative';
+      continue;
+    }
+    if (mode !== 'absolute' || !/^G0?1\b/i.test(line)) continue;
+
+    for (const match of line.matchAll(/([XYZ])(-?\d+(?:\.\d+)?)/gi)) {
+      const axis = match[1].toLowerCase() as 'x' | 'y' | 'z';
+      target[axis] = Number(match[2]);
+      found = true;
+    }
+  }
+
+  return found ? target : undefined;
 }
 
 function speedLevel(mode: PrintSpeedMode): string {

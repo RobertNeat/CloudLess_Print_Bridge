@@ -20,6 +20,7 @@ import {
   PRINTER_DOMAIN_MAPPER,
   type PrinterDomainModelMapper,
 } from './printer-domain-model.mapper';
+import { PrinterPositionService } from './printer-position.service';
 
 @Injectable()
 export class PrinterStateService implements OnModuleInit, OnModuleDestroy {
@@ -33,6 +34,7 @@ export class PrinterStateService implements OnModuleInit, OnModuleDestroy {
     @Inject(PRINTER_DOMAIN_MAPPER)
     private readonly mapper: PrinterDomainModelMapper,
     private readonly events: BridgeEventsService,
+    private readonly position: PrinterPositionService,
   ) {
     this.raw = loadTemplate(config.stateTemplatePath);
     this.domain = mapper.map(this.raw);
@@ -66,7 +68,10 @@ export class PrinterStateService implements OnModuleInit, OnModuleDestroy {
   }
 
   getDomain(): PrinterDomainModelDto {
-    return cloneJson(this.domain);
+    return {
+      ...cloneJson(this.domain),
+      position: this.position.getPosition(),
+    };
   }
 
   applyReport(payload: unknown): boolean {
