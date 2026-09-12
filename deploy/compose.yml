@@ -23,6 +23,12 @@ services:
       MQTT_PUPPETEER_OPERATION_TIMEOUT_MS: ${MQTT_PUPPETEER_OPERATION_TIMEOUT_MS:-30000}
     ports:
       - "${MQTT_PUPPETEER_HOST_PORT}:${MQTT_PUPPETEER_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get({host:'localhost',port:process.env.MQTT_PUPPETEER_PORT,path:'/api/mqtt/health'},(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   ftps-remote-manager:
     image: ${REGISTRY}/${FTPS_REMOTE_MANAGER_IMAGE}:${IMAGE_TAG}
@@ -75,6 +81,12 @@ services:
       - "1883:1883"
     volumes:
       - video-service-hub-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get({host:'localhost',port:process.env.VIDEO_SERVICE_HUB_PORT,path:'/health'},(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   octo-management-dashboard:
     image: ${REGISTRY}/${OCTO_MANAGEMENT_DASHBOARD_IMAGE}:${IMAGE_TAG}
@@ -83,9 +95,20 @@ services:
       CLOUDLESS_AUTH_MODE: ${CLOUDLESS_AUTH_MODE:-disabled}
       CLOUDLESS_AUTH_SERVICE_ORDER: ${CLOUDLESS_AUTH_SERVICE_ORDER:-mqtt-puppeteer,ftps-remote-manager,video-service-hub}
     depends_on:
-      - mqtt-puppeteer
-      - ftps-remote-manager
-      - video-service-hub
+      # mqtt-puppeteer/video-service-hub have real /health endpoints, so we
+      # can wait for them to actually be serving requests — this is what
+      # closes the nginx "host not found in upstream" race (depends_on alone
+      # only orders container start, it doesn't wait for the dependency's
+      # DNS entry or HTTP server to be ready). ftps-remote-manager has no
+      # /health endpoint yet, so it stays on the default service_started
+      # condition rather than a healthcheck against a path that doesn't
+      # exist (which would just report unhealthy forever).
+      mqtt-puppeteer:
+        condition: service_healthy
+      ftps-remote-manager:
+        condition: service_started
+      video-service-hub:
+        condition: service_healthy
     ports:
       - "${OCTO_MANAGEMENT_DASHBOARD_HOST_PORT}:${OCTO_MANAGEMENT_DASHBOARD_CONTAINER_PORT}"
 

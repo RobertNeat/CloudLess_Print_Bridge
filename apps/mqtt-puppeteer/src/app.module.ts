@@ -8,6 +8,7 @@ import { BridgeEventsModule } from './events/bridge-events.module';
 import { DeviceConfigModule } from './device-config/device-config.module';
 import { FilamentOperationsModule } from './filament-operations/filament-operations.module';
 import { FilamentsModule } from './filaments/filaments.module';
+import { HealthModule } from './health/health.module';
 import { MqttTransportModule } from './mqtt-transport/mqtt-transport.module';
 import { MovementModule } from './movement/movement.module';
 import { PrintJobModule } from './print-job/print-job.module';
@@ -23,6 +24,7 @@ import { TelemetryModule } from './telemetry/telemetry.module';
     AuthModule,
     BridgeEventsModule,
     FilamentsModule,
+    HealthModule,
     PrinterProfileModule,
     PrinterStateModule,
     MqttTransportModule,
