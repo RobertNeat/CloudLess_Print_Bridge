@@ -14,8 +14,12 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 @Controller('health')
 export class HealthController {
   @Get()
-  @ApiOperation({ summary: 'Liveness check — the HTTP server is up and responding' })
-  @ApiOkResponse({ description: 'Always ok when the process can serve this request.' })
+  @ApiOperation({
+    summary: 'Liveness check — the HTTP server is up and responding',
+  })
+  @ApiOkResponse({
+    description: 'Always ok when the process can serve this request.',
+  })
   health(): { status: 'ok' } {
     return { status: 'ok' };
   }
