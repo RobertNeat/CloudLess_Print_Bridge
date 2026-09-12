@@ -225,12 +225,20 @@ pozostaje odbiorczym projektorem zdarzeń serwisu i urządzenia.
 Kontrolery są cienkimi adapterami:
 
 - `MqttTransportController` — konfiguracja, status i ostatni raport;
-- `PrinterStateController` — osobne stany merged i domain;
+- `PrinterStateController` — osobne stany merged i domain (domain zawiera
+  teraz również śledzoną `position`);
 - `CommandsController` — lista, wykonanie nazwanej komendy i raw publish;
 - `DeviceConfigController`, `PrintJobController`,
   `FilamentOperationsController` i `MovementController` — każdy we własnym
   pliku oraz module domenowym;
+- `PrinterControlsController` — cienkie endpointy pod widgety dashboardu
+  (światło, wentylator, prędkość druku, temperatury), delegujące do
+  `CommandCatalogService` bez własnej wiedzy o modelu drukarki;
+- `TelemetryController` — bufor historii telemetrii do zasilenia wykresów;
 - `FilamentsController` — scalone definicje filamentów.
+
+Interaktywna dokumentacja tych kontrolerów (Swagger/OpenAPI) jest
+generowana w `main.ts` i dostępna pod `/docs`.
 
 Pełny kontrakt znajduje się w [endpoints.md](./endpoints.md).
 
@@ -336,15 +344,84 @@ Zmiana zaczyna się w `@cloudless/printer-contracts`. Następnie należy
 zaktualizować mapper oraz konsumentów. Dzięki temu TypeScript wykryje miejsca,
 które wymagają dostosowania, zarówno w backendzie, jak i frontendzie.
 
+### `PrinterPositionService`
+
+Śledzi pozycję głowicy metodą dead reckoning — raport `pushall` A1 nie
+zawiera aktualnej pozycji XYZ. Subskrybuje `mqttPublications$` (status
+`published`) i:
+
+- dla komendy `home` ustawia pozycję na minima osi z `machineEnvelope`
+  profilu (`homed: true`);
+- dla każdej innej publikacji przekazuje jej payload przez
+  `PrinterCommandProfile.inspectPayload()` i, jeśli zwróci `targetPosition`,
+  aktualizuje odpowiednie osie (`commanded: true`);
+- zeruje pozycję do `source: "unknown"` przy utracie połączenia MQTT
+  (`mqttStatus$.connected === false`), bo wcześniejsze wyliczenie przestaje
+  być wiarygodne.
+
+Wynik jest dołączany do `PrinterDomainModelDto.position` przez
+`PrinterStateService.getDomain()`.
+
+### `TelemetryHistoryService`
+
+Utrzymuje ograniczony bufor kołowy próbek telemetrii (postęp, temperatury,
+prędkości wentylatorów), wyliczanych z `PrinterDomainModelDto` przy każdej
+aktualizacji `printerState$` — nie z surowych pól protokołu drukarki, więc
+bufor pozostaje ważny niezależnie od aktywnego profilu. Rozmiar bufora
+konfiguruje `MQTT_PUPPETEER_TELEMETRY_HISTORY_CAPACITY` (domyślnie 720).
+Używany przez `GET /telemetry/history`, głównie do zasilenia wykresów
+dashboardu przy starcie.
+
+### `PrinterProfileModule`
+
+Globalny moduł dostarczający pojedynczą instancję aktywnego
+`PrinterCommandProfile` (`PRINTER_COMMAND_PROFILE`). Wydzielony z
+`CommandsModule`, ponieważ profil jest teraz potrzebny również w
+`MqttTransportModule` (bezpieczeństwo payloadu) i `PrinterStateModule`
+(śledzenie pozycji) — jedno miejsce podmiany profilu zamienia zachowanie
+wszystkich trzech naraz.
+
+### Podwójna weryfikacja granic ruchu i zamknięcie obejścia `commands/raw`
+
+`PrinterCommandProfile` udostępnia dwie dodatkowe metody poza katalogiem
+komend:
+
+- `getMachineEnvelope()` — bezpieczny zakres X/Y/Z, czytany przez
+  `GET /device_config/profile` (dla frontendu) oraz przez
+  `PrinterPositionService` (do przycinania śledzonej pozycji);
+- `inspectPayload(payload)` — analizuje w pełni zbudowany payload MQTT
+  (dla A1: parsuje gcode `G1 X.. Y.. Z..` w trybie `G90`) i odrzuca go, jeśli
+  wykracza poza `machineEnvelope`.
+
+`MqttTransportService.publish()` wywołuje `inspectPayload()` na **każdym**
+payloadzie tuż przed publikacją — niezależnie od tego, czy powstał
+z katalogu komend (`CommandCatalogService.build()`, pierwsza warstwa
+walidacji parametrów), czy trafił bezpośrednio przez `POST /commands/raw`
+(które nie przechodzi przez katalog wcale). To jedyny punkt, przez który
+każda publikacja MQTT musi przejść, więc jest to właściwe miejsce na
+egzekwowanie granic ruchu niezależnie od tego, który endpoint je wywołał.
+Żadna liczba graniczna (`0..256`, `20..240`) nie występuje poza
+`printer-profiles/bambu-lab-a1/bambu-lab-a1-command.profile.ts` — inny
+profil drukarki podmienia je bez zmian w `MqttTransportService` ani
+`CommandCatalogService`.
+
 ## Ograniczenia bieżącej implementacji
 
 - stan jest przechowywany w pamięci procesu;
 - restart zeruje stan do `{}` albo template'u;
 - skonfigurowana jest jedna drukarka na proces;
-- Socket.IO CORS ma obecnie `origin: '*'`;
+- `position` jest wyliczana z historii komend, a nie z czujnika — restart
+  procesu lub utrata połączenia MQTT zeruje ją do `source: "unknown"`;
+- CORS (REST i Socket.IO) jest konfigurowalny przez
+  `MQTT_PUPPETEER_CORS_ORIGINS`, domyślnie ograniczony do
+  `http://localhost:4200`; wartość `*` pozostaje dostępna dla developmentu;
 - TLS A1 domyślnie używa `rejectUnauthorized: false`;
-- semantyka potwierdzenia wykonania komendy zależy od raportu danego modelu.
+- semantyka potwierdzenia wykonania komendy zależy od raportu danego modelu;
+- `inspectPayload()` rozpoznaje tylko ruch zakodowany jako `print.gcode_line`
+  z `G90`/`G1` — inny kształt payloadu (np. przyszła komenda binarna) wymaga
+  rozszerzenia tej metody w profilu, aby nadal podlegał weryfikacji granic.
 
-Przy wdrożeniu poza zaufaną siecią lokalną należy ograniczyć CORS, dodać
-uwierzytelnienie REST/Socket.IO oraz rozważyć certyfikaty z włączoną
-weryfikacją.
+Przy wdrożeniu poza zaufaną siecią lokalną należy ograniczyć CORS do
+rzeczywistych originów dashboardu, dodać uwierzytelnienie REST/Socket.IO
+(już częściowo dostępne przez `AuthModule`) oraz rozważyć certyfikaty
+z włączoną weryfikacją.

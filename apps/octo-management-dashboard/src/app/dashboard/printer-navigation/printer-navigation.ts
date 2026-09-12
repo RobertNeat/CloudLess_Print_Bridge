@@ -71,6 +71,14 @@ export class PrinterNavigation {
 
   readonly viewport = input<PrinterViewportConfig>(DEFAULT_VIEWPORT);
   readonly axisRanges = input<AxisRanges>(DEFAULT_AXIS_RANGES);
+  /**
+   * Disables jog and hotend movement controls without hiding the widget.
+   * DashboardPage sets this when the backend's tracked position is
+   * 'unknown' (never homed, or the connection just dropped) — jogging from
+   * an unknown starting point is not something the UI should offer, even
+   * though every jog target is still independently bounds-checked.
+   */
+  readonly jogDisabled = input<boolean>(false);
   readonly steps = input<readonly number[]>(DEFAULT_STEPS);
   readonly axisColor = input<string>('var(--printer-axis-color)');
   readonly initialAxisPoints = input<PrinterAxisPoints>(EMPTY_AXIS_POINTS);
@@ -81,6 +89,14 @@ export class PrinterNavigation {
   readonly configurationSaved = output<PrinterNavigationConfiguration>();
   readonly axesReset = output<AxisPointResetEvent>();
   readonly hotendAction = output<HotendActionEvent>();
+  /**
+   * Requests a physical home. Independent of axis-point calibration
+   * (axesReset) — this must never touch draftPoints/points state, it only
+   * asks the parent to issue the home command. jogDisabled unlocking
+   * afterward is driven entirely by the parent's positionSource polling,
+   * not by anything this component does locally.
+   */
+  readonly homeRequested = output<void>();
 
   protected readonly axes = PRINTER_AXES;
   protected readonly configurationOpen = signal(false);
@@ -443,6 +459,7 @@ export class PrinterNavigation {
   }
 
   protected changeCoordinate(axis: PrinterAxis, delta: number): void {
+    if (this.jogDisabled()) return;
     if (!this.normalizedSteps().includes(Math.abs(delta))) {
       throw new Error(`Nieobsługiwany krok osi: ${delta}`);
     }
@@ -465,7 +482,12 @@ export class PrinterNavigation {
     return this.formatDelta(this.hotendDelta(direction, this.mainStep()));
   }
 
+  protected requestHome(): void {
+    this.homeRequested.emit();
+  }
+
   protected emitHotendAction(direction: HotendDirection, step = this.mainStep()): void {
+    if (this.jogDisabled()) return;
     if (!this.normalizedSteps().includes(step)) {
       throw new Error(`Nieobsługiwany krok hotendu: ${step}`);
     }

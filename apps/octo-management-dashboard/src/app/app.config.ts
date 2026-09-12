@@ -7,6 +7,10 @@ import { providePrimeNG } from 'primeng/config';
 
 import { routes } from './app.routes';
 import { cloudlessAuthInterceptor } from './core/cloudless-auth.interceptor';
+import { HttpManagementDashboardDataSource } from './dashboard/backend/http-management-dashboard-data.source';
+import { HttpPrinterCommandAdapter } from './dashboard/backend/http-printer-command.adapter';
+import { MANAGEMENT_DASHBOARD_DATA_SOURCE } from './dashboard/dashboard-data.service';
+import { PRINTER_COMMAND_PORT } from './dashboard/printer-command.port';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -23,5 +27,11 @@ export const appConfig: ApplicationConfig = {
       },
       ripple: true,
     }),
+    // Cutover point: the dashboard now reads/writes real mqtt-puppeteer
+    // state instead of the mock JSON fixture and no-op command adapter.
+    // Command types not yet migrated still no-op silently inside
+    // HttpPrinterCommandAdapter until their own integration phase lands.
+    { provide: MANAGEMENT_DASHBOARD_DATA_SOURCE, useExisting: HttpManagementDashboardDataSource },
+    { provide: PRINTER_COMMAND_PORT, useExisting: HttpPrinterCommandAdapter },
   ],
 };

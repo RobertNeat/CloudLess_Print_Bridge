@@ -11,8 +11,11 @@ import { FilamentsModule } from './filaments/filaments.module';
 import { MqttTransportModule } from './mqtt-transport/mqtt-transport.module';
 import { MovementModule } from './movement/movement.module';
 import { PrintJobModule } from './print-job/print-job.module';
+import { PrinterControlsModule } from './printer-controls/printer-controls.module';
 import { PrinterStateModule } from './printer-state/printer-state.module';
+import { PrinterProfileModule } from './printer-profiles/printer-profile.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -20,6 +23,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     AuthModule,
     BridgeEventsModule,
     FilamentsModule,
+    PrinterProfileModule,
     PrinterStateModule,
     MqttTransportModule,
     CommandsModule,
@@ -27,6 +31,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     PrintJobModule,
     FilamentOperationsModule,
     MovementModule,
+    PrinterControlsModule,
+    TelemetryModule,
     RealtimeModule,
   ],
   providers: [

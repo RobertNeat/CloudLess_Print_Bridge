@@ -40,6 +40,8 @@ odrzucane.
 | `MQTT_PUPPETEER_MQTT_RECONNECT_PERIOD_MS` | Odstęp między próbami ponownego połączenia MQTT. `4000` oznacza 4 sekundy. |
 | `MQTT_PUPPETEER_MQTT_KEEPALIVE_SECONDS` | Częstotliwość kontroli aktywności połączenia MQTT w sekundach. Typowa wartość to `60`. |
 | `MQTT_PUPPETEER_OPERATION_TIMEOUT_MS` | Maksymalny czas oczekiwania na odpowiedź drukarki po wysłaniu polecenia. `30000` oznacza 30 sekund. |
+| `MQTT_PUPPETEER_CORS_ORIGINS` | Dozwolone originy dashboardu (REST i Socket.IO), rozdzielone przecinkami, np. `http://localhost:10300,https://dashboard.example.com`. Wartość `*` odbija dowolny origin (tylko development). Domyślnie `http://localhost:4200` — **octo-management-dashboard w tym repo działa domyślnie na porcie `10300`** (patrz `angular.json`), więc ustaw jawnie `http://localhost:10300` lokalnie. |
+| `MQTT_PUPPETEER_TELEMETRY_HISTORY_CAPACITY` | Liczba próbek telemetrii przechowywanych w buforze kołowym używanym do zasilenia wykresów dashboardu. Domyślnie `720`. |
 
 ## FTPS Remote Manager
 

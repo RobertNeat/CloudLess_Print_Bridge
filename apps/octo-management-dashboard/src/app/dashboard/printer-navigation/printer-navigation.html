@@ -1,18 +1,42 @@
-<section class="printer-card" [attr.aria-label]="labels().canvasAriaLabel">
+<section
+  id="printer-navigation"
+  class="printer-card"
+  data-testid="printer-navigation"
+  [attr.aria-label]="labels().canvasAriaLabel"
+>
   <div
+    id="printer-navigation-canvas-wrapper"
     class="printer-navigation"
+    data-testid="printer-navigation-canvas-wrapper"
     [class.is-configuring]="configurationOpen()"
     [style]="canvasStyle()"
   >
     <img
+      id="printer-navigation-bed-image"
       class="printer-navigation__image"
+      data-testid="printer-navigation-bed-image"
       [src]="viewport().imageUrl"
       [alt]="viewport().imageAlt"
     />
+    <!--
+      preserveAspectRatio="none" stretches the viewBox independently on each
+      axis instead of uniformly scaling + letterboxing ("xMidYMid meet").
+      This must match the stretch-based client<->viewBox mapping in
+      eventToPoint() and the stretch-based percentage placement in
+      pointStyle() (both divide by bounds.width/height and
+      viewBox.width/height independently) — with "meet" those two disagreed
+      with the actual rendered geometry whenever the widget's aspect ratio
+      differed from the viewBox's, which is exactly what happens after a
+      dashboard-layout resize. The bed image below uses object-fit: fill
+      for the same reason, so a calibrated point still lines up with the
+      printer bed pixel it was placed on at every widget size.
+    -->
     <svg
+      id="printer-navigation-canvas"
       class="printer-navigation__canvas"
+      data-testid="printer-navigation-canvas"
       [attr.viewBox]="canvasViewBox()"
-      preserveAspectRatio="xMidYMid meet"
+      preserveAspectRatio="none"
       role="application"
       [attr.aria-label]="labels().canvasAriaLabel"
       [attr.tabindex]="configurationOpen() ? 0 : -1"
@@ -96,15 +120,46 @@
     </svg>
 
     @if (activePointHint(); as hint) {
-      <div class="active-point-hint" role="status" aria-live="polite">
+      <div
+        id="printer-navigation-point-hint"
+        class="active-point-hint"
+        data-testid="printer-navigation-point-hint"
+        role="status"
+        aria-live="polite"
+      >
         {{ hint }}
       </div>
     }
 
+    @if (jogDisabled() && !configurationOpen()) {
+      <div
+        id="printer-navigation-jog-disabled-hint"
+        class="active-point-hint"
+        data-testid="printer-navigation-jog-disabled-hint"
+        role="status"
+        aria-live="polite"
+      >
+        {{ labels().jogDisabledHint }}
+      </div>
+      <button
+        id="printer-navigation-home-button"
+        pButton
+        type="button"
+        class="home-button"
+        data-testid="printer-navigation-home-button"
+        icon="pi pi-home"
+        [label]="labels().homeButtonLabel"
+        [attr.aria-label]="labels().homeButtonAriaLabel"
+        (click)="requestHome(); $event.stopPropagation()"
+      ></button>
+    }
+
     <button
+      id="printer-navigation-settings-button"
       pButton
       type="button"
       class="settings-button"
+      data-testid="printer-navigation-settings-button"
       [class.settings-button--active]="configurationOpen()"
       [disabled]="configurationPanelVisible()"
       [attr.aria-expanded]="configurationOpen()"
@@ -118,21 +173,29 @@
 
     @if (!configurationOpen()) {
       <aside
+        id="printer-navigation-position-panel"
+        data-testid="printer-navigation-position-panel"
         [class]="'position-panel position-panel--' + positionPanelPlacement()"
         aria-live="polite"
       >
         <strong>{{ labels().position }}</strong>
         @for (axis of axes; track axis) {
-          <span
+          <span [attr.data-testid]="'printer-navigation-position-' + axis"
             >{{ labels().axis }} {{ axis }}: <b>{{ coordinates()[axis] }}</b></span
           >
         }
       </aside>
 
-      <div class="printer-navigation__controls">
+      <div
+        id="printer-navigation-jog-controls"
+        class="printer-navigation__controls"
+        data-testid="printer-navigation-jog-controls"
+      >
         @for (view of axisViews(); track view.axis) {
           <div
             class="axis-control"
+            [id]="'printer-navigation-jog-' + view.axis + '-negative'"
+            [attr.data-testid]="'printer-navigation-jog-' + view.axis + '-negative'"
             [style]="pointStyle(view.negative, view.angle)"
             [attr.data-axis]="view.axis"
             data-direction="negative"
@@ -140,6 +203,7 @@
             <p-splitbutton
               size="small"
               severity="secondary"
+              [disabled]="jogDisabled()"
               [label]="movementLabel('negative')"
               [model]="movementMenu(view.axis, 'negative')"
               [appendTo]="'body'"
@@ -154,6 +218,8 @@
 
           <div
             class="axis-control"
+            [id]="'printer-navigation-jog-' + view.axis + '-positive'"
+            [attr.data-testid]="'printer-navigation-jog-' + view.axis + '-positive'"
             [style]="pointStyle(view.positive, view.angle)"
             [attr.data-axis]="view.axis"
             data-direction="positive"
@@ -161,6 +227,7 @@
             <p-splitbutton
               size="small"
               severity="secondary"
+              [disabled]="jogDisabled()"
               [label]="movementLabel('positive')"
               [model]="movementMenu(view.axis, 'positive')"
               [appendTo]="'body'"
@@ -171,15 +238,23 @@
         }
 
         @if (hotendPoint(); as point) {
-          <div class="hotend-control" [style]="pointStyle(point, 0)">
+          <div
+            id="printer-navigation-hotend-control"
+            class="hotend-control"
+            data-testid="printer-navigation-hotend-control"
+            [style]="pointStyle(point, 0)"
+          >
             <span class="hotend-label">{{ labels().hotend }}</span>
             <div class="hotend-actions">
               <p-splitbutton
+                id="printer-navigation-hotend-up"
                 size="small"
                 severity="secondary"
                 icon="pi pi-arrow-up"
                 dropdownIcon="pi pi-chevron-right"
                 styleClass="hotend-splitbutton"
+                data-testid="printer-navigation-hotend-up"
+                [disabled]="jogDisabled()"
                 [label]="hotendLabel('up')"
                 [model]="hotendMenu('up')"
                 [appendTo]="'body'"
@@ -187,11 +262,14 @@
                 (onClick)="emitHotendAction('up')"
               />
               <p-splitbutton
+                id="printer-navigation-hotend-down"
                 size="small"
                 severity="secondary"
                 icon="pi pi-arrow-down"
                 dropdownIcon="pi pi-chevron-right"
                 styleClass="hotend-splitbutton"
+                data-testid="printer-navigation-hotend-down"
+                [disabled]="jogDisabled()"
                 [label]="hotendLabel('down')"
                 [model]="hotendMenu('down')"
                 [appendTo]="'body'"
@@ -205,19 +283,38 @@
     }
 
     @if (configurationPanelVisible()) {
-      <aside class="configuration-panel" (pointerdown)="$event.stopPropagation()">
+      <aside
+        id="printer-navigation-configuration-panel"
+        class="configuration-panel"
+        data-testid="printer-navigation-configuration-panel"
+        (pointerdown)="$event.stopPropagation()"
+      >
         <h2>{{ labels().configurationTitle }}</h2>
         <p>{{ instruction() }}</p>
 
         <div class="configuration-list">
           @for (axis of axes; track axis) {
-            <button pButton type="button" class="configuration-row" (click)="configureAxis(axis)">
+            <button
+              pButton
+              type="button"
+              class="configuration-row"
+              [id]="'printer-navigation-configure-axis-' + axis"
+              [attr.data-testid]="'printer-navigation-configure-axis-' + axis"
+              (click)="configureAxis(axis)"
+            >
               <span>{{ labels().setAxis(axis) }}</span>
               <small>{{ axisStatus(axis) }}</small>
               <i class="pi pi-chevron-right" aria-hidden="true"></i>
             </button>
           }
-          <button pButton type="button" class="configuration-row" (click)="configureHotend()">
+          <button
+            id="printer-navigation-configure-hotend"
+            pButton
+            type="button"
+            class="configuration-row"
+            data-testid="printer-navigation-configure-hotend"
+            (click)="configureHotend()"
+          >
             <span>{{ labels().setHotend }}</span>
             <small>{{ draftHotendPoint() ? labels().configured : labels().incomplete }}</small>
             <i class="pi pi-chevron-right" aria-hidden="true"></i>
@@ -227,7 +324,9 @@
         <label class="configuration-field">
           <span>{{ labels().mainStep }}</span>
           <p-select
+            id="printer-navigation-main-step-select"
             size="small"
+            data-testid="printer-navigation-main-step-select"
             [options]="stepOptions()"
             optionLabel="label"
             optionValue="value"
@@ -239,7 +338,9 @@
         <label class="configuration-field">
           <span>{{ labels().positionPanel }}</span>
           <p-select
+            id="printer-navigation-position-panel-select"
             size="small"
+            data-testid="printer-navigation-position-panel-select"
             [options]="positionOptions()"
             optionLabel="label"
             optionValue="value"
@@ -250,22 +351,33 @@
 
         <div class="configuration-panel__actions">
           <button
+            id="printer-navigation-reset-axes-button"
             pButton
             type="button"
             severity="secondary"
             class="reset-axes-button"
+            data-testid="printer-navigation-reset-axes-button"
             (click)="resetAxes()"
           >
             {{ labels().resetAxes }}
           </button>
           <div class="configuration-panel__confirmation">
-            <button pButton type="button" severity="secondary" (click)="cancelConfiguration()">
+            <button
+              id="printer-navigation-cancel-configuration-button"
+              pButton
+              type="button"
+              severity="secondary"
+              data-testid="printer-navigation-cancel-configuration-button"
+              (click)="cancelConfiguration()"
+            >
               {{ labels().cancel }}
             </button>
             <button
+              id="printer-navigation-save-configuration-button"
               pButton
               type="button"
               icon="pi pi-check"
+              data-testid="printer-navigation-save-configuration-button"
               [disabled]="!configurationComplete()"
               (click)="saveConfiguration()"
             >

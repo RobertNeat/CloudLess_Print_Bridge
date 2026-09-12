@@ -84,6 +84,7 @@ export interface PrinterDomainModelDto {
   lightOn?: boolean;
   speedPercent?: number;
   ams?: AmsSystemDto;
+  position?: import('./printer-motion.dto.js').PrinterPositionDto;
 }
 
 /**
