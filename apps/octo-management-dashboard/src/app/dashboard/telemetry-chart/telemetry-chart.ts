@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed, inject, OnChanges, SimpleChanges, signal } from '@angular/core';
 import type {
   ChartConfiguration,
   ChartDataset,
@@ -39,23 +39,33 @@ const hoverGuidePlugin: Plugin<'line'> = {
   styleUrl: './telemetry-chart.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TelemetryChart {
+export class TelemetryChart implements OnChanges {
   private readonly document = inject(DOCUMENT);
   protected readonly i18n = inject(I18nService);
   private readonly theme = inject(ThemeService);
-  readonly chart = input.required<TelemetryChartData>();
+  @Input({ required: true }) chart!: TelemetryChartData;
   protected readonly plugins: Plugin<'line'>[] = [hoverGuidePlugin];
 
+  /**
+   * Internal signal to track @Input changes — allows computed() to react when
+   * the input binding changes. This bridges traditional @Input() decorators
+   * with signal-based reactivity.
+   */
+  protected readonly chartData = signal<TelemetryChartData | null>(null);
+
   protected readonly data = computed<ChartConfiguration<'line'>['data']>(() => {
+    const chart = this.chartData();
+    if (!chart) return { labels: [], datasets: [] };
     this.i18n.language();
     return {
-      labels: this.chart().labels,
-      datasets: this.chart().datasets.map((dataset) => this.prepareDataset(dataset)),
+      labels: chart.labels,
+      datasets: chart.datasets.map((dataset) => this.prepareDataset(dataset)),
     };
   });
 
   protected readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
-    const chart = this.chart();
+    const chart = this.chartData();
+    if (!chart) return {};
     this.theme.theme();
     this.i18n.language();
     const textColor = this.cssColor('--semantic-chart-text', 'currentColor');
@@ -169,12 +179,24 @@ export class TelemetryChart {
     return prepared;
   }
 
+  /**
+   * Respond to @Input() changes by updating the internal signal. This ensures
+   * that computed() expressions tracking chartData react to new chart values.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['chart']) {
+      this.chartData.set(this.chart);
+    }
+  }
+
   protected title(): string {
-    return this.i18n.t(this.chart().titleKey);
+    const chart = this.chartData();
+    return chart ? this.i18n.t(chart.titleKey) : '';
   }
 
   protected subtitle(): string {
-    return this.i18n.t(this.chart().subtitleKey);
+    const chart = this.chartData();
+    return chart ? this.i18n.t(chart.subtitleKey) : '';
   }
 
   private cssColor(token: string, fallback: string): string {
