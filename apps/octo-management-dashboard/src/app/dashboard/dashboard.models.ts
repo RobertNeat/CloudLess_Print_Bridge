@@ -43,6 +43,17 @@ export interface PrinterTemperatureData {
   nozzle: number | null;
 }
 
+/**
+ * Per-model heater capabilities, sourced from GET /device_config/profile
+ * (mirrors how axisRanges carries the real machine envelope). The dashboard
+ * must derive which temperature sensors are settable from this rather than
+ * hard-coding a literal sensor list — a future profile with a chamber
+ * heater becomes editable without any frontend code change.
+ */
+export interface DeviceCapabilities {
+  hasChamberHeater: boolean;
+}
+
 export interface Coordinates {
   X: number;
   Y: number;
@@ -120,6 +131,7 @@ export interface ManagementDashboardData {
    * wrong for the real A1 on every axis (see printer-navigation.defaults.ts).
    */
   axisRanges: AxisRanges;
+  deviceCapabilities: DeviceCapabilities;
   navigation: PrinterNavigationData;
   livePreview: LivePreviewData;
   widgets: DashboardWidget[];

@@ -351,6 +351,61 @@ describe('HttpPrinterCommandAdapter', () => {
     });
   });
 
+  describe('home', () => {
+    it('posts an empty body to /movement/home', async () => {
+      const promise = adapter.execute({ type: 'home' });
+
+      const request = httpMock.expectOne('http://localhost:10320/movement/home');
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({});
+      request.flush({});
+
+      await expect(promise).resolves.toBeUndefined();
+    });
+
+    it('maps a 400 response to a validation CommandExecutionError', async () => {
+      const promise = adapter.execute({ type: 'home' });
+
+      httpMock
+        .expectOne('http://localhost:10320/movement/home')
+        .flush(
+          { statusCode: 400, message: 'home already in progress' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+
+      await expect(promise).rejects.toMatchObject({
+        error: { kind: 'validation', message: 'home already in progress' },
+      });
+    });
+
+    it('maps a 503 response to an unavailable CommandExecutionError', async () => {
+      const promise = adapter.execute({ type: 'home' });
+
+      httpMock
+        .expectOne('http://localhost:10320/movement/home')
+        .flush(
+          { statusCode: 503, message: 'MQTT client is not connected' },
+          { status: 503, statusText: 'Service Unavailable' },
+        );
+
+      await expect(promise).rejects.toMatchObject({
+        error: { kind: 'unavailable', message: 'MQTT client is not connected' },
+      });
+    });
+
+    it('maps a network failure to a network CommandExecutionError', async () => {
+      const promise = adapter.execute({ type: 'home' });
+
+      httpMock
+        .expectOne('http://localhost:10320/movement/home')
+        .error(new ProgressEvent('error'), { status: 0 });
+
+      const rejection = await promise.catch((error: unknown) => error);
+      expect(rejection).toBeInstanceOf(CommandExecutionError);
+      expect((rejection as CommandExecutionError).error.kind).toBe('network');
+    });
+  });
+
   describe('unmigrated command types', () => {
     it('still succeeds as a no-op for set-preview (intentionally left mocked)', async () => {
       const command: PrinterCommand = { type: 'set-preview', change: { active: true } };

@@ -44,6 +44,7 @@ export type {
 } from "./remote-storage.dto.js";
 export type {
   AxisRangeDto,
+  HeaterCapabilitiesDto,
   MachineEnvelopeDto,
   PrinterPositionDto,
   PrinterPositionSource,

@@ -42,10 +42,12 @@ export class PrinterTemperatures {
   /**
    * Sensors whose displayed value can be edited (a target temperature set
    * via the popover). Defaults to all three, preserving current/mock
-   * behavior. The real Bambu Lab A1 backend has no chamber-heater command —
-   * DashboardPage passes ['bed', 'nozzle'] once wired to it, so the chamber
-   * reading stays a display-only value even when it reports a non-null
-   * current temperature.
+   * behavior. DashboardPage instead passes settableTemperatureSensors(),
+   * derived from the active printer profile's heaterCapabilities
+   * (GET /device_config/profile) rather than a hardcoded literal — the real
+   * Bambu Lab A1 has no chamber heater today, so the chamber reading stays
+   * display-only, but a future profile that reports one becomes editable
+   * here with zero changes to this component.
    */
   readonly settableSensors = input<readonly TemperatureSensor[]>(['chamber', 'bed', 'nozzle']);
   readonly temperatureChange = output<TemperatureChange>();

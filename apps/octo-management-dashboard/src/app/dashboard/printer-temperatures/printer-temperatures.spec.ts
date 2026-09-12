@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { PrinterTemperatures } from './printer-temperatures';
+import type { TemperatureChange } from './printer-temperatures';
 
 describe('PrinterTemperatures', () => {
   it('does not allow editing an inactive temperature sensor', () => {
@@ -42,5 +43,46 @@ describe('PrinterTemperatures', () => {
       '#temperature-reading-bed',
     ) as HTMLButtonElement;
     expect(bedButton.disabled).toBe(false);
+  });
+
+  it('emits a rounded, clamped temperatureChange when the editor is submitted', () => {
+    const fixture = TestBed.createComponent(PrinterTemperatures);
+    fixture.componentRef.setInput('temperatures', { chamber: null, bed: 60, nozzle: 215 });
+    fixture.detectChanges();
+
+    const emitted: TemperatureChange[] = [];
+    fixture.componentInstance.temperatureChange.subscribe((change) => emitted.push(change));
+
+    // Bypass PrimeNG's popover overlay lifecycle (toggle()/hide() require a
+    // real rendered overlay) — stub just the two methods openEditor/save
+    // call, then drive the component exactly as the template's click and
+    // (submit) handlers would.
+    const popoverStub = { toggle: () => {}, hide: () => {} } as unknown as Parameters<
+      PrinterTemperatures['save']
+    >[0];
+    const nozzleReading = fixture.componentInstance['readings']().find(
+      (reading) => reading.sensor === 'nozzle',
+    )!;
+    fixture.componentInstance['openEditor'](new Event('click'), nozzleReading, popoverStub);
+
+    // Manual-entry / stepper input: the popover's p-inputnumber binds
+    // straight to draftValue via ngModel, so setting it here is exactly
+    // what typing a value or pressing +/- produces.
+    fixture.componentInstance['draftValue'].set(230.6);
+    fixture.componentInstance['save'](popoverStub);
+
+    expect(emitted).toEqual([{ sensor: 'nozzle', value: 231 }]);
+  });
+
+  it('does not emit when the editor is submitted with no sensor selected', () => {
+    const fixture = TestBed.createComponent(PrinterTemperatures);
+    fixture.componentRef.setInput('temperatures', { chamber: null, bed: 60, nozzle: 215 });
+    fixture.detectChanges();
+
+    const emitted: TemperatureChange[] = [];
+    fixture.componentInstance.temperatureChange.subscribe((change) => emitted.push(change));
+
+    expect(fixture.componentInstance['selected']()).toBeNull();
+    expect(emitted).toEqual([]);
   });
 });

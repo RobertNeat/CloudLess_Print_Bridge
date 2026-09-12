@@ -163,10 +163,19 @@ export class DashboardPage {
         // doesn't visibly snap a just-submitted target back to the
         // not-yet-caught-up current reading.
         const temperatures = { ...data.temperatures };
-        if (!this.controlsSuppression.isSuppressed('temperatures') && state.temperatures) {
-          temperatures.chamber = state.temperatures.chamber?.current ?? temperatures.chamber;
-          temperatures.bed = state.temperatures.bed?.current ?? temperatures.bed;
-          temperatures.nozzle = state.temperatures.nozzle?.current ?? temperatures.nozzle;
+        if (state.temperatures) {
+          // Suppressed per-sensor (not one shared 'temperatures' key): a
+          // just-submitted nozzle target must not also freeze the bed/
+          // chamber current readings for the suppression window.
+          if (!this.controlsSuppression.isSuppressed('temperatures.chamber')) {
+            temperatures.chamber = state.temperatures.chamber?.current ?? temperatures.chamber;
+          }
+          if (!this.controlsSuppression.isSuppressed('temperatures.bed')) {
+            temperatures.bed = state.temperatures.bed?.current ?? temperatures.bed;
+          }
+          if (!this.controlsSuppression.isSuppressed('temperatures.nozzle')) {
+            temperatures.nozzle = state.temperatures.nozzle?.current ?? temperatures.nozzle;
+          }
         }
         return { ...data, controls, coordinates, positionSource, temperatures };
       });
@@ -372,8 +381,10 @@ export class DashboardPage {
       // Suppress the next poll tick(s) for this field like every other
       // optimistically-patched control: the backend won't reach the new
       // target instantly, so an immediate poll would otherwise snap the
-      // just-submitted value back to the stale current reading.
-      this.controlsSuppression.suppress('temperatures');
+      // just-submitted value back to the stale current reading. Keyed per
+      // sensor so setting one target doesn't also freeze the other two
+      // sensors' current readings.
+      this.controlsSuppression.suppress(`temperatures.${change.sensor}`);
       this.dashboard.update((data) =>
         data
           ? {
@@ -393,7 +404,8 @@ export class DashboardPage {
         navigation: this.navigationCalibration.restore(data.navigation),
       });
       this.widgets.set(this.layout.restore(data.widgets));
-    } catch {
+    } catch (error) {
+      console.error('[dashboard] failed to load dashboard data:', error);
       this.loadingError.set(true);
     }
   }

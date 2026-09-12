@@ -1,17 +1,26 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { TelemetryPollingService } from './telemetry-polling.service';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { TelemetryHistoryService } from './telemetry-history.service';
+import { TelemetryPollingService } from './telemetry-polling.service';
 import type { TelemetryHistoryResponseDto } from './mqtt-puppeteer-api.types';
-import { fakeAsync, tick } from '@angular/core/testing';
 
+/**
+ * Uses Vitest's own fake timers (vi.useFakeTimers/advanceTimersByTimeAsync),
+ * not Angular's fakeAsync/tick — this project's `ng test` runs on
+ * @angular/build:unit-test (Vitest), which doesn't ship zone.js/testing, so
+ * fakeAsync() fails at runtime with "zone-testing.js is needed" before a
+ * single assertion runs. Every other async spec in this codebase already
+ * uses plain await + HttpTestingController, matching that convention here.
+ */
 describe('TelemetryPollingService', () => {
   let service: TelemetryPollingService;
-  let telemetryService: TelemetryHistoryService;
   let httpMock: HttpTestingController;
 
+  const emptyResponse: TelemetryHistoryResponseDto = { capacity: 10, samples: [] };
+
   beforeEach(() => {
+    vi.useFakeTimers();
     TestBed.configureTestingModule({
       providers: [
         TelemetryPollingService,
@@ -21,30 +30,24 @@ describe('TelemetryPollingService', () => {
       ],
     });
     service = TestBed.inject(TelemetryPollingService);
-    telemetryService = TestBed.inject(TelemetryHistoryService);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
     httpMock.verify();
     service.stop();
-  });
-
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it('initializes latestHistory as null', () => {
     expect(service.latestHistory()).toBeNull();
   });
 
-  it('calls fetchHistory immediately on start()', fakeAsync(() => {
-    // Start the polling service
-    service.start();
+  it('fetches immediately on start(), without waiting for the first interval tick', async () => {
+    service.start(1000);
+    await vi.advanceTimersByTimeAsync(0);
 
-    // Expect an immediate request
-    const req = httpMock.expectOne((req) => req.url.includes('/telemetry/history'));
-    req.flush({
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
       capacity: 10,
       samples: [
         {
@@ -60,117 +63,70 @@ describe('TelemetryPollingService', () => {
         },
       ],
     } as TelemetryHistoryResponseDto);
+    await vi.advanceTimersByTimeAsync(0);
 
-    // latestHistory should now be populated
-    expect(service.latestHistory()).toBeTruthy();
     expect(service.latestHistory()?.samples).toHaveLength(1);
-  }));
+  });
 
-  it('polls on an interval, updating latestHistory each time', fakeAsync(() => {
-    const pollInterval = 1000; // Short interval for testing
-    service.start(pollInterval);
+  it('polls again on each interval tick, replacing latestHistory with a fresh object', async () => {
+    service.start(1000);
+    await vi.advanceTimersByTimeAsync(0);
 
-    // First request (immediate)
-    const req1 = httpMock.expectOne((req) => req.url.includes('/telemetry/history'));
-    const firstResponse: TelemetryHistoryResponseDto = {
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
       capacity: 10,
-      samples: [
-        {
-          capturedAt: '2026-09-12T10:00:00.000Z',
-          progressPercent: 0,
-          nozzleTemperatureCurrent: null,
-          nozzleTemperatureTarget: null,
-          bedTemperatureCurrent: null,
-          bedTemperatureTarget: null,
-          chamberTemperatureCurrent: null,
-          coolingFanPercent: null,
-          auxiliaryFanPercent: null,
-        },
-      ],
-    };
-    req1.flush(firstResponse);
-
+      samples: [{ ...sampleAt('2026-09-12T10:00:00.000Z', 0) }],
+    });
+    await vi.advanceTimersByTimeAsync(0);
     const firstHistory = service.latestHistory();
     expect(firstHistory?.samples).toHaveLength(1);
-    expect(firstHistory?.samples[0].progressPercent).toBe(0);
 
-    // Wait for the interval to trigger
-    tick(pollInterval);
-
-    // Second request should occur
-    const req2 = httpMock.expectOne((req) => req.url.includes('/telemetry/history'));
-    const secondResponse: TelemetryHistoryResponseDto = {
+    await vi.advanceTimersByTimeAsync(1000);
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
       capacity: 10,
-      samples: [
-        {
-          capturedAt: '2026-09-12T10:00:00.000Z',
-          progressPercent: 0,
-          nozzleTemperatureCurrent: null,
-          nozzleTemperatureTarget: null,
-          bedTemperatureCurrent: null,
-          bedTemperatureTarget: null,
-          chamberTemperatureCurrent: null,
-          coolingFanPercent: null,
-          auxiliaryFanPercent: null,
-        },
-        {
-          capturedAt: '2026-09-12T10:00:10.000Z',
-          progressPercent: 10,
-          nozzleTemperatureCurrent: null,
-          nozzleTemperatureTarget: null,
-          bedTemperatureCurrent: null,
-          bedTemperatureTarget: null,
-          chamberTemperatureCurrent: null,
-          coolingFanPercent: null,
-          auxiliaryFanPercent: null,
-        },
-      ],
-    };
-    req2.flush(secondResponse);
+      samples: [sampleAt('2026-09-12T10:00:00.000Z', 0), sampleAt('2026-09-12T10:00:10.000Z', 10)],
+    });
+    await vi.advanceTimersByTimeAsync(0);
 
     const secondHistory = service.latestHistory();
     expect(secondHistory).not.toBe(firstHistory);
     expect(secondHistory?.samples).toHaveLength(2);
     expect(secondHistory?.samples[1].progressPercent).toBe(10);
-  }));
+  });
 
-  it('does not start polling again if already started', fakeAsync(() => {
+  it('does not start a second interval if start() is called again while already running', async () => {
     service.start(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush(emptyResponse);
 
-    // First request
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [],
-    });
-
-    // Call start again
     service.start(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
-    // Tick and expect only one more request (not two)
-    tick(1000);
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [],
-    });
-
-    // No more requests should be pending
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush(emptyResponse);
     httpMock.expectNone((req) => req.url.includes('/telemetry/history'));
-  }));
+  });
 
-  it('stops polling when stop() is called', fakeAsync(() => {
+  it('stops polling once stop() is called', async () => {
     service.start(1000);
-
-    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush({
-      capacity: 10,
-      samples: [],
-    });
+    await vi.advanceTimersByTimeAsync(0);
+    httpMock.expectOne((req) => req.url.includes('/telemetry/history')).flush(emptyResponse);
 
     service.stop();
+    await vi.advanceTimersByTimeAsync(1000);
 
-    // Advance time past the interval
-    tick(1000);
-
-    // No more requests should occur
     httpMock.expectNone((req) => req.url.includes('/telemetry/history'));
-  }));
+  });
 });
+
+function sampleAt(capturedAt: string, progressPercent: number) {
+  return {
+    capturedAt,
+    progressPercent,
+    nozzleTemperatureCurrent: null,
+    nozzleTemperatureTarget: null,
+    bedTemperatureCurrent: null,
+    bedTemperatureTarget: null,
+    chamberTemperatureCurrent: null,
+    coolingFanPercent: null,
+    auxiliaryFanPercent: null,
+  };
+}

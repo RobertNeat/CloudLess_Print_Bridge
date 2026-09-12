@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PopoverModule } from 'primeng/popover';
 import { SliderModule } from 'primeng/slider';
@@ -15,22 +15,19 @@ import { I18nService, type TranslationKey } from '../../core/i18n.service';
 export class PrinterQuickControls {
   protected readonly i18n = inject(I18nService);
   readonly lightEnabled = model(false);
-  /**
-   * fanSpeed is the only authoritative fan control; fansEnabled is
-   * never directly set by user code. Instead, it is always derived:
-   * fansEnabled = (fanSpeed > 0). This eliminates duplicate commands
-   * when the speed changes (no separate set(fansEnabled) emit), and
-   * simplifies the parent's state tracking — only fanSpeed needs
-   * suppression, not both. The toggle switches the speed between 0%
-   * and lastFanSpeed to achieve on/off semantics at the command level.
-   */
   readonly fanSpeed = model(0);
   /**
-   * Derived read-only state: fans are on only if speed > 0. This has
-   * no model() output binding; the parent reads it via the getter when
-   * rendering, never subscribes to a *Change event for it.
+   * One-way input(), not model(): the parent (dashboard-page.html) still
+   * binds [fansEnabled]="data.controls.fansEnabled" to keep this in sync
+   * with real backend state, but this component never writes it back —
+   * doing so used to emit a redundant fansEnabledChange alongside
+   * fanSpeedChange on every interaction, causing two racing
+   * /printer-controls/fan POSTs per click. All fan on/off UI logic below
+   * reads this input directly; toggleFans()/setFanSpeed() only ever emit
+   * fanSpeedChange, and the parent derives the next fansEnabled from the
+   * new speed itself (see DashboardPage.updateControl()).
    */
-  readonly fansEnabled = computed(() => this.fanSpeed() > 0);
+  readonly fansEnabled = input(false);
   readonly printSpeed = model<PrintSpeedMode>('standard');
   protected readonly speedModes: readonly PrintSpeedMode[] = [
     'silent',
@@ -42,15 +39,15 @@ export class PrinterQuickControls {
 
   /**
    * Normalizes the fan speed to the nearest 10% when it is set
-   * externally (e.g. from parent polling updates). This keeps the UI
-   * always showing a valid step value, but is kept local — the
-   * normalized value is never emitted back to the parent as a spurious
-   * fanSpeedChange (the parent's optimistic patch and the polling
-   * value are kept in sync by PollSuppressionWindow).
+   * externally (e.g. from parent polling updates), and keeps the
+   * "last running speed" cache used by toggleFans() up to date so
+   * turning fans back on after an external speed change resumes at
+   * that speed rather than a stale value from before this session.
    */
   private readonly normalizeState = effect(() => {
     const speed = Math.round(Math.min(100, Math.max(0, Number(this.fanSpeed()) || 0)) / 10) * 10;
     if (speed !== this.fanSpeed()) this.fanSpeed.set(speed);
+    if (speed > 0) this.lastFanSpeed = speed;
   });
 
   protected toggleLight(): void {
@@ -69,8 +66,8 @@ export class PrinterQuickControls {
   }
 
   /**
-   * Sets the fan speed and updates lastFanSpeed cache if > 0. Emits
-   * only fanSpeedChange, never a separate fansEnabledChange.
+   * Emits only fanSpeedChange — never a separate fansEnabledChange, since
+   * fansEnabled is a one-way input the parent derives itself.
    */
   protected setFanSpeed(value: number): void {
     this.fanSpeed.set(value);

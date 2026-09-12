@@ -9,10 +9,15 @@ export interface MachineEnvelopeDto {
   z: AxisRangeDto;
 }
 
+export interface HeaterCapabilitiesDto {
+  hasChamberHeater: boolean;
+}
+
 export interface DeviceProfileResponseDto {
   id: string;
   topology: { unitCount: number; slotsPerUnit: number; externalSpool: boolean };
   machineEnvelope: MachineEnvelopeDto;
+  heaterCapabilities?: HeaterCapabilitiesDto;
 }
 
 export type PrinterPositionSource = 'unknown' | 'homed' | 'commanded';

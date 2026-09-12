@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { AxisRanges } from '../printer-navigation/printer-navigation.models';
 import { MqttPuppeteerConfig } from './mqtt-puppeteer.config';
+import type { DeviceCapabilities } from '../dashboard.models';
 import type { DeviceProfileResponseDto } from './mqtt-puppeteer-api.types';
 
 /**
@@ -32,6 +33,41 @@ export class DeviceProfileService {
       Z: { min: envelope.z.minimum, max: envelope.z.maximum },
     };
   }
+
+  /**
+   * Fetches both the machine envelope and heater capabilities from the same
+   * GET /device_config/profile response in one request (rather than a
+   * second fetchHeaterCapabilities() hitting the same endpoint again).
+   * Unlike the envelope, an unknown/malformed heaterCapabilities never fails
+   * the whole call — it fails closed to "unsupported", since a missing
+   * capability flag should only ever disable an editor (chamber becomes
+   * non-settable), never block axis-range-dependent features like jogging.
+   */
+  async fetchProfile(): Promise<{ axisRanges: AxisRanges; deviceCapabilities: DeviceCapabilities }> {
+    const response = await firstValueFrom(
+      this.http.get<DeviceProfileResponseDto>(`${this.config.baseUrl}/device_config/profile`),
+    );
+    const envelope = response.machineEnvelope;
+    if (!isValidEnvelope(envelope)) {
+      throw new Error('device_config/profile returned an invalid machine envelope.');
+    }
+    return {
+      axisRanges: {
+        X: { min: envelope.x.minimum, max: envelope.x.maximum },
+        Y: { min: envelope.y.minimum, max: envelope.y.maximum },
+        Z: { min: envelope.z.minimum, max: envelope.z.maximum },
+      },
+      deviceCapabilities: isValidDeviceCapabilities(response.heaterCapabilities)
+        ? response.heaterCapabilities
+        : UNSUPPORTED_DEVICE_CAPABILITIES,
+    };
+  }
+}
+
+const UNSUPPORTED_DEVICE_CAPABILITIES: DeviceCapabilities = { hasChamberHeater: false };
+
+function isValidDeviceCapabilities(value: unknown): value is DeviceCapabilities {
+  return !!value && typeof value === 'object' && typeof (value as DeviceCapabilities).hasChamberHeater === 'boolean';
 }
 
 function isValidEnvelope(envelope: unknown): envelope is DeviceProfileResponseDto['machineEnvelope'] {

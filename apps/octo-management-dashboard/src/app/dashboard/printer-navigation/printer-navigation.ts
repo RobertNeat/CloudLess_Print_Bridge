@@ -89,6 +89,14 @@ export class PrinterNavigation {
   readonly configurationSaved = output<PrinterNavigationConfiguration>();
   readonly axesReset = output<AxisPointResetEvent>();
   readonly hotendAction = output<HotendActionEvent>();
+  /**
+   * Requests a physical home. Independent of axis-point calibration
+   * (axesReset) — this must never touch draftPoints/points state, it only
+   * asks the parent to issue the home command. jogDisabled unlocking
+   * afterward is driven entirely by the parent's positionSource polling,
+   * not by anything this component does locally.
+   */
+  readonly homeRequested = output<void>();
 
   protected readonly axes = PRINTER_AXES;
   protected readonly configurationOpen = signal(false);
@@ -472,6 +480,10 @@ export class PrinterNavigation {
 
   protected hotendLabel(direction: HotendDirection): string {
     return this.formatDelta(this.hotendDelta(direction, this.mainStep()));
+  }
+
+  protected requestHome(): void {
+    this.homeRequested.emit();
   }
 
   protected emitHotendAction(direction: HotendDirection, step = this.mainStep()): void {

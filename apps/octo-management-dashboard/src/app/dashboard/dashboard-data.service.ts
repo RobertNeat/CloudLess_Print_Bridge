@@ -49,6 +49,7 @@ function isManagementDashboardData(value: unknown): value is ManagementDashboard
     coordinates,
     positionSource,
     axisRanges,
+    deviceCapabilities,
     navigation,
     livePreview,
     widgets,
@@ -73,6 +74,7 @@ function isManagementDashboardData(value: unknown): value is ManagementDashboard
     hasNumbers(coordinates, ['X', 'Y', 'Z']) &&
     ['unknown', 'homed', 'commanded'].includes(String(positionSource)) &&
     isAxisRanges(axisRanges) &&
+    isDeviceCapabilities(deviceCapabilities) &&
     isNavigation(navigation) &&
     isLivePreview(livePreview) &&
     Array.isArray(widgets) &&
@@ -88,6 +90,10 @@ function isAxisRanges(value: unknown): boolean {
     const range = value[axis];
     return isRecord(range) && isNumber(range['min']) && isNumber(range['max']) && range['min'] <= range['max'];
   });
+}
+
+function isDeviceCapabilities(value: unknown): boolean {
+  return isRecord(value) && typeof value['hasChamberHeater'] === 'boolean';
 }
 
 function isNavigation(value: unknown): boolean {

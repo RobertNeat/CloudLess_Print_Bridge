@@ -1,5 +1,6 @@
 import type {
   AmsTopologyDto,
+  HeaterCapabilitiesDto,
   MachineEnvelopeDto,
 } from '@cloudless/printer-contracts';
 import type { JsonObject } from '../common/json';
@@ -30,6 +31,14 @@ export interface PrinterCommandProfile {
    * printer profile changes enforcement without touching shared code.
    */
   getMachineEnvelope(): MachineEnvelopeDto;
+
+  /**
+   * Which heaters this model physically has. Generic (model-agnostic) code
+   * — including the dashboard's settable-sensor UI state — must read this
+   * instead of assuming a heater exists, so a future profile with a chamber
+   * heater becomes editable without touching shared code.
+   */
+  getHeaterCapabilities(): HeaterCapabilitiesDto;
 
   /**
    * Inspects a fully-rendered MQTT payload for safety before it is

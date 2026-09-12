@@ -18,12 +18,25 @@
       [src]="viewport().imageUrl"
       [alt]="viewport().imageAlt"
     />
+    <!--
+      preserveAspectRatio="none" stretches the viewBox independently on each
+      axis instead of uniformly scaling + letterboxing ("xMidYMid meet").
+      This must match the stretch-based client<->viewBox mapping in
+      eventToPoint() and the stretch-based percentage placement in
+      pointStyle() (both divide by bounds.width/height and
+      viewBox.width/height independently) — with "meet" those two disagreed
+      with the actual rendered geometry whenever the widget's aspect ratio
+      differed from the viewBox's, which is exactly what happens after a
+      dashboard-layout resize. The bed image below uses object-fit: fill
+      for the same reason, so a calibrated point still lines up with the
+      printer bed pixel it was placed on at every widget size.
+    -->
     <svg
       id="printer-navigation-canvas"
       class="printer-navigation__canvas"
       data-testid="printer-navigation-canvas"
       [attr.viewBox]="canvasViewBox()"
-      preserveAspectRatio="xMidYMid meet"
+      preserveAspectRatio="none"
       role="application"
       [attr.aria-label]="labels().canvasAriaLabel"
       [attr.tabindex]="configurationOpen() ? 0 : -1"
@@ -122,6 +135,17 @@
       >
         {{ labels().jogDisabledHint }}
       </div>
+      <button
+        id="printer-navigation-home-button"
+        pButton
+        type="button"
+        class="home-button"
+        data-testid="printer-navigation-home-button"
+        icon="pi pi-home"
+        [label]="labels().homeButtonLabel"
+        [attr.aria-label]="labels().homeButtonAriaLabel"
+        (click)="requestHome(); $event.stopPropagation()"
+      ></button>
     }
 
     <button
