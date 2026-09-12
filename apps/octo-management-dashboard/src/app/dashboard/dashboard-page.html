@@ -1,6 +1,11 @@
-<section class="dashboard" [class.dashboard--editing]="layout.editing()">
+<section
+  id="management-dashboard"
+  class="dashboard"
+  data-testid="management-dashboard"
+  [class.dashboard--editing]="layout.editing()"
+>
   @if (commandError()) {
-    <div class="dashboard-command-error" role="alert">
+    <div id="dashboard-command-error" class="dashboard-command-error" data-testid="dashboard-command-error" role="alert">
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
       {{ i18n.t('dashboard.commandError') }}
     </div>
@@ -83,12 +88,12 @@
       }
     </gridster>
   } @else if (loadingError()) {
-    <div class="dashboard-state">
+    <div id="dashboard-load-error" class="dashboard-state" data-testid="dashboard-load-error">
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
       ><strong>{{ i18n.t('dashboard.loadError') }}</strong>
     </div>
   } @else {
-    <div class="dashboard-state">
+    <div id="dashboard-loading" class="dashboard-state" data-testid="dashboard-loading">
       <i class="pi pi-spin pi-spinner" aria-hidden="true"></i
       ><span>{{ i18n.t('dashboard.loading') }}</span>
     </div>

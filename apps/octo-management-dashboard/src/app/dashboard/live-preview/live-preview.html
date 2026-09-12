@@ -1,20 +1,32 @@
-<section class="preview">
+<section id="live-preview" class="preview" data-testid="live-preview">
   <header>
     <div>
-      <span class="live-dot" [class.live-dot--active]="preview().active" aria-hidden="true"></span
-      ><strong>{{ preview().cameraName }}</strong>
+      <span
+        id="live-preview-status-dot"
+        class="live-dot"
+        data-testid="live-preview-status-dot"
+        [class.live-dot--active]="preview().active"
+        aria-hidden="true"
+      ></span
+      ><strong id="live-preview-camera-name" data-testid="live-preview-camera-name">{{
+        preview().cameraName
+      }}</strong>
     </div>
     <div class="preview-actions">
       <p-select
+        id="live-preview-resolution-select"
+        data-testid="live-preview-resolution-select"
         [options]="preview().availableResolutions"
         [ngModel]="preview().resolution"
         (ngModelChange)="resolutionChanged.emit($event)"
         size="small"
         [ariaLabel]="i18n.t('live.resolutionAria')"
       /><button
+        id="live-preview-toggle-button"
         pButton
         type="button"
         size="small"
+        data-testid="live-preview-toggle-button"
         [severity]="preview().active ? 'danger' : 'primary'"
         [outlined]="preview().active"
         [icon]="preview().active ? 'pi pi-stop' : 'pi pi-play'"
@@ -23,11 +35,22 @@
       ></button>
     </div>
   </header>
-  <div class="camera-frame">
+  <div id="live-preview-camera-frame" class="camera-frame" data-testid="live-preview-camera-frame">
     @if (preview().active) {
-      <img src="/images/live_preview.png" [alt]="i18n.t('live.imageAlt')" />
+      <img
+        id="live-preview-stream-image"
+        data-testid="live-preview-stream-image"
+        src="/images/live_preview.png"
+        [alt]="i18n.t('live.imageAlt')"
+      />
     } @else {
-      <div class="camera-off" role="img" [attr.aria-label]="i18n.t('live.offAria')">
+      <div
+        id="live-preview-offline-placeholder"
+        class="camera-off"
+        data-testid="live-preview-offline-placeholder"
+        role="img"
+        [attr.aria-label]="i18n.t('live.offAria')"
+      >
         <span><i class="pi pi-camera" aria-hidden="true"></i></span>
       </div>
     }

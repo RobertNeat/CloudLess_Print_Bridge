@@ -1,7 +1,14 @@
-<section class="controls" [attr.aria-label]="i18n.t('controls.aria')">
+<section
+  id="printer-quick-controls"
+  class="controls"
+  data-testid="printer-quick-controls"
+  [attr.aria-label]="i18n.t('controls.aria')"
+>
   <button
+    id="quick-control-light-toggle"
     type="button"
     class="control"
+    data-testid="quick-control-light-toggle"
     [class.control--active]="lightEnabled()"
     [attr.aria-pressed]="lightEnabled()"
     [attr.aria-label]="i18n.t(lightEnabled() ? 'controls.lightOnAria' : 'controls.lightOffAria')"
@@ -17,44 +24,58 @@
     >
   </button>
   <button
+    id="quick-control-fans-trigger"
     #fanTrigger
     type="button"
     class="control"
+    data-testid="quick-control-fans-trigger"
     [class.control--active]="fansEnabled()"
     (click)="fanPopover.toggle($event, fanTrigger)"
   >
     <span class="icon"><i class="pi pi-cog" aria-hidden="true"></i></span
     ><span
       ><small>{{ i18n.t('controls.fans') }}</small
-      ><strong>{{ fansEnabled() ? fanSpeed() + '%' : i18n.t('controls.off') }}</strong></span
+      ><strong id="quick-control-fan-speed-label">{{
+        fansEnabled() ? fanSpeed() + '%' : i18n.t('controls.off')
+      }}</strong></span
     ><i class="pi pi-chevron-down chevron" aria-hidden="true"></i>
   </button>
   <button
+    id="quick-control-speed-trigger"
     #speedTrigger
     type="button"
     class="control"
+    data-testid="quick-control-speed-trigger"
     (click)="speedPopover.toggle($event, speedTrigger)"
   >
     <span class="icon"><i class="pi pi-gauge" aria-hidden="true"></i></span
     ><span
       ><small>{{ i18n.t('controls.printSpeed') }}</small
-      ><strong>{{ speedLabel(printSpeed()) }}</strong></span
+      ><strong id="quick-control-speed-label">{{ speedLabel(printSpeed()) }}</strong></span
     ><i class="pi pi-chevron-down chevron" aria-hidden="true"></i>
   </button>
 </section>
 <p-popover #fanPopover styleClass="printer-control-popover">
-  <div class="popover-panel">
+  <div id="quick-control-fan-popover" class="popover-panel" data-testid="quick-control-fan-popover">
     <div class="popover-row">
       <strong>{{ i18n.t('controls.fans') }}</strong
-      ><button type="button" class="power" [class.power--on]="fansEnabled()" (click)="toggleFans()">
+      ><button
+        id="quick-control-fan-power-toggle"
+        type="button"
+        class="power"
+        data-testid="quick-control-fan-power-toggle"
+        [class.power--on]="fansEnabled()"
+        (click)="toggleFans()"
+      >
         {{ i18n.t(fansEnabled() ? 'controls.on' : 'controls.off') }}
       </button>
     </div>
     <div class="popover-row">
       <span>{{ i18n.t('controls.speed') }}</span
-      ><strong>{{ fanSpeed() }}%</strong>
+      ><strong id="quick-control-fan-speed-value">{{ fanSpeed() }}%</strong>
     </div>
     <p-slider
+      id="quick-control-fan-speed-slider"
       [ngModel]="fanSpeed()"
       (ngModelChange)="setFanSpeed($event)"
       [step]="10"
@@ -63,11 +84,19 @@
   </div>
 </p-popover>
 <p-popover #speedPopover styleClass="printer-control-popover">
-  <div class="speed-list" role="radiogroup" [attr.aria-label]="i18n.t('controls.speedGroupAria')">
+  <div
+    id="quick-control-speed-popover"
+    class="speed-list"
+    data-testid="quick-control-speed-popover"
+    role="radiogroup"
+    [attr.aria-label]="i18n.t('controls.speedGroupAria')"
+  >
     @for (mode of speedModes; track mode) {
       <button
         type="button"
         role="radio"
+        [id]="'quick-control-speed-option-' + mode"
+        [attr.data-testid]="'quick-control-speed-option-' + mode"
         [attr.aria-checked]="printSpeed() === mode"
         [class.selected]="printSpeed() === mode"
         (click)="printSpeed.set(mode); speedPopover.hide()"
