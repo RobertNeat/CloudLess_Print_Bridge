@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { VideosDashboardData } from './videos-dashboard.models';
+import type { CameraSource, VideosDashboardData } from './videos-dashboard.models';
 
 const metricCodes = [
   'status',
@@ -27,6 +27,11 @@ export class VideosDashboardDataService {
       throw new Error('Mock videos dashboard data has an invalid shape.');
     }
     return structuredClone(source);
+  }
+
+  async refreshSources(): Promise<readonly CameraSource[]> {
+    const data = await this.load();
+    return data.sources;
   }
 }
 
@@ -80,7 +85,11 @@ function isMediaItem(value: unknown): boolean {
     mediaKinds.includes(value['kind'] as never) &&
     !Number.isNaN(Date.parse(value['capturedAt'] as string)) &&
     (value['duration'] === undefined || typeof value['duration'] === 'string') &&
-    (value['thumbnailUrl'] === undefined || typeof value['thumbnailUrl'] === 'string')
+    (value['thumbnailUrl'] === undefined || typeof value['thumbnailUrl'] === 'string') &&
+    (value['displayName'] === undefined || typeof value['displayName'] === 'string') &&
+    (value['requestId'] === undefined || typeof value['requestId'] === 'string') &&
+    (value['downloadUrl'] === undefined || typeof value['downloadUrl'] === 'string') &&
+    (value['frameCount'] === undefined || isFiniteNumber(value['frameCount']))
   );
 }
 

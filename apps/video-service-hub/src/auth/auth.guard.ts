@@ -51,16 +51,32 @@ export class AuthGuard implements CanActivate {
 
 const publicAuthPaths = new Set(['/auth/config', '/auth/token']);
 const liveViewPathPattern = /^\/api\/v1\/cameras\/[^/]+\/live$/;
+const mediaFilePathPatterns = [
+  /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/audio\/[^/]+\/[^/]+\/file$/,
+];
 
 function isPublicPath(path: string, method: string): boolean {
   if (publicAuthPaths.has(path) || path.startsWith('/health')) {
     return true;
   }
+  if (method !== 'GET') {
+    return false;
+  }
   // GET .../live is consumed by a plain <img src>, which cannot send an
   // Authorization header; it is instead protected by StreamTokenGuard using a
   // short-lived ?streamToken= issued through the (Bearer-protected)
   // POST /auth/stream-token endpoint.
-  return method === 'GET' && liveViewPathPattern.test(path);
+  if (liveViewPathPattern.test(path)) {
+    return true;
+  }
+  // Media file routes are likewise consumed by plain <img>/<audio src>
+  // elements and are instead protected by MediaTokenGuard using a
+  // ?mediaToken= issued through the (Bearer-protected)
+  // POST /auth/media-token endpoint.
+  return mediaFilePathPatterns.some((pattern) => pattern.test(path));
 }
 
 function readBearerToken(header: string | undefined): string | undefined {

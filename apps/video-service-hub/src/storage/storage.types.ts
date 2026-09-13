@@ -18,6 +18,7 @@ export type CaptureManifest = {
   requestId: string;
   resolution: string;
   captures: CaptureEntry[];
+  displayName?: string;
 };
 
 export type RecordingPart = {
@@ -41,6 +42,7 @@ export type RecordingManifest = {
   createdAt: string;
   updatedAt: string;
   parts: Record<string, RecordingPart>;
+  displayName?: string;
 };
 
 export type AudioManifest = {
@@ -52,6 +54,7 @@ export type AudioManifest = {
   size: number;
   sha256: string;
   storedAt: string;
+  displayName?: string;
 };
 
 export type CompletedLiveFile = {

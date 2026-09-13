@@ -94,6 +94,19 @@ export function assertSafeFileName(value: unknown, field: string): string {
   return value;
 }
 
+export function assertDisplayName(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new BadRequestException('displayName is required');
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 1 || trimmed.length > 128) {
+    throw new BadRequestException(
+      'displayName must be between 1 and 128 characters',
+    );
+  }
+  return trimmed;
+}
+
 export function assertCameraBaseUrl(value: unknown): string {
   if (typeof value !== 'string') {
     throw new BadRequestException('baseUrl is required');

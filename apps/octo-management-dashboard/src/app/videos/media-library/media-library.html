@@ -8,12 +8,143 @@
         >
         <small>{{ itemsFor(section.kind).length }}</small>
       </header>
+
+      @if (section.kind === 'image') {
+        <div class="media-actions">
+          <p-select
+            [options]="availableResolutions()"
+            [ngModel]="resolution()"
+            (ngModelChange)="captureResolution.set($event)"
+            styleClass="media-actions__resolution"
+            id="media-capture-resolution"
+          />
+          <p-button
+            size="small"
+            icon="pi pi-camera"
+            [label]="i18n.t('videos.record.capture')"
+            [disabled]="!canRecord()"
+            id="media-capture-button"
+            (onClick)="capture()"
+          />
+        </div>
+      }
+
+      @if (section.kind === 'timelapse') {
+        <div class="media-actions">
+          <p-button
+            size="small"
+            icon="pi pi-clock"
+            [label]="i18n.t('videos.record.startTimelapse')"
+            [disabled]="!canRecord()"
+            id="media-timelapse-toggle"
+            (onClick)="toggleTimelapseForm()"
+          />
+          @if (timelapseFormOpen()) {
+            <div class="media-actions__form">
+              <label
+                >{{ i18n.t('videos.record.timelapseInterval') }}
+                <input
+                  pInputText
+                  type="number"
+                  min="1"
+                  [ngModel]="timelapseIntervalSeconds()"
+                  (ngModelChange)="timelapseIntervalSeconds.set($event)"
+                  id="media-timelapse-interval"
+              /></label>
+              <label
+                >{{ i18n.t('videos.record.timelapseDuration') }}
+                <input
+                  pInputText
+                  type="number"
+                  min="1"
+                  [ngModel]="timelapseDurationSeconds()"
+                  (ngModelChange)="timelapseDurationSeconds.set($event)"
+                  id="media-timelapse-duration"
+              /></label>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.start')"
+                id="media-timelapse-start"
+                (onClick)="startTimelapse()"
+              />
+            </div>
+          }
+        </div>
+      }
+
+      @if (section.kind === 'recording') {
+        <div class="media-actions">
+          <p-button
+            size="small"
+            icon="pi pi-video"
+            [label]="i18n.t('videos.record.startRecording')"
+            [disabled]="!canRecord()"
+            id="media-recording-toggle"
+            (onClick)="toggleRecordingForm()"
+          />
+          @if (recordingFormOpen()) {
+            <div class="media-actions__form">
+              <label
+                >{{ i18n.t('videos.record.recordingDuration') }}
+                <input
+                  pInputText
+                  type="number"
+                  min="1"
+                  [ngModel]="recordingDurationSeconds()"
+                  (ngModelChange)="recordingDurationSeconds.set($event)"
+                  id="media-recording-duration"
+              /></label>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.start')"
+                id="media-recording-start"
+                (onClick)="startRecording()"
+              />
+            </div>
+          }
+        </div>
+      }
+
+      @if (section.kind === 'audio') {
+        <div class="media-actions">
+          <p-button
+            size="small"
+            icon="pi pi-microphone"
+            [label]="i18n.t('videos.record.recordAudio')"
+            [disabled]="!canRecord()"
+            id="media-audio-toggle"
+            (onClick)="toggleAudioForm()"
+          />
+          @if (audioFormOpen()) {
+            <div class="media-actions__form">
+              <label
+                >{{ i18n.t('videos.record.audioDuration') }}
+                <input
+                  pInputText
+                  type="number"
+                  min="1"
+                  max="20"
+                  [ngModel]="audioDurationSeconds()"
+                  (ngModelChange)="audioDurationSeconds.set($event)"
+                  id="media-audio-duration"
+              /></label>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.start')"
+                id="media-audio-start"
+                (onClick)="recordAudio()"
+              />
+            </div>
+          }
+        </div>
+      }
+
       <div class="media-grid">
         @for (item of itemsFor(section.kind); track item.id) {
           <button
             type="button"
             class="media-card"
-            [attr.aria-label]="i18n.t('videos.openMedia', { name: item.name })"
+            [attr.aria-label]="i18n.t('videos.openMedia', { name: itemLabel(item) })"
             [attr.id]="'media-item-' + item.id"
             (click)="itemOpened.emit(item)"
           >
@@ -23,7 +154,7 @@
               } @else {
                 <i [class]="section.icon" aria-hidden="true"></i>
               }
-              @if (item.kind === 'recording' || item.kind === 'timelapse') {
+              @if (item.kind === 'recording' || section.kind === 'timelapse') {
                 <b><i class="pi pi-play" aria-hidden="true"></i></b>
               }
               @if (item.duration) {
@@ -31,7 +162,7 @@
               }
             </span>
             <span class="media-meta"
-              ><strong>{{ item.name }}</strong
+              ><strong>{{ itemLabel(item) }}</strong
               ><small>{{ dateLabel(item.capturedAt) }}</small></span
             >
           </button>

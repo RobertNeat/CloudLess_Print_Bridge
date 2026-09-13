@@ -34,10 +34,16 @@ export interface MediaItem {
   readonly id: string;
   readonly kind: MediaKind;
   readonly name: string;
+  readonly displayName?: string;
   readonly sourceId: string;
+  /** Absent for mock-data items, which have no backing file to fetch/delete/rename. */
+  readonly requestId?: string;
   readonly capturedAt: string;
   readonly duration?: string;
+  readonly frameCount?: number;
   readonly thumbnailUrl?: string;
+  /** Absent for mock-data items, which have no backing file to fetch/delete/rename. */
+  readonly downloadUrl?: string;
 }
 
 export interface VideosDashboardData {

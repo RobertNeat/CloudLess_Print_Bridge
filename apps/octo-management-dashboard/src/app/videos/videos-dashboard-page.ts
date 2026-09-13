@@ -9,10 +9,13 @@ import { CameraCommandApiService } from './backend/camera-command-api.service';
 import { CameraRegistryApiService } from './backend/camera-registry-api.service';
 import { CameraPanel } from './camera-panel/camera-panel';
 import { MediaLibrary } from './media-library/media-library';
+import { MediaPreview } from './media-preview/media-preview';
 import { VideoFiltersService } from './video-filters.service';
 import { VideoPlayer } from './video-player/video-player';
 import { VIDEOS_REPOSITORY } from './videos-dashboard.ports';
 import type { MediaItem, VideosDashboardData } from './videos-dashboard.models';
+
+const SOURCE_POLL_INTERVAL_MS = 10_000;
 
 @Component({
   selector: 'app-videos-dashboard-page',
@@ -23,6 +26,7 @@ import type { MediaItem, VideosDashboardData } from './videos-dashboard.models';
     FormsModule,
     InputTextModule,
     MediaLibrary,
+    MediaPreview,
     SplitterModule,
     VideoPlayer,
   ],
@@ -48,6 +52,7 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly newCameraBaseUrl = signal('');
   protected readonly newCameraDisplayName = signal('');
   private activeLiveRequestId: string | null = null;
+  private readonly sourcePollHandle: ReturnType<typeof setInterval>;
 
   protected readonly selectedSource = computed(() => {
     const data = this.dashboard();
@@ -73,14 +78,35 @@ export class VideosDashboardPage implements OnDestroy {
 
   constructor() {
     void this.loadData();
+    this.sourcePollHandle = setInterval(() => void this.refreshSources(), SOURCE_POLL_INTERVAL_MS);
   }
 
   ngOnDestroy(): void {
     this.filters.reset();
+    clearInterval(this.sourcePollHandle);
   }
 
   protected openMedia(item: MediaItem): void {
     this.selectedMedia.set(item);
+  }
+
+  protected closeMedia(): void {
+    this.selectedMedia.set(null);
+  }
+
+  protected onMediaChanged(): void {
+    this.selectedMedia.set(null);
+    void this.loadData();
+  }
+
+  private async refreshSources(): Promise<void> {
+    try {
+      const sources = await this.repository.refreshSources();
+      if (this.destroyRef.destroyed) return;
+      this.dashboard.update((data) => (data ? { ...data, sources: [...sources] } : data));
+    } catch {
+      // Transient polling failures are not surfaced — the next tick retries.
+    }
   }
 
   protected selectSource(sourceId: string): void {
@@ -145,6 +171,81 @@ export class VideosDashboardPage implements OnDestroy {
 
   protected setResolution(resolution: string): void {
     this.updatePlayer({ resolution });
+  }
+
+  protected async captureImage(resolution: string): Promise<void> {
+    const source = this.selectedSource();
+    if (!source?.commandBaseUrl) return;
+    this.streamCommandError.set(false);
+    try {
+      await this.cameraCommands.captureImage(
+        source.id,
+        source.commandBaseUrl,
+        resolution,
+        `capture-${source.id}-${Date.now()}`,
+      );
+      setTimeout(() => void this.loadData(), 2000);
+    } catch {
+      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+    }
+  }
+
+  protected async startTimelapse(
+    resolution: string,
+    intervalMs: number,
+    durationMs: number,
+  ): Promise<void> {
+    const source = this.selectedSource();
+    if (!source?.commandBaseUrl) return;
+    this.streamCommandError.set(false);
+    try {
+      await this.cameraCommands.startTimelapse(
+        source.id,
+        source.commandBaseUrl,
+        resolution,
+        intervalMs,
+        durationMs,
+        `timelapse-${source.id}-${Date.now()}`,
+      );
+      setTimeout(() => void this.loadData(), durationMs + 2000);
+    } catch {
+      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+    }
+  }
+
+  protected async startTimedRecording(resolution: string, durationMs: number): Promise<void> {
+    const source = this.selectedSource();
+    if (!source?.commandBaseUrl) return;
+    this.streamCommandError.set(false);
+    try {
+      await this.cameraCommands.startTimedRecording(
+        source.id,
+        source.commandBaseUrl,
+        resolution,
+        durationMs,
+        `recording-${source.id}-${Date.now()}`,
+      );
+      setTimeout(() => void this.loadData(), durationMs + 2000);
+    } catch {
+      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+    }
+  }
+
+  protected async recordAudio(durationSeconds: number): Promise<void> {
+    const source = this.selectedSource();
+    if (!source?.commandBaseUrl) return;
+    this.streamCommandError.set(false);
+    try {
+      await this.cameraCommands.recordAudio(
+        source.id,
+        source.commandBaseUrl,
+        durationSeconds,
+        `audio-${source.id}-${Date.now()}`,
+      );
+      setTimeout(() => void this.loadData(), durationSeconds * 1000 + 2000);
+    } catch {
+      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+    }
   }
 
   protected retryLoad(): void {
