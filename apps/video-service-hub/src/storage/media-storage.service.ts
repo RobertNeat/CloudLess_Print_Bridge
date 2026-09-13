@@ -29,8 +29,10 @@ import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
 import { MjpegCountingTransform, SizeAndHashTransform } from './stream-utils';
 import type {
+  AudioManifest,
   CaptureManifest,
   CompletedLive,
+  CompletedLiveFile,
   LiveViewer,
   RecordingManifest,
   StoredFile,
@@ -338,6 +340,22 @@ export class MediaStorageService implements OnModuleInit {
           temporary,
           join(directory, fileName),
         );
+        const manifestPath = join(directory, `${requestId}.manifest.json`);
+        const existingManifest =
+          await this.readJsonIfExists<AudioManifest>(manifestPath);
+        const manifest: AudioManifest = existingManifest ?? {
+          schemaVersion: 1,
+          cameraId,
+          requestId,
+          fileName,
+          durationSeconds,
+          size: published.size,
+          sha256: published.sha256,
+          storedAt: new Date().toISOString(),
+        };
+        if (!existingManifest) {
+          await this.writeJsonAtomically(manifestPath, manifest);
+        }
         return {
           stored: true,
           duplicate: published.duplicate,
@@ -500,6 +518,96 @@ export class MediaStorageService implements OnModuleInit {
       })),
       recentlyCompletedLive: this.completedLive,
     };
+  }
+
+  listRecordingManifests(): RecordingManifest[] {
+    return [...this.recordingManifests.values()];
+  }
+
+  listCaptureManifests(): CaptureManifest[] {
+    return [...this.captureManifests.values()];
+  }
+
+  async listCompletedLiveRecordings(): Promise<CompletedLiveFile[]> {
+    const root = join(this.config.storage.root, 'live');
+    const results: CompletedLiveFile[] = [];
+    for (const cameraId of await this.directories(root)) {
+      const files = await readdir(join(root, cameraId)).catch(() => []);
+      for (const file of files) {
+        if (!file.endsWith('.mjpeg')) continue;
+        const filePath = join(root, cameraId, file);
+        const info = await stat(filePath);
+        results.push({
+          cameraId,
+          requestId: file.slice(0, -'.mjpeg'.length),
+          fileName: file,
+          size: info.size,
+          finishedAt: info.mtime.toISOString(),
+        });
+      }
+    }
+    return results;
+  }
+
+  liveRecordingFilePath(cameraId: string, requestId: string): string {
+    return join(
+      this.config.storage.root,
+      'live',
+      cameraId,
+      `${requestId}.mjpeg`,
+    );
+  }
+
+  async listAudioManifests(): Promise<AudioManifest[]> {
+    const root = join(this.config.storage.root, 'audio');
+    const manifests: AudioManifest[] = [];
+    for (const cameraId of await this.directories(root)) {
+      const files = await readdir(join(root, cameraId)).catch(() => []);
+      for (const file of files) {
+        if (!file.endsWith('.manifest.json')) continue;
+        const manifest = await this.readJsonIfExists<AudioManifest>(
+          join(root, cameraId, file),
+        );
+        if (manifest?.schemaVersion === 1) {
+          manifests.push(manifest);
+        }
+      }
+    }
+    return manifests;
+  }
+
+  recordingPartPaths(cameraId: string, requestId: string): string[] {
+    const manifest = this.recordingManifests.get(`${cameraId}:${requestId}`);
+    if (!manifest?.complete) {
+      throw new NotFoundException('recording was not found');
+    }
+    const directory = join(
+      this.config.storage.root,
+      'recordings',
+      cameraId,
+      requestId,
+    );
+    return manifest.receivedParts.map((partNumber) =>
+      join(directory, manifest.parts[String(partNumber)].fileName),
+    );
+  }
+
+  captureFilePath(
+    cameraId: string,
+    requestId: string,
+    fileName: string,
+  ): string {
+    return join(
+      this.config.storage.root,
+      'captures',
+      cameraId,
+      requestId,
+      fileName,
+    );
+  }
+
+  audioFilePath(cameraId: string, fileName: string): string {
+    return join(this.config.storage.root, 'audio', cameraId, fileName);
   }
 
   private async receiveRequest(

@@ -79,3 +79,40 @@ export function requireHeader(value: string | undefined, name: string): string {
   }
   return value;
 }
+
+const safeFileNamePattern = /^[A-Za-z0-9._-]{1,128}$/;
+
+export function assertSafeFileName(value: unknown, field: string): string {
+  if (
+    typeof value !== 'string' ||
+    !safeFileNamePattern.test(value) ||
+    value === '.' ||
+    value === '..'
+  ) {
+    throw new BadRequestException(`${field} is invalid`);
+  }
+  return value;
+}
+
+export function assertCameraBaseUrl(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new BadRequestException('baseUrl is required');
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new BadRequestException('baseUrl is invalid');
+  }
+  if (
+    url.protocol !== 'http:' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    (url.pathname !== '' && url.pathname !== '/') ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new BadRequestException('baseUrl must be an HTTP origin');
+  }
+  return url.origin;
+}

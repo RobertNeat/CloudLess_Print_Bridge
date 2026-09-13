@@ -9,8 +9,11 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { StreamTokenGuard } from '../auth/stream-token.guard';
+import { StreamTokenService } from '../auth/stream-token.service';
 import {
   assertFiniteNumber,
   assertInteger,
@@ -22,7 +25,10 @@ import { MediaStorageService } from '../storage/media-storage.service';
 
 @Controller('api/v1/cameras')
 export class CameraIngestController {
-  constructor(private readonly storage: MediaStorageService) {}
+  constructor(
+    private readonly storage: MediaStorageService,
+    private readonly streamTokens: StreamTokenService,
+  ) {}
 
   @Post(':cameraId/captures')
   capture(
@@ -153,9 +159,11 @@ export class CameraIngestController {
   }
 
   @Get(':cameraId/live')
+  @UseGuards(StreamTokenGuard)
   watchLive(
     @Param('cameraId') cameraId: string,
     @Query('requestId') requestId: string | undefined,
+    @Query('streamToken') streamToken: string | undefined,
     @Res() response: Response,
   ): void {
     const viewer = this.storage.openLiveViewer(cameraId, requestId);
@@ -165,7 +173,12 @@ export class CameraIngestController {
     response.setHeader('Pragma', 'no-cache');
     response.setHeader('X-Request-Id', viewer.requestId);
     response.flushHeaders();
-    response.once('close', () => viewer.stream.destroy());
+    response.once('close', () => {
+      viewer.stream.destroy();
+      if (streamToken) {
+        this.streamTokens.releaseViewer(streamToken);
+      }
+    });
     viewer.stream.pipe(response);
   }
 }
