@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { SplitterModule } from 'primeng/splitter';
 import { I18nService } from '../core/i18n.service';
 import { CameraCommandApiService } from './backend/camera-command-api.service';
 import { CameraRegistryApiService } from './backend/camera-registry-api.service';
@@ -22,6 +23,7 @@ import type { MediaItem, VideosDashboardData } from './videos-dashboard.models';
     FormsModule,
     InputTextModule,
     MediaLibrary,
+    SplitterModule,
     VideoPlayer,
   ],
   templateUrl: './videos-dashboard-page.html',

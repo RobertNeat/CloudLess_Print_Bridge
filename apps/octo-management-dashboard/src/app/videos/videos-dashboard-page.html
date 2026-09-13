@@ -1,33 +1,46 @@
 <section id="videos-dashboard" class="videos-dashboard">
   @if (dashboard(); as data) {
-    <div class="live-area">
-      <app-camera-panel
-        [metrics]="data.metrics"
-        [sources]="data.sources"
-        [selectedSourceId]="data.player.selectedSourceId"
-        [streamActive]="data.player.active"
-        (sourceSelected)="selectSource($event)"
-        (addCamera)="openAddCamera()"
-      />
-      <app-video-player
-        [player]="data.player"
-        [canStart]="canStartStream()"
-        [starting]="streamStarting()"
-        [sourceName]="selectedSource()?.name ?? ''"
-        [previewUrl]="selectedSource()?.previewUrl ?? ''"
-        (activeChanged)="setStreamActive($event)"
-        (resolutionChanged)="setResolution($event)"
-      />
-      @if (streamCommandError()) {
-        <div class="dashboard-state" role="alert" id="stream-command-error">
-          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
-          ><span>{{ i18n.t('videos.streamCommandError') }}</span>
+    <p-splitter
+      id="videos-splitter"
+      layout="vertical"
+      styleClass="videos-splitter"
+      [panelSizes]="[45, 55]"
+      [minSizes]="[20, 15]"
+      gutterSize="6"
+    >
+      <ng-template #panel>
+        <div class="live-area">
+          <app-camera-panel
+            [metrics]="data.metrics"
+            [sources]="data.sources"
+            [selectedSourceId]="data.player.selectedSourceId"
+            [streamActive]="data.player.active"
+            (sourceSelected)="selectSource($event)"
+            (addCamera)="openAddCamera()"
+          />
+          <app-video-player
+            [player]="data.player"
+            [canStart]="canStartStream()"
+            [starting]="streamStarting()"
+            [sourceName]="selectedSource()?.name ?? ''"
+            [previewUrl]="selectedSource()?.previewUrl ?? ''"
+            (activeChanged)="setStreamActive($event)"
+            (resolutionChanged)="setResolution($event)"
+          />
+          @if (streamCommandError()) {
+            <div class="dashboard-state" role="alert" id="stream-command-error">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
+              ><span>{{ i18n.t('videos.streamCommandError') }}</span>
+            </div>
+          }
         </div>
-      }
-    </div>
-    <div class="media-area">
-      <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
-    </div>
+      </ng-template>
+      <ng-template #panel>
+        <div class="media-area">
+          <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
+        </div>
+      </ng-template>
+    </p-splitter>
   } @else if (loadingError()) {
     <div class="dashboard-state" role="alert" id="videos-load-error">
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
