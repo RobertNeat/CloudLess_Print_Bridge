@@ -15,9 +15,12 @@ export interface CameraMetric {
 export interface CameraSource {
   readonly id: string;
   readonly name: string;
-  readonly locationCode: CameraLocationCode;
+  /** One of the known location codes, or free text from a real camera registry entry. */
+  readonly locationCode: CameraLocationCode | (string & {});
   readonly status: 'online' | 'offline';
   readonly previewUrl?: string;
+  /** Camera's own HTTP origin, used to send start-live/stop-live commands. Absent for mock/no-command sources. */
+  readonly commandBaseUrl?: string;
 }
 
 export interface VideoPlayerData {

@@ -47,7 +47,7 @@ namespace HAL
             String subnet_mask = "255.255.255.0";
             String dns_ip = "192.168.1.1";
             String video_service_ip;
-            uint16_t video_service_port = 3000;
+            uint16_t video_service_port = 10322;
             uint16_t mqtt_port = 1883;
             uint16_t heartbeat_interval_seconds = 15;
         };

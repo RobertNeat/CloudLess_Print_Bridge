@@ -1,6 +1,6 @@
-<section class="library" [attr.aria-label]="i18n.t('videos.libraryAria')">
+<section class="library" [attr.aria-label]="i18n.t('videos.libraryAria')" id="media-library">
   @for (section of sections; track section.kind) {
-    <article class="media-section">
+    <article class="media-section" [attr.id]="'media-library-section-' + section.kind">
       <header>
         <span
           ><i [class]="section.icon" aria-hidden="true"></i
@@ -14,6 +14,7 @@
             type="button"
             class="media-card"
             [attr.aria-label]="i18n.t('videos.openMedia', { name: item.name })"
+            [attr.id]="'media-item-' + item.id"
             (click)="itemOpened.emit(item)"
           >
             <span class="thumbnail" [class.thumbnail--image]="item.kind === 'image'">
@@ -35,7 +36,7 @@
             >
           </button>
         } @empty {
-          <div class="empty">
+          <div class="empty" [attr.id]="'media-library-empty-' + section.kind">
             <i class="pi pi-filter-slash" aria-hidden="true"></i
             ><span>{{ i18n.t('videos.noResults') }}</span>
           </div>

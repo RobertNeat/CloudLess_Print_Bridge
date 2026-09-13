@@ -142,7 +142,7 @@ hal::Config_t hal::getConfig()
     _data.config.subnet_mask = doc["subnetMask"].as<String>();
     _data.config.dns_ip = doc["dnsIp"].as<String>();
     _data.config.video_service_ip = doc["videoServiceIp"].as<String>();
-    _data.config.video_service_port = doc["videoServicePort"] | 3000;
+    _data.config.video_service_port = doc["videoServicePort"] | 10322;
     _data.config.mqtt_port = doc["mqttPort"] | 1883;
     _data.config.heartbeat_interval_seconds = doc["heartbeatIntervalSeconds"] | 15;
     applyNetworkDefaults(_data.config);
