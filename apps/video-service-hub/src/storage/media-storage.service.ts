@@ -610,6 +610,116 @@ export class MediaStorageService implements OnModuleInit {
     return join(this.config.storage.root, 'audio', cameraId, fileName);
   }
 
+  async deleteRecording(cameraId: string, requestId: string): Promise<void> {
+    const key = `${cameraId}:${requestId}`;
+    if (this.recordingManifests.has(key)) {
+      this.recordingManifests.delete(key);
+      await rm(
+        join(this.config.storage.root, 'recordings', cameraId, requestId),
+        {
+          recursive: true,
+          force: true,
+        },
+      );
+      return;
+    }
+    const filePath = this.liveRecordingFilePath(cameraId, requestId);
+    if (!(await this.exists(filePath))) {
+      throw new NotFoundException('recording was not found');
+    }
+    await rm(filePath, { force: true });
+  }
+
+  async deleteCapture(cameraId: string, requestId: string): Promise<void> {
+    const key = `${cameraId}:${requestId}`;
+    if (!this.captureManifests.has(key)) {
+      throw new NotFoundException('capture was not found');
+    }
+    this.captureManifests.delete(key);
+    await rm(join(this.config.storage.root, 'captures', cameraId, requestId), {
+      recursive: true,
+      force: true,
+    });
+  }
+
+  async deleteAudio(cameraId: string, requestId: string): Promise<void> {
+    const directory = join(this.config.storage.root, 'audio', cameraId);
+    const filePath = join(directory, `${requestId}.wav`);
+    const manifestPath = join(directory, `${requestId}.manifest.json`);
+    if (!(await this.exists(filePath)) && !(await this.exists(manifestPath))) {
+      throw new NotFoundException('audio recording was not found');
+    }
+    await Promise.all([
+      rm(filePath, { force: true }),
+      rm(manifestPath, { force: true }),
+    ]);
+  }
+
+  async renameRecording(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    const key = `${cameraId}:${requestId}`;
+    const manifest = this.recordingManifests.get(key);
+    if (!manifest) {
+      throw new NotFoundException('recording was not found');
+    }
+    manifest.displayName = displayName;
+    await this.writeJsonAtomically(
+      join(
+        this.config.storage.root,
+        'recordings',
+        cameraId,
+        requestId,
+        'manifest.json',
+      ),
+      manifest,
+    );
+  }
+
+  async renameCapture(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    const key = `${cameraId}:${requestId}`;
+    const manifest = this.captureManifests.get(key);
+    if (!manifest) {
+      throw new NotFoundException('capture was not found');
+    }
+    manifest.displayName = displayName;
+    await this.writeJsonAtomically(
+      join(
+        this.config.storage.root,
+        'captures',
+        cameraId,
+        requestId,
+        'manifest.json',
+      ),
+      manifest,
+    );
+  }
+
+  async renameAudio(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    const manifestPath = join(
+      this.config.storage.root,
+      'audio',
+      cameraId,
+      `${requestId}.manifest.json`,
+    );
+    const manifest = await this.readJsonIfExists<AudioManifest>(manifestPath);
+    if (!manifest) {
+      throw new NotFoundException('audio recording was not found');
+    }
+    manifest.displayName = displayName;
+    await this.writeJsonAtomically(manifestPath, manifest);
+  }
+
   private async receiveRequest(
     request: Request,
     maximumBytes: number,

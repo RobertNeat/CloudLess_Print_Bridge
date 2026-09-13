@@ -1,16 +1,26 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
+  Patch,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
-import { assertIdentifier, assertSafeFileName } from '../common/validation';
+import { MediaTokenGuard } from '../auth/media-token.guard';
+import {
+  assertDisplayName,
+  assertIdentifier,
+  assertSafeFileName,
+} from '../common/validation';
 import { MediaStorageService } from '../storage/media-storage.service';
 import { MediaLibraryService } from './media-library.service';
 import type { MediaKind } from './media-library.types';
@@ -55,6 +65,18 @@ export class MediaLibraryController {
     response.sendFile(THUMBNAIL_PLACEHOLDER_PATH);
   }
 
+  @Get('captures/:cameraId/:requestId/frames')
+  listCaptureFrames(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.library.listCaptureFrames(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+  }
+
+  @UseGuards(MediaTokenGuard)
   @Get('recordings/:cameraId/:requestId/file')
   async recordingFile(
     @Param('cameraId') cameraId: string,
@@ -76,6 +98,7 @@ export class MediaLibraryController {
     response.end();
   }
 
+  @UseGuards(MediaTokenGuard)
   @Get('captures/:cameraId/:requestId/file')
   captureFile(
     @Param('cameraId') cameraId: string,
@@ -91,6 +114,7 @@ export class MediaLibraryController {
     this.sendIfExists(filePath, response);
   }
 
+  @UseGuards(MediaTokenGuard)
   @Get('live-recordings/:cameraId/:requestId/file')
   liveRecordingFile(
     @Param('cameraId') cameraId: string,
@@ -104,6 +128,7 @@ export class MediaLibraryController {
     this.sendIfExists(filePath, response);
   }
 
+  @UseGuards(MediaTokenGuard)
   @Get('audio/:cameraId/:requestId/file')
   audioFile(
     @Param('cameraId') cameraId: string,
@@ -115,6 +140,81 @@ export class MediaLibraryController {
       `${assertIdentifier(requestId, 'requestId')}.wav`,
     );
     this.sendIfExists(filePath, response);
+  }
+
+  @Patch('recordings/:cameraId/:requestId')
+  renameRecording(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.library.renameRecording(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+      assertDisplayName(body?.displayName),
+    );
+  }
+
+  @Patch('captures/:cameraId/:requestId')
+  renameCapture(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.library.renameCapture(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+      assertDisplayName(body?.displayName),
+    );
+  }
+
+  @Patch('audio/:cameraId/:requestId')
+  renameAudio(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.library.renameAudio(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+      assertDisplayName(body?.displayName),
+    );
+  }
+
+  @HttpCode(204)
+  @Delete('recordings/:cameraId/:requestId')
+  deleteRecording(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.library.deleteRecording(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+  }
+
+  @HttpCode(204)
+  @Delete('captures/:cameraId/:requestId')
+  deleteCapture(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.library.deleteCapture(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+  }
+
+  @HttpCode(204)
+  @Delete('audio/:cameraId/:requestId')
+  deleteAudio(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.library.deleteAudio(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
   }
 
   private sendIfExists(filePath: string, response: Response): void {

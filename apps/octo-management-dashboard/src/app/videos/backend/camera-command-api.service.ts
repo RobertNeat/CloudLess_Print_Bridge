@@ -43,4 +43,80 @@ export class CameraCommandApiService {
       ),
     );
   }
+
+  async captureImage(
+    cameraId: string,
+    cameraBaseUrl: string,
+    resolution: string,
+    requestId: string,
+  ): Promise<void> {
+    await this.sendCommand(cameraId, 'capture', { cameraBaseUrl, requestId, resolution });
+  }
+
+  async startTimelapse(
+    cameraId: string,
+    cameraBaseUrl: string,
+    resolution: string,
+    intervalMs: number,
+    durationMs: number,
+    requestId: string,
+  ): Promise<void> {
+    await this.sendCommand(cameraId, 'periodic-capture', {
+      cameraBaseUrl,
+      requestId,
+      resolution,
+      intervalMs,
+      durationMs,
+    });
+  }
+
+  async startTimedRecording(
+    cameraId: string,
+    cameraBaseUrl: string,
+    resolution: string,
+    durationMs: number,
+    requestId: string,
+  ): Promise<void> {
+    await this.sendCommand(cameraId, 'timed-recording', {
+      cameraBaseUrl,
+      requestId,
+      resolution,
+      durationMs,
+    });
+  }
+
+  async startRecording(
+    cameraId: string,
+    cameraBaseUrl: string,
+    resolution: string,
+    requestId: string,
+  ): Promise<void> {
+    await this.sendCommand(cameraId, 'start-recording', { cameraBaseUrl, requestId, resolution });
+  }
+
+  async stopRecording(cameraId: string, cameraBaseUrl: string, requestId: string): Promise<void> {
+    await this.sendCommand(cameraId, 'stop-recording', { cameraBaseUrl, requestId });
+  }
+
+  async recordAudio(
+    cameraId: string,
+    cameraBaseUrl: string,
+    durationSeconds: number,
+    requestId: string,
+  ): Promise<void> {
+    await this.sendCommand(cameraId, 'record-audio', { cameraBaseUrl, requestId, durationSeconds });
+  }
+
+  private async sendCommand(
+    cameraId: string,
+    command: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    await firstValueFrom(
+      this.http.post(
+        `${this.config.baseUrl}/api/v1/cameras/${encodeURIComponent(cameraId)}/commands/${command}`,
+        body,
+      ),
+    );
+  }
 }

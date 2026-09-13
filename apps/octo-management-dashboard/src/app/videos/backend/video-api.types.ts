@@ -24,12 +24,27 @@ export interface BackendMediaItemDto {
   readonly cameraId: string;
   readonly requestId: string;
   readonly fileName: string;
+  readonly displayName?: string;
   readonly capturedAt: string;
   readonly durationSeconds?: number;
   readonly frameCount?: number;
   readonly size: number;
   readonly thumbnailUrl: string;
   readonly downloadUrl: string;
+}
+
+export interface BackendCaptureFramesResponse {
+  readonly items: readonly {
+    readonly fileName: string;
+    readonly sequence: number;
+    readonly size: number;
+    readonly storedAt: string;
+  }[];
+}
+
+export interface BackendMediaTokenResponse {
+  readonly mediaToken: string;
+  readonly expiresIn: number;
 }
 
 export interface BackendMediaListResponse {

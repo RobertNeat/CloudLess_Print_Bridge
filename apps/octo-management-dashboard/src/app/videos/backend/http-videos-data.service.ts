@@ -65,6 +65,11 @@ export class HttpVideosDataService implements VideosRepositoryPort {
     };
   }
 
+  /** Lighter refresh for polling: re-fetches only camera/source status, not the paginated media list. */
+  async refreshSources(): Promise<CameraSource[]> {
+    return this.mapSources(await this.fetchCameras());
+  }
+
   private async fetchCameras(): Promise<readonly BackendCameraDto[]> {
     const response = await firstValueFrom(
       this.http.get<BackendCameraListResponse>(`${this.config.baseUrl}/api/v1/cameras`),
@@ -146,11 +151,15 @@ export class HttpVideosDataService implements VideosRepositoryPort {
       id: item.id,
       kind: item.kind,
       name: item.fileName,
+      displayName: item.displayName,
       sourceId: item.cameraId,
+      requestId: item.requestId,
       capturedAt: item.capturedAt,
       duration:
         item.durationSeconds === undefined ? undefined : formatDuration(item.durationSeconds),
+      frameCount: item.frameCount,
       thumbnailUrl: `${this.config.baseUrl}${item.thumbnailUrl}`,
+      downloadUrl: `${this.config.baseUrl}${item.downloadUrl}`,
     };
   }
 }

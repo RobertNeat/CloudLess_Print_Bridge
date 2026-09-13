@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { MediaStorageService } from '../storage/media-storage.service';
 import type {
   MediaItemDto,
@@ -63,6 +67,7 @@ export class MediaLibraryService {
         cameraId: manifest.cameraId,
         requestId: manifest.requestId,
         fileName: `${manifest.requestId}.mjpeg`,
+        displayName: manifest.displayName,
         capturedAt: manifest.createdAt,
         durationSeconds: manifest.requestedDurationSeconds,
         frameCount: manifest.totalFrames,
@@ -86,6 +91,7 @@ export class MediaLibraryService {
         cameraId: manifest.cameraId,
         requestId: manifest.requestId,
         fileName: latest.fileName,
+        displayName: manifest.displayName,
         capturedAt: latest.storedAt,
         frameCount: manifest.captures.length,
         size: manifest.captures.reduce((total, item) => total + item.size, 0),
@@ -118,12 +124,70 @@ export class MediaLibraryService {
       cameraId: manifest.cameraId,
       requestId: manifest.requestId,
       fileName: manifest.fileName,
+      displayName: manifest.displayName,
       capturedAt: manifest.storedAt,
       durationSeconds: manifest.durationSeconds,
       size: manifest.size,
       thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
       downloadUrl: `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/file`,
     }));
+  }
+
+  listCaptureFrames(cameraId: string, requestId: string) {
+    const manifest = this.storage
+      .listCaptureManifests()
+      .find(
+        (item) => item.cameraId === cameraId && item.requestId === requestId,
+      );
+    if (!manifest) {
+      throw new NotFoundException('capture request was not found');
+    }
+    return {
+      items: [...manifest.captures]
+        .sort((left, right) => left.sequence - right.sequence)
+        .map((capture) => ({
+          fileName: capture.fileName,
+          sequence: capture.sequence,
+          size: capture.size,
+          storedAt: capture.storedAt,
+        })),
+    };
+  }
+
+  deleteRecording(cameraId: string, requestId: string): Promise<void> {
+    return this.storage.deleteRecording(cameraId, requestId);
+  }
+
+  deleteCapture(cameraId: string, requestId: string): Promise<void> {
+    return this.storage.deleteCapture(cameraId, requestId);
+  }
+
+  deleteAudio(cameraId: string, requestId: string): Promise<void> {
+    return this.storage.deleteAudio(cameraId, requestId);
+  }
+
+  renameRecording(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    return this.storage.renameRecording(cameraId, requestId, displayName);
+  }
+
+  renameCapture(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    return this.storage.renameCapture(cameraId, requestId, displayName);
+  }
+
+  renameAudio(
+    cameraId: string,
+    requestId: string,
+    displayName: string,
+  ): Promise<void> {
+    return this.storage.renameAudio(cameraId, requestId, displayName);
   }
 
   private sortKey(item: MediaItemDto): string {

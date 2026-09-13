@@ -37,7 +37,18 @@
       </ng-template>
       <ng-template #panel>
         <div class="media-area">
-          <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
+          <app-media-library
+            [items]="filteredMedia()"
+            [canRecord]="canStartStream()"
+            [availableResolutions]="data.player.availableResolutions"
+            (itemOpened)="openMedia($event)"
+            (captureRequested)="captureImage($event)"
+            (startTimelapseRequested)="
+              startTimelapse($event.resolution, $event.intervalMs, $event.durationMs)
+            "
+            (startRecordingRequested)="startTimedRecording($event.resolution, $event.durationMs)"
+            (recordAudioRequested)="recordAudio($event)"
+          />
         </div>
       </ng-template>
     </p-splitter>
@@ -61,44 +72,12 @@
   }
 </section>
 
-<p-dialog
-  [header]="i18n.t('videos.mediaPreview')"
-  [modal]="true"
-  [closeAriaLabel]="i18n.t('videos.closePreview')"
-  [visible]="!!selectedMedia()"
-  [style]="{ width: 'min(32rem, calc(100vw - 2rem))' }"
-  id="media-preview-dialog"
-  (visibleChange)="!$event && selectedMedia.set(null)"
->
-  @if (selectedMedia(); as item) {
-    <article class="media-preview">
-      @if (item.thumbnailUrl) {
-        <img
-          [src]="item.thumbnailUrl"
-          [alt]="i18n.t('videos.mediaPreviewAlt', { name: item.name })"
-        />
-      } @else {
-        <div class="media-preview__placeholder">
-          <i class="pi pi-file" aria-hidden="true"></i
-          ><span>{{ i18n.t('videos.previewUnavailable') }}</span>
-        </div>
-      }
-      <h2>{{ item.name }}</h2>
-      <dl>
-        <div>
-          <dt>{{ i18n.t('videos.capturedAt') }}</dt>
-          <dd>{{ i18n.formatDateTime(item.capturedAt) }}</dd>
-        </div>
-        @if (item.duration) {
-          <div>
-            <dt>{{ i18n.t('videos.duration') }}</dt>
-            <dd>{{ item.duration }}</dd>
-          </div>
-        }
-      </dl>
-    </article>
-  }
-</p-dialog>
+<app-media-preview
+  [item]="selectedMedia()"
+  [sourceName]="selectedSource()?.name ?? ''"
+  (closed)="closeMedia()"
+  (changed)="onMediaChanged()"
+/>
 
 <p-dialog
   [header]="i18n.t('videos.addCamera')"

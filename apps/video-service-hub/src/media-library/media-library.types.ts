@@ -6,6 +6,7 @@ export type MediaItemDto = {
   cameraId: string;
   requestId: string;
   fileName: string;
+  displayName?: string;
   capturedAt: string;
   durationSeconds?: number;
   frameCount?: number;
