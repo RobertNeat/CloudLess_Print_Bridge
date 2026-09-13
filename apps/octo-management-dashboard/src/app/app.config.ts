@@ -11,6 +11,8 @@ import { HttpManagementDashboardDataSource } from './dashboard/backend/http-mana
 import { HttpPrinterCommandAdapter } from './dashboard/backend/http-printer-command.adapter';
 import { MANAGEMENT_DASHBOARD_DATA_SOURCE } from './dashboard/dashboard-data.service';
 import { PRINTER_COMMAND_PORT } from './dashboard/printer-command.port';
+import { HttpVideosDataService } from './videos/backend/http-videos-data.service';
+import { VIDEOS_REPOSITORY } from './videos/videos-dashboard.ports';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -33,5 +35,8 @@ export const appConfig: ApplicationConfig = {
     // HttpPrinterCommandAdapter until their own integration phase lands.
     { provide: MANAGEMENT_DASHBOARD_DATA_SOURCE, useExisting: HttpManagementDashboardDataSource },
     { provide: PRINTER_COMMAND_PORT, useExisting: HttpPrinterCommandAdapter },
+    // Cutover point: the videos dashboard now reads real camera/media state
+    // from video-service-hub instead of the static mock JSON fixture.
+    { provide: VIDEOS_REPOSITORY, useExisting: HttpVideosDataService },
   ],
 };

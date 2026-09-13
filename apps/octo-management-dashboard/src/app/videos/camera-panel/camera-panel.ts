@@ -46,9 +46,12 @@ export class CameraPanel {
   readonly selectedSourceId = input.required<string>();
   readonly streamActive = input.required<boolean>();
   readonly sourceSelected = output<string>();
+  readonly addCamera = output<void>();
 
   protected sourceLocation(source: CameraSource): string {
-    return this.i18n.t(locationKeys[source.locationCode]);
+    const key = locationKeys[source.locationCode as CameraLocationCode] as
+      TranslationKey | undefined;
+    return key ? this.i18n.t(key) : source.locationCode;
   }
 
   protected sourceAriaLabel(source: CameraSource): string {

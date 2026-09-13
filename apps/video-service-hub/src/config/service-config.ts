@@ -31,7 +31,17 @@ export type ServiceConfig = {
 export function loadServiceConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): ServiceConfig {
-  loadWorkspaceEnv(environment);
+  const workspaceRoot = loadWorkspaceEnv(environment);
+  // A configured VIDEO_SERVICE_HUB_STORAGE_PATH is written relative to the
+  // pnpm workspace root (see .env), since that's the one location both a
+  // GitHub Actions/production checkout and a local `cd apps/video-service-hub
+  // && pnpm start:dev` agree on. Resolving it against process.cwd() instead
+  // silently doubles the path when the process is launched from inside the
+  // app directory (cwd already ends in apps/video-service-hub). Outside the
+  // workspace (e.g. a standalone deployed container with no
+  // pnpm-workspace.yaml), fall back to cwd, where a relative path is the
+  // only sensible base.
+  const storagePathBase = workspaceRoot ?? process.cwd();
 
   return {
     http: {
@@ -46,8 +56,8 @@ export function loadServiceConfig(
     },
     storage: {
       root: resolve(
-        envValue(environment, 'VIDEO_SERVICE_HUB_STORAGE_PATH') ||
-          resolve(process.cwd(), 'storage'),
+        storagePathBase,
+        envValue(environment, 'VIDEO_SERVICE_HUB_STORAGE_PATH') || 'storage',
       ),
       captureMaxBytes: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES'),
@@ -120,13 +130,13 @@ export function loadServiceConfig(
   };
 }
 
-function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
-  if (environment !== process.env) return;
+function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): string | undefined {
   let directory = process.cwd();
   while (true) {
     if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
+      if (environment !== process.env) return directory;
       const path = resolve(directory, '.env');
-      if (!existsSync(path)) return;
+      if (!existsSync(path)) return directory;
       const fileValues: Record<string, string> = {};
       for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
         const trimmed = line.trim();
@@ -144,10 +154,10 @@ function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
           ...environment,
         });
       }
-      return;
+      return directory;
     }
     const parent = resolve(directory, '..');
-    if (parent === directory) return;
+    if (parent === directory) return undefined;
     directory = parent;
   }
 }
