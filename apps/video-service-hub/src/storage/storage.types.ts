@@ -43,6 +43,25 @@ export type RecordingManifest = {
   parts: Record<string, RecordingPart>;
 };
 
+export type AudioManifest = {
+  schemaVersion: 1;
+  cameraId: string;
+  requestId: string;
+  fileName: string;
+  durationSeconds: number;
+  size: number;
+  sha256: string;
+  storedAt: string;
+};
+
+export type CompletedLiveFile = {
+  cameraId: string;
+  requestId: string;
+  fileName: string;
+  size: number;
+  finishedAt: string;
+};
+
 export type CompletedLive = {
   cameraId: string;
   requestId: string;

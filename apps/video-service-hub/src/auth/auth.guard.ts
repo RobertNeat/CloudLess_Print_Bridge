@@ -33,7 +33,7 @@ export class AuthGuard implements CanActivate {
     if (
       this.config.auth.mode === 'disabled' ||
       request.method === 'OPTIONS' ||
-      isPublicPath(path)
+      isPublicPath(path, request.method)
     ) {
       return true;
     }
@@ -49,10 +49,18 @@ export class AuthGuard implements CanActivate {
   }
 }
 
-function isPublicPath(path: string): boolean {
-  return (
-    path.startsWith('/auth/') || path === '/auth' || path.startsWith('/health')
-  );
+const publicAuthPaths = new Set(['/auth/config', '/auth/token']);
+const liveViewPathPattern = /^\/api\/v1\/cameras\/[^/]+\/live$/;
+
+function isPublicPath(path: string, method: string): boolean {
+  if (publicAuthPaths.has(path) || path.startsWith('/health')) {
+    return true;
+  }
+  // GET .../live is consumed by a plain <img src>, which cannot send an
+  // Authorization header; it is instead protected by StreamTokenGuard using a
+  // short-lived ?streamToken= issued through the (Bearer-protected)
+  // POST /auth/stream-token endpoint.
+  return method === 'GET' && liveViewPathPattern.test(path);
 }
 
 function readBearerToken(header: string | undefined): string | undefined {

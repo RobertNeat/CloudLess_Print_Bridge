@@ -5,12 +5,16 @@ import {
   Headers,
   Inject,
   Post,
+  Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { assertIdentifier } from '../common/validation';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
 import { AuthTokenService } from './auth-token.service';
-import type { AuthenticatedUser } from './auth.types';
+import type { AccessTokenClaims, AuthenticatedUser } from './auth.types';
+import { StreamTokenService } from './stream-token.service';
 
 const DEFAULT_PERMISSIONS = [
   'dashboard.view',
@@ -27,6 +31,7 @@ export class AuthController {
   constructor(
     @Inject(SERVICE_CONFIG) private readonly config: ServiceConfig,
     private readonly tokens: AuthTokenService,
+    private readonly streamTokens: StreamTokenService,
   ) {}
 
   @Get('config')
@@ -62,5 +67,16 @@ export class AuthController {
       expiresIn: this.config.auth.tokenTtlSeconds,
       user,
     };
+  }
+
+  @Post('stream-token')
+  createStreamToken(
+    @Req() request: Request & { user?: AccessTokenClaims },
+    @Body() body: { cameraId?: unknown },
+  ) {
+    const cameraId = assertIdentifier(body?.cameraId, 'cameraId');
+    const userId = request.user?.sub ?? 'local-user';
+    const { token, expiresIn } = this.streamTokens.issue(userId, cameraId);
+    return { streamToken: token, expiresIn };
   }
 }
