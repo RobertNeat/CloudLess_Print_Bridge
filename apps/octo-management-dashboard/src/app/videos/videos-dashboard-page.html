@@ -52,15 +52,10 @@
         <div class="media-area">
           <app-media-library
             [items]="filteredMedia()"
-            [canRecord]="canStartStream()"
-            [availableResolutions]="data.player.availableResolutions"
+            [canRecord]="hasCommandableSource()"
+            [pendingActions]="pendingActions()"
             (itemOpened)="openMedia($event)"
-            (captureRequested)="captureImage($event)"
-            (startTimelapseRequested)="
-              startTimelapse($event.resolution, $event.intervalMs, $event.durationMs)
-            "
-            (startRecordingRequested)="startTimedRecording($event.resolution, $event.durationMs)"
-            (recordAudioRequested)="recordAudio($event)"
+            (recordRequested)="openRecordDialog($event)"
           />
         </div>
       </ng-template>
@@ -90,6 +85,14 @@
   [sourceName]="selectedSource()?.name ?? ''"
   (closed)="closeMedia()"
   (changed)="onMediaChanged()"
+/>
+
+<app-media-record-dialog
+  [action]="recordDialogAction()"
+  [sources]="recordDialogSources()"
+  [defaultSourceId]="selectedSource()?.id ?? ''"
+  (closed)="closeRecordDialog()"
+  (submitted)="submitRecordDialog($event)"
 />
 
 <p-dialog
