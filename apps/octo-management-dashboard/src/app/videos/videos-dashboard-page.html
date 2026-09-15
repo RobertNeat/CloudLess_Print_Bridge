@@ -1,5 +1,18 @@
 <section id="videos-dashboard" class="videos-dashboard">
   @if (dashboard(); as data) {
+    @if (loadingError()) {
+      <div class="dashboard-state" role="alert" id="videos-refresh-error">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
+        ><span>{{ i18n.t('videos.refreshError') }}</span
+        ><p-button
+          size="small"
+          icon="pi pi-refresh"
+          [label]="i18n.t('videos.retry')"
+          id="videos-refresh-retry-button"
+          (onClick)="retryLoad()"
+        />
+      </div>
+    }
     <p-splitter
       id="videos-splitter"
       layout="vertical"

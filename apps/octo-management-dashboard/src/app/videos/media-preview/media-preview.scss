@@ -80,22 +80,6 @@
   flex: 1 1 auto;
   min-width: 0;
 }
-.media-preview__confirm {
-  padding: 0.75rem;
-  border: 1px solid var(--semantic-border-default);
-  border-radius: 0.5rem;
-  background: var(--semantic-surface-interactive);
-  margin-bottom: 0.75rem;
-}
-.media-preview__confirm p {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-}
-.media-preview__confirm div {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
 .media-preview__error {
   margin: 0 0 0.75rem;
   color: var(--semantic-danger, #d9534f);

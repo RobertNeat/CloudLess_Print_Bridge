@@ -20,15 +20,17 @@ const recording: MediaItem = {
 describe('MediaPreview mp4 playback', () => {
   let transcode: ReturnType<typeof vi.fn>;
   let acquire: ReturnType<typeof vi.fn>;
+  let deleteMedia: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     transcode = vi.fn().mockResolvedValue(undefined);
     acquire = vi.fn().mockResolvedValue('tok-123');
+    deleteMedia = vi.fn().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         {
           provide: MediaLibraryApiService,
-          useValue: { transcode, listCaptureFrames: vi.fn() },
+          useValue: { transcode, listCaptureFrames: vi.fn(), delete: deleteMedia },
         },
         {
           provide: MediaTokenApiService,
@@ -144,5 +146,91 @@ describe('MediaPreview mp4 playback', () => {
     }
 
     expect(instance.mp4PlaybackFailed()).toBe(true);
+  });
+
+  it('deletes on a single click of the delete button, with no confirmation step', async () => {
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', recording);
+    const changedSpy = vi.fn();
+    fixture.componentInstance.changed.subscribe(changedSpy);
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('#media-preview-delete-confirm')).toBeNull();
+
+    (element.querySelector('#media-preview-delete-button button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(deleteMedia).toHaveBeenCalledWith('recording', 'camera-1', 'req-1');
+    expect(deleteMedia).toHaveBeenCalledTimes(1);
+    expect(changedSpy).toHaveBeenCalledTimes(1);
+    expect(closedSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the delete button usable when a second item is opened after a successful delete', async () => {
+    const otherRecording: MediaItem = {
+      ...recording,
+      id: 'recording:camera-1:req-2',
+      requestId: 'req-2',
+      downloadUrl: 'http://hub/api/v1/recordings/camera-1/req-2/file',
+      transcodeUrl: 'http://hub/api/v1/recordings/camera-1/req-2/transcode',
+      mp4Url: 'http://hub/api/v1/recordings/camera-1/req-2/mp4',
+    };
+
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', recording);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-preview-delete-button button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(deleteMedia).toHaveBeenCalledTimes(1);
+
+    // The dialog is reused for a new item (parent sets `item` again rather than
+    // destroying/recreating the component), simulating opening a second file
+    // right after the first one was deleted.
+    fixture.componentRef.setInput('item', otherRecording);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const deleteButton = element.querySelector(
+      '#media-preview-delete-button button',
+    ) as HTMLButtonElement;
+    expect(deleteButton.disabled).toBe(false);
+
+    deleteButton.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(deleteMedia).toHaveBeenCalledWith('recording', 'camera-1', 'req-2');
+    expect(deleteMedia).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces an action error and does not close when delete fails', async () => {
+    deleteMedia.mockRejectedValueOnce(new Error('network error'));
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', recording);
+    const closedSpy = vi.fn();
+    fixture.componentInstance.closed.subscribe(closedSpy);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-preview-delete-button button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(closedSpy).not.toHaveBeenCalled();
+    expect(element.querySelector('.media-preview__error')?.textContent ?? '').toContain(
+      'operation failed',
+    );
   });
 });

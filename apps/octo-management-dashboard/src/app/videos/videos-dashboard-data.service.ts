@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { CameraSource, VideosDashboardData } from './videos-dashboard.models';
+import type { CameraSource, MediaItem, VideosDashboardData } from './videos-dashboard.models';
 
 const metricCodes = [
   'status',
@@ -32,6 +32,11 @@ export class VideosDashboardDataService {
   async refreshSources(): Promise<readonly CameraSource[]> {
     const data = await this.load();
     return data.sources;
+  }
+
+  async refreshMedia(): Promise<readonly MediaItem[]> {
+    const data = await this.load();
+    return data.media;
   }
 }
 
