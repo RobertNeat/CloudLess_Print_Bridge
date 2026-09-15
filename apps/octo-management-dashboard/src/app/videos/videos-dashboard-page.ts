@@ -4,18 +4,30 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SplitterModule } from 'primeng/splitter';
-import { I18nService } from '../core/i18n.service';
+import { I18nService, type TranslationKey } from '../core/i18n.service';
+import { NotificationService } from '../core/notification.service';
 import { CameraCommandApiService } from './backend/camera-command-api.service';
 import { CameraRegistryApiService } from './backend/camera-registry-api.service';
 import { CameraPanel } from './camera-panel/camera-panel';
 import { MediaLibrary } from './media-library/media-library';
 import { MediaPreview } from './media-preview/media-preview';
+import { MediaRecordDialog } from './media-record-dialog/media-record-dialog';
+import type {
+  MediaRecordAction,
+  MediaRecordRequest,
+  MediaRecordSourceOption,
+} from './media-record-dialog/media-record-dialog.models';
 import { VideoFiltersService } from './video-filters.service';
 import { VideoPlayer } from './video-player/video-player';
 import { VIDEOS_REPOSITORY } from './videos-dashboard.ports';
-import type { MediaItem, VideosDashboardData } from './videos-dashboard.models';
+import type { CameraSource, MediaItem, VideosDashboardData } from './videos-dashboard.models';
 
 const SOURCE_POLL_INTERVAL_MS = 10_000;
+const MEDIA_POLL_INTERVAL_MS = 2000;
+/** Extra slack on top of the requested action duration, to cover transcode/upload/network latency after the camera stops recording. */
+const MEDIA_POLL_SLACK_MS = 15_000;
+/** Capture has no duration of its own — just enough for the camera to shoot and upload one frame, plus slack for real-hardware latency observed in practice. */
+const CAPTURE_POLL_TIMEOUT_MS = 30_000;
 
 @Component({
   selector: 'app-videos-dashboard-page',
@@ -27,6 +39,7 @@ const SOURCE_POLL_INTERVAL_MS = 10_000;
     InputTextModule,
     MediaLibrary,
     MediaPreview,
+    MediaRecordDialog,
     SplitterModule,
     VideoPlayer,
   ],
@@ -37,6 +50,7 @@ export class VideosDashboardPage implements OnDestroy {
   private readonly repository = inject(VIDEOS_REPOSITORY);
   private readonly cameraCommands = inject(CameraCommandApiService);
   private readonly cameraRegistry = inject(CameraRegistryApiService);
+  private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(I18nService);
   protected readonly filters = inject(VideoFiltersService);
@@ -51,6 +65,8 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly newCameraId = signal('');
   protected readonly newCameraBaseUrl = signal('');
   protected readonly newCameraDisplayName = signal('');
+  protected readonly recordDialogAction = signal<MediaRecordAction | null>(null);
+  protected readonly pendingActions = signal<ReadonlySet<MediaRecordAction>>(new Set());
   private activeLiveRequestId: string | null = null;
   private readonly sourcePollHandle: ReturnType<typeof setInterval>;
 
@@ -61,6 +77,18 @@ export class VideosDashboardPage implements OnDestroy {
 
   protected readonly canStartStream = computed(
     () => this.selectedSource()?.status === 'online' && !!this.selectedSource()?.previewUrl,
+  );
+
+  protected readonly hasCommandableSource = computed(() =>
+    (this.dashboard()?.sources ?? []).some((source) => isCommandable(source)),
+  );
+
+  protected readonly recordDialogSources = computed<readonly MediaRecordSourceOption[]>(() =>
+    (this.dashboard()?.sources ?? []).map((source) => ({
+      id: source.id,
+      name: source.name,
+      commandable: isCommandable(source),
+    })),
   );
 
   protected readonly filteredMedia = computed(() => {
@@ -184,79 +212,122 @@ export class VideosDashboardPage implements OnDestroy {
     this.updatePlayer({ resolution });
   }
 
-  protected async captureImage(resolution: string): Promise<void> {
-    const source = this.selectedSource();
-    if (!source?.commandBaseUrl) return;
-    this.streamCommandError.set(false);
-    try {
-      await this.cameraCommands.captureImage(
-        source.id,
-        source.commandBaseUrl,
-        resolution,
-        `capture-${source.id}-${Date.now()}`,
-      );
-      setTimeout(() => void this.loadData(), 2000);
-    } catch {
-      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
-    }
+  protected openRecordDialog(action: MediaRecordAction): void {
+    if (this.pendingActions().has(action)) return;
+    this.recordDialogAction.set(action);
   }
 
-  protected async startTimelapse(
-    resolution: string,
-    intervalMs: number,
-    durationMs: number,
+  protected closeRecordDialog(): void {
+    this.recordDialogAction.set(null);
+  }
+
+  protected submitRecordDialog(request: MediaRecordRequest): void {
+    this.recordDialogAction.set(null);
+    const source = this.dashboard()?.sources.find((candidate) => candidate.id === request.sourceId);
+    if (!source?.commandBaseUrl) return;
+    void this.dispatchRecordRequest(source, request);
+  }
+
+  /**
+   * Dispatches the camera command, then polls refreshMedia() for the file
+   * this specific request produced (matched by requestId, which round-trips
+   * from client-generated id -> command payload -> stored media item) rather
+   * than guessing a fixed timer — the earlier `setTimeout(loadData, duration
+   * + slack)` approach both raced real encode/upload latency and blew away
+   * the live player/selected-source state on every capture via the full
+   * reload. The button's own spinner (pendingActions) clears only once the
+   * file is actually observed, or the poll times out with an error toast.
+   */
+  private async dispatchRecordRequest(
+    source: CameraSource,
+    request: MediaRecordRequest,
   ): Promise<void> {
-    const source = this.selectedSource();
-    if (!source?.commandBaseUrl) return;
-    this.streamCommandError.set(false);
+    if (!source.commandBaseUrl) return;
+    const action = request.action;
+    const requestId = `${requestIdPrefix(action)}-${source.id}-${Date.now()}`;
+    this.setPending(action, true);
     try {
-      await this.cameraCommands.startTimelapse(
-        source.id,
-        source.commandBaseUrl,
-        resolution,
-        intervalMs,
-        durationMs,
-        `timelapse-${source.id}-${Date.now()}`,
-      );
-      setTimeout(() => void this.loadData(), durationMs + 2000);
+      await this.dispatchCommand(source.id, source.commandBaseUrl, request, requestId);
+      const found = await this.pollForMedia(requestId, pollTimeoutMs(request));
+      if (this.destroyRef.destroyed) return;
+      if (found) {
+        this.notifications.info(startedMessageKey(action));
+      } else {
+        this.notifications.warn('videos.record.timedOut');
+      }
     } catch {
-      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+      if (!this.destroyRef.destroyed) this.notifications.error('videos.record.commandError');
+    } finally {
+      if (!this.destroyRef.destroyed) this.setPending(action, false);
     }
   }
 
-  protected async startTimedRecording(resolution: string, durationMs: number): Promise<void> {
-    const source = this.selectedSource();
-    if (!source?.commandBaseUrl) return;
-    this.streamCommandError.set(false);
-    try {
-      await this.cameraCommands.startTimedRecording(
-        source.id,
-        source.commandBaseUrl,
-        resolution,
-        durationMs,
-        `recording-${source.id}-${Date.now()}`,
-      );
-      setTimeout(() => void this.loadData(), durationMs + 2000);
-    } catch {
-      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+  private dispatchCommand(
+    cameraId: string,
+    cameraBaseUrl: string,
+    request: MediaRecordRequest,
+    requestId: string,
+  ): Promise<void> {
+    switch (request.action) {
+      case 'capture':
+        return this.cameraCommands.captureImage(cameraId, cameraBaseUrl, request.resolution, requestId);
+      case 'timelapse':
+        return this.cameraCommands.startTimelapse(
+          cameraId,
+          cameraBaseUrl,
+          request.resolution,
+          request.intervalSeconds * 1000,
+          request.durationSeconds * 1000,
+          requestId,
+        );
+      case 'recording':
+        return this.cameraCommands.startTimedRecording(
+          cameraId,
+          cameraBaseUrl,
+          request.resolution,
+          request.durationSeconds * 1000,
+          requestId,
+        );
+      case 'audio':
+        return this.cameraCommands.recordAudio(
+          cameraId,
+          cameraBaseUrl,
+          request.durationSeconds,
+          requestId,
+        );
     }
   }
 
-  protected async recordAudio(durationSeconds: number): Promise<void> {
-    const source = this.selectedSource();
-    if (!source?.commandBaseUrl) return;
-    this.streamCommandError.set(false);
-    try {
-      await this.cameraCommands.recordAudio(
-        source.id,
-        source.commandBaseUrl,
-        durationSeconds,
-        `audio-${source.id}-${Date.now()}`,
-      );
-      setTimeout(() => void this.loadData(), durationSeconds * 1000 + 2000);
-    } catch {
-      if (!this.destroyRef.destroyed) this.streamCommandError.set(true);
+  /** Polls refreshMedia() until an item with this requestId shows up, or the timeout elapses. Merges into `dashboard` as it goes so the grid updates the moment the file appears, same as any other successful refresh. */
+  private async pollForMedia(requestId: string, timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      if (this.destroyRef.destroyed) return false;
+      let media: readonly MediaItem[];
+      try {
+        media = await this.repository.refreshMedia();
+      } catch {
+        media = [];
+      }
+      if (this.destroyRef.destroyed) return false;
+      const found = media.some((item) => item.requestId === requestId);
+      if (found || media.length > 0) {
+        this.dashboard.update((data) => (data ? { ...data, media: [...media] } : data));
+        this.loadingError.set(false);
+      }
+      if (found) return true;
+      if (Date.now() >= deadline) return false;
+      await delay(Math.min(MEDIA_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())));
     }
+  }
+
+  private setPending(action: MediaRecordAction, pending: boolean): void {
+    this.pendingActions.update((current) => {
+      const next = new Set(current);
+      if (pending) next.add(action);
+      else next.delete(action);
+      return next;
+    });
   }
 
   protected retryLoad(): void {
@@ -316,4 +387,51 @@ export class VideosDashboardPage implements OnDestroy {
       data ? { ...data, player: { ...data.player, ...change } } : data,
     );
   }
+}
+
+function isCommandable(source: CameraSource): boolean {
+  return source.status === 'online' && !!source.commandBaseUrl;
+}
+
+function requestIdPrefix(action: MediaRecordAction): string {
+  switch (action) {
+    case 'capture':
+      return 'capture';
+    case 'timelapse':
+      return 'timelapse';
+    case 'recording':
+      return 'recording';
+    case 'audio':
+      return 'audio';
+  }
+}
+
+function pollTimeoutMs(request: MediaRecordRequest): number {
+  switch (request.action) {
+    case 'capture':
+      return CAPTURE_POLL_TIMEOUT_MS;
+    case 'timelapse':
+      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
+    case 'recording':
+      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
+    case 'audio':
+      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
+  }
+}
+
+function startedMessageKey(action: MediaRecordAction): TranslationKey {
+  switch (action) {
+    case 'capture':
+      return 'videos.record.captureStarted';
+    case 'timelapse':
+      return 'videos.record.timelapseStarted';
+    case 'recording':
+      return 'videos.record.recordingStarted';
+    case 'audio':
+      return 'videos.record.audioStarted';
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 }

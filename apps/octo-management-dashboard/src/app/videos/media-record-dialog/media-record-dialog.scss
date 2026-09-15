@@ -1,0 +1,24 @@
+.media-record-dialog__form {
+  display: grid;
+  gap: 0.85rem;
+}
+.media-record-dialog__form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--semantic-text-muted);
+}
+.media-record-dialog__form p-select,
+.media-record-dialog__form p-inputnumber {
+  width: 100%;
+}
+.media-record-dialog__hint {
+  margin: 0;
+  color: var(--semantic-danger, #d9534f);
+  font-size: 0.8rem;
+}
+.media-record-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
