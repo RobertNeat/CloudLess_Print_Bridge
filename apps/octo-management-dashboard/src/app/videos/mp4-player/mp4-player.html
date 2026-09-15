@@ -1,0 +1,13 @@
+<div class="mp4-player">
+  <video #videoElement class="video-js" id="mp4-player-video" playsinline></video>
+  <div class="mp4-player__buffered" role="img" [attr.aria-label]="i18n.t('videos.bufferedAria')">
+    @for (segment of bufferedSegments(); track $index) {
+      <div
+        class="mp4-player__buffered-segment"
+        [style.left.%]="segment.leftPercent"
+        [style.width.%]="segment.widthPercent"
+      ></div>
+    }
+    <div class="mp4-player__played" [style.width.%]="playedPercent()"></div>
+  </div>
+</div>

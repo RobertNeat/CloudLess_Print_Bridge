@@ -57,6 +57,41 @@
               }}</small>
             </div>
           }
+        } @else if (media.kind === 'recording' && (media.transcodeUrl || mp4Src())) {
+          @if (mp4Transcoding()) {
+            <div class="media-preview__status" role="status" id="media-preview-mp4-transcoding">
+              <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+              <span>{{ i18n.t('videos.mp4TranscodeLoading') }}</span>
+            </div>
+          } @else if (mp4TranscodeFailed()) {
+            <div class="media-preview__status" role="alert" id="media-preview-mp4-transcode-error">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              <span>{{ i18n.t('videos.mp4TranscodeFailed') }}</span>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.mp4Retry')"
+                id="media-preview-mp4-retry"
+                (onClick)="retryMp4()"
+              />
+            </div>
+          } @else if (mp4PlaybackFailed()) {
+            <div class="media-preview__status" role="alert" id="media-preview-mp4-playback-error">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              <span>{{ i18n.t('videos.mp4PlaybackFailed') }}</span>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.mp4Retry')"
+                id="media-preview-mp4-retry"
+                (onClick)="retryMp4()"
+              />
+            </div>
+          } @else if (mp4Src()) {
+            <app-mp4-player
+              [src]="mp4Src()"
+              id="media-preview-mp4-player"
+              (playbackError)="onMp4PlaybackError()"
+            />
+          }
         } @else if (media.kind === 'recording') {
           @if (playbackFailed()) {
             <div class="media-preview__status" role="alert" id="media-preview-playback-error">

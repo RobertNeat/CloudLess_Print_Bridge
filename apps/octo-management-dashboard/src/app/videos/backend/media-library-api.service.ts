@@ -45,6 +45,17 @@ export class MediaLibraryApiService {
     );
   }
 
+  /**
+   * Triggers (or, if already done, no-ops on) MP4 transcoding of one
+   * recording. transcodeUrl is the absolute URL already mapped onto
+   * MediaItem by HttpVideosDataService. Retried a few times with backoff by
+   * the caller (media-preview.ts) since first-time encoding can briefly
+   * outlast a transient network hiccup.
+   */
+  async transcode(transcodeUrl: string): Promise<void> {
+    await firstValueFrom(this.http.post(transcodeUrl, {}));
+  }
+
   async listCaptureFrames(
     cameraId: string,
     requestId: string,

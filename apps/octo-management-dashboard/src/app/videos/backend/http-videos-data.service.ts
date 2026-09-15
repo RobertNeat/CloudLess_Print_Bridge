@@ -160,6 +160,8 @@ export class HttpVideosDataService implements VideosRepositoryPort {
       frameCount: item.frameCount,
       thumbnailUrl: `${this.config.baseUrl}${item.thumbnailUrl}`,
       downloadUrl: `${this.config.baseUrl}${item.downloadUrl}`,
+      transcodeUrl: item.transcodeUrl ? `${this.config.baseUrl}${item.transcodeUrl}` : undefined,
+      mp4Url: item.mp4Url ? `${this.config.baseUrl}${item.mp4Url}` : undefined,
     };
   }
 }

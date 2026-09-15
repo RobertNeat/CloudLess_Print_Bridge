@@ -17,6 +17,10 @@ interface MediaFileRequest {
 
 const kindByPath: { pattern: RegExp; kind: MediaFileKind }[] = [
   { pattern: /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/, kind: 'recording' },
+  {
+    pattern: /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/mp4$/,
+    kind: 'recording-mp4',
+  },
   { pattern: /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/, kind: 'capture' },
   {
     pattern: /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
