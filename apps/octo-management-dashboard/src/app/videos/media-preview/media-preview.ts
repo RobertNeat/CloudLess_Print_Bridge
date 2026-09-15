@@ -75,7 +75,6 @@ export class MediaPreview {
   protected readonly renameValue = signal('');
   protected readonly renameSaving = signal(false);
   protected readonly deleting = signal(false);
-  protected readonly deleteConfirming = signal(false);
   protected readonly actionError = signal(false);
 
   protected readonly isTimelapse = computed(() => {
@@ -135,7 +134,7 @@ export class MediaPreview {
     this.frameLoading.set(false);
     this.renaming.set(false);
     this.renameValue.set('');
-    this.deleteConfirming.set(false);
+    this.deleting.set(false);
     this.actionError.set(false);
     this.retryCount = 0;
     this.mp4PlaybackRetryCount = 0;
@@ -330,14 +329,6 @@ export class MediaPreview {
     }
   }
 
-  protected confirmDelete(): void {
-    this.deleteConfirming.set(true);
-  }
-
-  protected cancelDelete(): void {
-    this.deleteConfirming.set(false);
-  }
-
   protected async deleteItem(): Promise<void> {
     const item = this.item();
     if (!item?.requestId || this.deleting()) return;
@@ -345,12 +336,12 @@ export class MediaPreview {
     this.actionError.set(false);
     try {
       await this.mediaLibrary.delete(item.kind, item.sourceId, item.requestId);
+      this.deleting.set(false);
       this.changed.emit();
       this.close();
     } catch {
       this.actionError.set(true);
       this.deleting.set(false);
-      this.deleteConfirming.set(false);
     }
   }
 }

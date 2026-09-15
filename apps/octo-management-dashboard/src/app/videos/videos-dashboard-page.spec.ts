@@ -43,7 +43,16 @@ const data: VideosDashboardData = {
 describe('VideosDashboardPage', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [{ provide: VIDEOS_REPOSITORY, useValue: { load: async () => data } }],
+      providers: [
+        {
+          provide: VIDEOS_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            refreshSources: async () => data.sources,
+            refreshMedia: async () => data.media,
+          },
+        },
+      ],
     });
     TestBed.inject(I18nService).language.set('en');
   });
@@ -93,5 +102,74 @@ describe('VideosDashboardPage', () => {
       (button) => button.textContent?.includes('Start'),
     );
     expect(startButton?.disabled).toBe(true);
+  });
+
+  it('refreshes only the media list after a delete, leaving player/source state untouched', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: VIDEOS_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            refreshSources: async () => data.sources,
+            refreshMedia: async () => [],
+          },
+        },
+      ],
+    });
+    TestBed.inject(I18nService).language.set('en');
+
+    const fixture = TestBed.createComponent(VideosDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance as unknown as {
+      onMediaChanged: () => void;
+      selectedSource: () => { id: string } | null;
+    };
+    instance.onMediaChanged();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.media-card')).toBeNull();
+    // Source selection (from the original load) survives the media-only refresh.
+    expect(instance.selectedSource()?.id).toBe('online');
+  });
+
+  it('surfaces a refresh error without hiding the already-loaded dashboard', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: VIDEOS_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            refreshSources: async () => data.sources,
+            refreshMedia: async () => {
+              throw new Error('network error');
+            },
+          },
+        },
+      ],
+    });
+    TestBed.inject(I18nService).language.set('en');
+
+    const fixture = TestBed.createComponent(VideosDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance as unknown as { onMediaChanged: () => void };
+    instance.onMediaChanged();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('#videos-refresh-error')).not.toBeNull();
+    // Stale-but-still-useful content stays visible instead of being replaced by a full-page error state.
+    expect(element.querySelector('.media-card')).not.toBeNull();
   });
 });

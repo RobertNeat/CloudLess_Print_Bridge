@@ -167,35 +167,14 @@
               [text]="true"
               severity="danger"
               icon="pi pi-trash"
+              [loading]="deleting()"
               [ariaLabel]="i18n.t('videos.delete')"
               id="media-preview-delete-button"
-              (onClick)="confirmDelete()"
+              (onClick)="deleteItem()"
             />
           }
         }
       </div>
-
-      @if (deleteConfirming()) {
-        <div class="media-preview__confirm" role="alertdialog">
-          <p>{{ i18n.t('videos.deleteConfirm', { name: displayName() }) }}</p>
-          <div>
-            <p-button
-              size="small"
-              [text]="true"
-              [label]="i18n.t('videos.cancel')"
-              (onClick)="cancelDelete()"
-            />
-            <p-button
-              size="small"
-              severity="danger"
-              [label]="i18n.t('videos.delete')"
-              [loading]="deleting()"
-              id="media-preview-delete-confirm"
-              (onClick)="deleteItem()"
-            />
-          </div>
-        </div>
-      }
 
       @if (actionError()) {
         <p class="media-preview__error" role="alert">{{ i18n.t('videos.actionError') }}</p>

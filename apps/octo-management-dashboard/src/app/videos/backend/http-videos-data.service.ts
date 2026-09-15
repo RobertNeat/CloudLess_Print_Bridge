@@ -70,6 +70,12 @@ export class HttpVideosDataService implements VideosRepositoryPort {
     return this.mapSources(await this.fetchCameras());
   }
 
+  /** Lighter refresh after a media rename/delete: re-fetches only the media list, leaving the live player/source selection untouched. */
+  async refreshMedia(): Promise<MediaItem[]> {
+    const media = await this.fetchAllMedia();
+    return media.map((item) => this.mapMediaItem(item));
+  }
+
   private async fetchCameras(): Promise<readonly BackendCameraDto[]> {
     const response = await firstValueFrom(
       this.http.get<BackendCameraListResponse>(`${this.config.baseUrl}/api/v1/cameras`),

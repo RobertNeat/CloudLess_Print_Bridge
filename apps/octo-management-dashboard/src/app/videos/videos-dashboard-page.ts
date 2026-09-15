@@ -96,7 +96,18 @@ export class VideosDashboardPage implements OnDestroy {
 
   protected onMediaChanged(): void {
     this.selectedMedia.set(null);
-    void this.loadData();
+    void this.refreshMedia();
+  }
+
+  private async refreshMedia(): Promise<void> {
+    try {
+      const media = await this.repository.refreshMedia();
+      if (this.destroyRef.destroyed) return;
+      this.dashboard.update((data) => (data ? { ...data, media: [...media] } : data));
+      this.loadingError.set(false);
+    } catch {
+      if (!this.destroyRef.destroyed) this.loadingError.set(true);
+    }
   }
 
   private async refreshSources(): Promise<void> {

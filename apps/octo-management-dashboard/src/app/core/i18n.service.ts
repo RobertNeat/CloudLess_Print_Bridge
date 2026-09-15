@@ -143,6 +143,7 @@ const messages = {
     'videos.searchPlaceholder': 'Szukaj pliku',
     'videos.searchInputAria': 'Szukaj pliku multimedialnego',
     'videos.loadError': 'Nie udało się wczytać danych dashboardu wideo.',
+    'videos.refreshError': 'Nie udało się odświeżyć biblioteki multimediów. Lista może być nieaktualna.',
     'videos.loading': 'Ładowanie dashboardu…',
     'videos.retry': 'Spróbuj ponownie',
     'videos.streamCommandError':
@@ -160,7 +161,6 @@ const messages = {
     'videos.renameSave': 'Zapisz',
     'videos.renamePlaceholder': 'Nowa nazwa',
     'videos.delete': 'Usuń',
-    'videos.deleteConfirm': 'Czy na pewno chcesz usunąć „{{name}}”? Tej operacji nie można cofnąć.',
     'videos.actionError': 'Operacja się nie powiodła. Spróbuj ponownie.',
     'videos.record.capture': 'Zrób zdjęcie',
     'videos.record.captureStarted': 'Zdjęcie zostało zarejestrowane.',
@@ -415,6 +415,7 @@ const messages = {
     'videos.searchPlaceholder': 'Search files',
     'videos.searchInputAria': 'Search media files',
     'videos.loadError': 'Video dashboard data could not be loaded.',
+    'videos.refreshError': 'Failed to refresh the media library. The list may be out of date.',
     'videos.loading': 'Loading video dashboard…',
     'videos.retry': 'Try again',
     'videos.streamCommandError':
@@ -432,7 +433,6 @@ const messages = {
     'videos.renameSave': 'Save',
     'videos.renamePlaceholder': 'New name',
     'videos.delete': 'Delete',
-    'videos.deleteConfirm': 'Delete "{{name}}"? This cannot be undone.',
     'videos.actionError': 'The operation failed. Please try again.',
     'videos.record.capture': 'Capture photo',
     'videos.record.captureStarted': 'Photo captured.',
