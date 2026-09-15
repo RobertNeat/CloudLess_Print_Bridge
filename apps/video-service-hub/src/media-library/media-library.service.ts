@@ -77,6 +77,8 @@ export class MediaLibraryService {
         ),
         thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
         downloadUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/file`,
+        transcodeUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/transcode`,
+        mp4Url: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/mp4`,
       }));
   }
 
@@ -113,6 +115,8 @@ export class MediaLibraryService {
       size: file.size,
       thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
       downloadUrl: `/api/v1/live-recordings/${file.cameraId}/${file.requestId}/file`,
+      transcodeUrl: `/api/v1/recordings/${file.cameraId}/${file.requestId}/transcode`,
+      mp4Url: `/api/v1/recordings/${file.cameraId}/${file.requestId}/mp4`,
     }));
   }
 

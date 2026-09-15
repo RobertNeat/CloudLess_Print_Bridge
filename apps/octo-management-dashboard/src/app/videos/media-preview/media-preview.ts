@@ -15,25 +15,33 @@ import { InputTextModule } from 'primeng/inputtext';
 import { I18nService } from '../../core/i18n.service';
 import { MediaLibraryApiService } from '../backend/media-library-api.service';
 import { mediaKindToTokenKind, MediaTokenApiService } from '../backend/media-token-api.service';
+import { Mp4Player } from '../mp4-player/mp4-player';
 import type { MediaItem } from '../videos-dashboard.models';
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 1000;
+const MAX_TRANSCODE_RETRIES = 3;
+const TRANSCODE_RETRY_DELAY_MS = 1500;
+const MAX_MP4_PLAYBACK_RETRIES = 3;
 
 type CaptureFrame = { readonly fileName: string; readonly sequence: number };
 
 /**
- * Preview/CRUD popup for one recorded media item. Recordings are served as
- * multipart/x-mixed-replace MJPEG (same as live view) which <video> cannot
- * decode, so they're played back via <img>, reusing VideoPlayer's
- * cache-bust-on-open + retry-on-error technique. Timelapses are a sequence
- * of still capture frames (backend has no distinct 'timelapse' kind — it's
- * derived client-side as an 'image' item with frameCount > 1) browsed with a
- * frame slider, fetching a fresh per-frame media token as the user scrubs.
+ * Preview/CRUD popup for one recorded media item. Recordings are played back
+ * as MP4 via Mp4Player (Video.js + native HTTP Range requests): clicking a
+ * recording triggers server-side transcoding (encodes once, then a fast
+ * cached handoff on every later click) before a tokened <video> src is set.
+ * A recording item with no transcodeUrl/mp4Url (older backend, or a
+ * mock-data item) falls back to the legacy <img>-based MJPEG playback,
+ * reusing VideoPlayer's cache-bust-on-open + retry-on-error technique.
+ * Timelapses are a sequence of still capture frames (backend has no
+ * distinct 'timelapse' kind — it's derived client-side as an 'image' item
+ * with frameCount > 1) browsed with a frame slider, fetching a fresh
+ * per-frame media token as the user scrubs.
  */
 @Component({
   selector: 'app-media-preview',
-  imports: [ButtonModule, DialogModule, FormsModule, InputTextModule],
+  imports: [ButtonModule, DialogModule, FormsModule, InputTextModule, Mp4Player],
   templateUrl: './media-preview.html',
   styleUrl: './media-preview.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,6 +62,10 @@ export class MediaPreview {
   protected readonly playbackSrc = signal('');
   protected readonly audioSrc = signal('');
   protected readonly imageSrc = signal('');
+  protected readonly mp4Src = signal('');
+  protected readonly mp4Transcoding = signal(false);
+  protected readonly mp4TranscodeFailed = signal(false);
+  protected readonly mp4PlaybackFailed = signal(false);
   protected readonly frames = signal<readonly CaptureFrame[]>([]);
   protected readonly frameIndex = signal(0);
   protected readonly frameSrc = signal('');
@@ -76,6 +88,7 @@ export class MediaPreview {
   );
 
   private retryCount = 0;
+  private mp4PlaybackRetryCount = 0;
   private readonly frameTokenCache = new Map<string, string>();
 
   private readonly loadOnItemChange = effect(() => {
@@ -92,6 +105,10 @@ export class MediaPreview {
     this.playbackSrc.set('');
     this.audioSrc.set('');
     this.imageSrc.set('');
+    this.mp4Src.set('');
+    this.mp4Transcoding.set(false);
+    this.mp4TranscodeFailed.set(false);
+    this.mp4PlaybackFailed.set(false);
     this.frames.set([]);
     this.frameIndex.set(0);
     this.frameSrc.set('');
@@ -101,6 +118,7 @@ export class MediaPreview {
     this.deleteConfirming.set(false);
     this.actionError.set(false);
     this.retryCount = 0;
+    this.mp4PlaybackRetryCount = 0;
     this.frameTokenCache.clear();
   }
 
@@ -110,6 +128,8 @@ export class MediaPreview {
     try {
       if (item.kind === 'image' && (item.frameCount ?? 0) > 1) {
         await this.loadTimelapseFrames(item);
+      } else if (item.kind === 'recording' && item.transcodeUrl && item.mp4Url) {
+        await this.startMp4Playback(item);
       } else {
         const token = await this.mediaTokens.acquire({
           kind: mediaKindToTokenKind(item.kind),
@@ -130,6 +150,77 @@ export class MediaPreview {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Click-to-play for a recording: (1) POST the transcode endpoint, which
+   * encodes on first call and is a fast no-op handoff on every call after
+   * (MediaStorageService/TranscodingService cache the .mp4 on disk) —
+   * retried a few times since a cold encode can outlast a transient network
+   * blip; (2) acquire a 'recording-mp4' media token, since a plain <video>
+   * element cannot send an Authorization header; (3) hand the tokened URL to
+   * Mp4Player, which plays it via native HTTP Range requests (browser-driven
+   * progressive download + seeking, buffered-ranges bar from
+   * video.buffered()). See Mp4Player's doc comment for why per-byte-range
+   * retry isn't reachable once playback is handed to native <video>.
+   */
+  private async startMp4Playback(item: MediaItem): Promise<void> {
+    if (!item.requestId || !item.transcodeUrl || !item.mp4Url) return;
+    this.mp4Transcoding.set(true);
+    this.mp4TranscodeFailed.set(false);
+    try {
+      await this.transcodeWithRetry(item.transcodeUrl);
+    } catch {
+      this.mp4TranscodeFailed.set(true);
+      return;
+    } finally {
+      this.mp4Transcoding.set(false);
+    }
+    await this.acquireAndSetMp4Src(item);
+  }
+
+  private async transcodeWithRetry(transcodeUrl: string): Promise<void> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await this.mediaLibrary.transcode(transcodeUrl);
+        return;
+      } catch (error) {
+        if (attempt >= MAX_TRANSCODE_RETRIES) throw error;
+        await delay(TRANSCODE_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  private async acquireAndSetMp4Src(item: MediaItem): Promise<void> {
+    if (!item.requestId || !item.mp4Url) return;
+    try {
+      const token = await this.mediaTokens.acquire({
+        kind: 'recording-mp4',
+        cameraId: item.sourceId,
+        requestId: item.requestId,
+      });
+      this.mp4Src.set(this.mediaTokens.buildTokenedUrl(item.mp4Url, token));
+      this.mp4PlaybackFailed.set(false);
+    } catch {
+      this.mp4TranscodeFailed.set(true);
+    }
+  }
+
+  protected onMp4PlaybackError(): void {
+    const item = this.item();
+    if (!item || this.mp4PlaybackRetryCount >= MAX_MP4_PLAYBACK_RETRIES) {
+      this.mp4PlaybackFailed.set(true);
+      return;
+    }
+    this.mp4PlaybackRetryCount += 1;
+    void this.acquireAndSetMp4Src(item);
+  }
+
+  protected retryMp4(): void {
+    const item = this.item();
+    if (!item) return;
+    this.mp4PlaybackRetryCount = 0;
+    void this.startMp4Playback(item);
   }
 
   private async loadTimelapseFrames(item: MediaItem): Promise<void> {
@@ -246,4 +337,8 @@ export class MediaPreview {
 
 function withCacheBust(url: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}_r=${Date.now()}`;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 }

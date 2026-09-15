@@ -13,6 +13,11 @@ export type MediaItemDto = {
   size: number;
   thumbnailUrl: string;
   downloadUrl: string;
+  /** Present only for kind: 'recording'. MP4 playback for this item is
+   * available by POSTing transcodeUrl (idempotent; encodes once, then
+   * hands off the cached file) and then GETing mp4Url with Range support. */
+  transcodeUrl?: string;
+  mp4Url?: string;
 };
 
 export type MediaListQuery = {

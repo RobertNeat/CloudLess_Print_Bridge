@@ -53,6 +53,7 @@ const publicAuthPaths = new Set(['/auth/config', '/auth/token']);
 const liveViewPathPattern = /^\/api\/v1\/cameras\/[^/]+\/live$/;
 const mediaFilePathPatterns = [
   /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/mp4$/,
   /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/,
   /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
   /^\/api\/v1\/audio\/[^/]+\/[^/]+\/file$/,

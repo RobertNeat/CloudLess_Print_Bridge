@@ -5,9 +5,11 @@ import {
   Param,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { existsSync } from 'node:fs';
 import type { Response } from 'express';
+import { MediaTokenGuard } from '../auth/media-token.guard';
 import { assertIdentifier } from '../common/validation';
 import { TranscodingService } from './transcoding.service';
 
@@ -20,19 +22,20 @@ export class TranscodingController {
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
   ) {
-    return this.transcoding.transcodeRecordingToMp4(
+    return this.transcoding.ensureMp4(
       assertIdentifier(cameraId, 'cameraId'),
       assertIdentifier(requestId, 'requestId'),
     );
   }
 
+  @UseGuards(MediaTokenGuard)
   @Get('recordings/:cameraId/:requestId/mp4')
   mp4(
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    const filePath = this.transcoding.mp4Path(
+    const filePath = this.transcoding.resolveMp4Path(
       assertIdentifier(cameraId, 'cameraId'),
       assertIdentifier(requestId, 'requestId'),
     );

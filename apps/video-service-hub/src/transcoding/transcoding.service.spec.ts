@@ -168,4 +168,64 @@ describe('TranscodingService', () => {
     const leftovers = await readdir(join(storageRoot, '.tmp'));
     expect(leftovers).toEqual([]);
   }, 30_000);
+
+  async function storeCompletedLiveRecording(
+    cameraId: string,
+    requestId: string,
+  ): Promise<void> {
+    const upload = new PassThrough();
+    const finished = storage.storeLive(
+      upload as unknown as Request,
+      cameraId,
+      requestId,
+      'VGA',
+      `multipart/x-mixed-replace; boundary=${BOUNDARY}`,
+    );
+    upload.end(multipartPart(3));
+    await finished;
+  }
+
+  describe('ensureMp4 (dispatch between manifest-backed and live recordings)', () => {
+    it('throws NotFoundException when neither source exists', async () => {
+      await expect(
+        transcoding.ensureMp4('camera-1', 'missing-recording'),
+      ).rejects.toThrow('recording was not found');
+    });
+
+    it('transcodes a manifest-backed recording when a complete manifest exists', async () => {
+      await storeCompleteRecording('camera-1', 'recording-1');
+      const result = await transcoding.ensureMp4('camera-1', 'recording-1');
+      expect(result.filePath).toBe(
+        join(
+          storageRoot,
+          'recordings',
+          'camera-1',
+          'recording-1',
+          'recording-1.mp4',
+        ),
+      );
+    });
+
+    it('transcodes a completed live recording when no manifest exists', async () => {
+      await storeCompletedLiveRecording('camera-1', 'live-1');
+
+      const result = await transcoding.ensureMp4('camera-1', 'live-1');
+
+      expect(result.reused).toBe(false);
+      expect(result.filePath).toBe(
+        join(storageRoot, 'live', 'camera-1', 'live-1.mp4'),
+      );
+      expect(result.size).toBeGreaterThan(0);
+      const mp4Bytes = await readFile(result.filePath);
+      expect(mp4Bytes.subarray(4, 8).toString('ascii')).toBe('ftyp');
+    }, 30_000);
+
+    it('resolveMp4Path matches ensureMp4 output for a live recording', async () => {
+      await storeCompletedLiveRecording('camera-1', 'live-1');
+      const result = await transcoding.ensureMp4('camera-1', 'live-1');
+      expect(transcoding.resolveMp4Path('camera-1', 'live-1')).toBe(
+        result.filePath,
+      );
+    }, 30_000);
+  });
 });

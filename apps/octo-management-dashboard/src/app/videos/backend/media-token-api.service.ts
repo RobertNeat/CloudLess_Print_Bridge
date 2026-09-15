@@ -5,7 +5,7 @@ import type { MediaKind } from '../videos-dashboard.models';
 import type { BackendMediaTokenResponse } from './video-api.types';
 import { VideoServiceHubConfig } from './video-service-hub.config';
 
-export type MediaTokenKind = 'recording' | 'capture' | 'audio' | 'live-recording';
+export type MediaTokenKind = 'recording' | 'recording-mp4' | 'capture' | 'audio' | 'live-recording';
 
 export type MediaTokenRequest = {
   readonly kind: MediaTokenKind;

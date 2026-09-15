@@ -1,0 +1,26 @@
+.mp4-player {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+}
+.mp4-player__buffered {
+  position: relative;
+  height: 0.35rem;
+  border-radius: 0.2rem;
+  background: var(--semantic-surface-interactive);
+  overflow: hidden;
+}
+.mp4-player__buffered-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--semantic-text-muted);
+  opacity: 0.45;
+}
+.mp4-player__played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--app-primary-color, currentColor);
+}

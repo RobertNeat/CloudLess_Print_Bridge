@@ -31,6 +31,8 @@ export interface BackendMediaItemDto {
   readonly size: number;
   readonly thumbnailUrl: string;
   readonly downloadUrl: string;
+  readonly transcodeUrl?: string;
+  readonly mp4Url?: string;
 }
 
 export interface BackendCaptureFramesResponse {

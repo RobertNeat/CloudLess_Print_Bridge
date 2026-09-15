@@ -44,6 +44,9 @@ export interface MediaItem {
   readonly thumbnailUrl?: string;
   /** Absent for mock-data items, which have no backing file to fetch/delete/rename. */
   readonly downloadUrl?: string;
+  /** Present only for kind: 'recording'. See media-preview.ts / mp4-player for the transcode-then-play flow. */
+  readonly transcodeUrl?: string;
+  readonly mp4Url?: string;
 }
 
 export interface VideosDashboardData {
