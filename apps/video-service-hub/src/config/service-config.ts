@@ -16,6 +16,9 @@ export type ServiceConfig = {
     liveViewerBufferBytes: number;
   };
   cameraCommandTimeoutMs: number;
+  transcoding: {
+    fps: number;
+  };
   mqtt: {
     port: number;
     externalUrl?: string;
@@ -96,6 +99,15 @@ export function loadServiceConfig(
       10_000,
       1,
     ),
+    transcoding: {
+      fps: readIntegerValue(
+        envValue(environment, 'TRANSCODING_FPS'),
+        'TRANSCODING_FPS',
+        12,
+        1,
+        240,
+      ),
+    },
     mqtt: {
       port: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_MQTT_PORT'),
