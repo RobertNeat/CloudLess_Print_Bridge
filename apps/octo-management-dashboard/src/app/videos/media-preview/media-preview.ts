@@ -83,6 +83,26 @@ export class MediaPreview {
     return item?.kind === 'image' && (item.frameCount ?? 0) > 1;
   });
 
+  /**
+   * Whether the player box should keep its fixed 12rem-20rem height budget.
+   * Only the mp4 player is exempt: it sizes itself from the clip's own
+   * aspect ratio (video.js fluid mode) and the dialog grows to fit it,
+   * rather than being letterboxed/clipped into a fixed box like every other
+   * media type.
+   */
+  protected readonly playerIsBounded = computed(() => {
+    const item = this.item();
+    const showingMp4Player =
+      item?.kind === 'recording' &&
+      !!item.transcodeUrl &&
+      !!item.mp4Url &&
+      !!this.mp4Src() &&
+      !this.mp4Transcoding() &&
+      !this.mp4TranscodeFailed() &&
+      !this.mp4PlaybackFailed();
+    return !showingMp4Player;
+  });
+
   protected readonly displayName = computed(
     () => this.item()?.displayName || this.item()?.name || '',
   );

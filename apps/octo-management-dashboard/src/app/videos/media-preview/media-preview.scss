@@ -5,11 +5,22 @@
   display: grid;
   width: 100%;
   min-height: 12rem;
-  max-height: 20rem;
   border-radius: 0.75rem;
   background: var(--semantic-surface-interactive);
+}
+// The video player sizes itself from the clip's own aspect ratio (video.js
+// fluid mode, see mp4-player.scss) and the dialog grows to fit it, so this
+// container must not clip or cap its height. Every other media type
+// (image/timelapse/audio/status) keeps the fixed 12rem-20rem box via this
+// modifier instead, applied only when a recording isn't rendering as video.
+.media-preview__player--bounded {
+  max-height: 20rem;
   overflow: hidden;
-  place-items: center;
+}
+// img/audio/status content wants to be centered within the (possibly
+// bounded) box; app-mp4-player stretches to its own full intrinsic size.
+.media-preview__player > :not(app-mp4-player) {
+  place-self: center;
 }
 .media-preview__player img {
   display: block;

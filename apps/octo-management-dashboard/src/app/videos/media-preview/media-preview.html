@@ -9,7 +9,7 @@
 >
   @if (item(); as media) {
     <article class="media-preview">
-      <div class="media-preview__player">
+      <div class="media-preview__player" [class.media-preview__player--bounded]="playerIsBounded()">
         @if (loading()) {
           <div class="media-preview__status" role="status">
             <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
