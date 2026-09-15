@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
 import { CameraIngestModule } from './ingest/camera-ingest.module';
 import { MediaLibraryModule } from './media-library/media-library.module';
+import { TranscodingModule } from './transcoding/transcoding.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MediaLibraryModule } from './media-library/media-library.module';
     CameraCommandModule,
     CameraIngestModule,
     MediaLibraryModule,
+    TranscodingModule,
     HealthModule,
   ],
 })
