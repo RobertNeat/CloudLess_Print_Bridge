@@ -4,6 +4,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   Post,
   Query,
@@ -22,16 +23,20 @@ import {
   requireHeader,
 } from '../common/validation';
 import { MediaStorageService } from '../storage/media-storage.service';
+import { ThumbnailService } from '../thumbnails/thumbnail.service';
 
 @Controller('api/v1/cameras')
 export class CameraIngestController {
+  private readonly logger = new Logger(CameraIngestController.name);
+
   constructor(
     private readonly storage: MediaStorageService,
     private readonly streamTokens: StreamTokenService,
+    private readonly thumbnails: ThumbnailService,
   ) {}
 
   @Post(':cameraId/captures')
-  capture(
+  async capture(
     @Req() request: Request,
     @Param('cameraId') cameraId: string,
     @Headers('x-request-id') requestIdValue: string | undefined,
@@ -53,17 +58,19 @@ export class CameraIngestController {
             0,
             Number.MAX_SAFE_INTEGER,
           );
-    return this.storage.storeCapture(
+    const result = await this.storage.storeCapture(
       request,
       cameraId,
       requestId,
       resolution,
       sequence,
     );
+    await this.generateCaptureThumbnail(cameraId, requestId, result);
+    return result;
   }
 
   @Post(':cameraId/recordings/:requestId/parts/:partNumber')
-  recordingPart(
+  async recordingPart(
     @Req() request: Request,
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
@@ -102,7 +109,7 @@ export class CameraIngestController {
       0,
       Number.MAX_SAFE_INTEGER,
     );
-    return this.storage.storeRecordingPart(
+    const result = await this.storage.storeRecordingPart(
       request,
       cameraId,
       requestId,
@@ -112,10 +119,14 @@ export class CameraIngestController {
       duration,
       totalFrames,
     );
+    if (result.recordingComplete) {
+      await this.generateRecordingThumbnail(cameraId, requestId);
+    }
+    return result;
   }
 
   @Post(':cameraId/audio')
-  audio(
+  async audio(
     @Req() request: Request,
     @Param('cameraId') cameraId: string,
     @Headers('x-request-id') requestIdValue: string | undefined,
@@ -129,12 +140,19 @@ export class CameraIngestController {
       'X-Duration-Seconds',
       Number.EPSILON,
     );
-    return this.storage.storeAudio(request, cameraId, requestId, duration);
+    const result = await this.storage.storeAudio(
+      request,
+      cameraId,
+      requestId,
+      duration,
+    );
+    await this.generateAudioThumbnail(cameraId, requestId);
+    return result;
   }
 
   @Post(':cameraId/live')
   @HttpCode(HttpStatus.OK)
-  live(
+  async live(
     @Req() request: Request,
     @Param('cameraId') cameraId: string,
     @Headers('x-request-id') requestIdValue: string | undefined,
@@ -149,13 +167,17 @@ export class CameraIngestController {
       contentTypeValue,
       'multipart/x-mixed-replace',
     );
-    return this.storage.storeLive(
+    const result = await this.storage.storeLive(
       request,
       cameraId,
       requestId,
       resolution,
       contentType,
     );
+    if (result.stored) {
+      await this.generateRecordingThumbnail(cameraId, requestId);
+    }
+    return result;
   }
 
   @Get(':cameraId/live')
@@ -180,5 +202,67 @@ export class CameraIngestController {
       }
     });
     viewer.stream.pipe(response);
+  }
+
+  private async generateCaptureThumbnail(
+    cameraId: string,
+    requestId: string,
+    stored: Record<string, unknown>,
+  ): Promise<void> {
+    const fileName = stored.fileName as string;
+    const sourcePath = this.storage.captureFilePath(
+      cameraId,
+      requestId,
+      fileName,
+    );
+    const thumbnailPath = this.storage.captureThumbnailPath(
+      cameraId,
+      requestId,
+    );
+    await this.thumbnails
+      .ensureFromImage(sourcePath, thumbnailPath)
+      .catch((error: Error) =>
+        this.logger.warn(`capture thumbnail failed: ${error.message}`),
+      );
+  }
+
+  private async generateRecordingThumbnail(
+    cameraId: string,
+    requestId: string,
+  ): Promise<void> {
+    const thumbnailPath = this.storage.recordingThumbnailPath(
+      cameraId,
+      requestId,
+    );
+    let sourcePath: string;
+    try {
+      sourcePath = this.storage.recordingPartPaths(cameraId, requestId)[0];
+    } catch {
+      sourcePath = this.storage.liveRecordingFilePath(cameraId, requestId);
+    }
+    await this.thumbnails
+      .ensureFromMjpeg(sourcePath, thumbnailPath)
+      .catch((error: Error) =>
+        this.logger.warn(`recording thumbnail failed: ${error.message}`),
+      );
+  }
+
+  private async generateAudioThumbnail(
+    cameraId: string,
+    requestId: string,
+  ): Promise<void> {
+    const sourcePath = this.storage.audioFilePath(
+      cameraId,
+      `${requestId}.wav`,
+    );
+    const thumbnailPath = this.storage.audioThumbnailPath(
+      cameraId,
+      requestId,
+    );
+    await this.thumbnails
+      .ensureWaveform(sourcePath, thumbnailPath)
+      .catch((error: Error) =>
+        this.logger.warn(`audio thumbnail failed: ${error.message}`),
+      );
   }
 }

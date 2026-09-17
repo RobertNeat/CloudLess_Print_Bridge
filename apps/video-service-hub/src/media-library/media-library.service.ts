@@ -3,12 +3,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { existsSync } from 'node:fs';
 import { MediaStorageService } from '../storage/media-storage.service';
 import type {
   MediaItemDto,
   MediaListQuery,
   MediaListResult,
 } from './media-library.types';
+
+const THUMBNAIL_PLACEHOLDER_URL = '/api/v1/media/thumbnail-placeholder';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -75,7 +78,13 @@ export class MediaLibraryService {
           (total, part) => total + part.size,
           0,
         ),
-        thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
+        thumbnailUrl: this.thumbnailUrl(
+          this.storage.recordingThumbnailPath(
+            manifest.cameraId,
+            manifest.requestId,
+          ),
+          `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
+        ),
         downloadUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/file`,
         transcodeUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/transcode`,
         mp4Url: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/mp4`,
@@ -87,9 +96,10 @@ export class MediaLibraryService {
       const latest = [...manifest.captures].sort((left, right) =>
         right.storedAt.localeCompare(left.storedAt),
       )[0];
+      const kind = manifest.captures.length > 1 ? 'timelapse' : 'image';
       return {
-        id: `image:${manifest.cameraId}:${manifest.requestId}`,
-        kind: 'image',
+        id: `${kind}:${manifest.cameraId}:${manifest.requestId}`,
+        kind,
         cameraId: manifest.cameraId,
         requestId: manifest.requestId,
         fileName: latest.fileName,
@@ -97,7 +107,13 @@ export class MediaLibraryService {
         capturedAt: latest.storedAt,
         frameCount: manifest.captures.length,
         size: manifest.captures.reduce((total, item) => total + item.size, 0),
-        thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
+        thumbnailUrl: this.thumbnailUrl(
+          this.storage.captureThumbnailPath(
+            manifest.cameraId,
+            manifest.requestId,
+          ),
+          `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
+        ),
         downloadUrl: `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/file?fileName=${encodeURIComponent(latest.fileName)}`,
       };
     });
@@ -113,7 +129,10 @@ export class MediaLibraryService {
       fileName: file.fileName,
       capturedAt: file.finishedAt,
       size: file.size,
-      thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
+      thumbnailUrl: this.thumbnailUrl(
+        this.storage.recordingThumbnailPath(file.cameraId, file.requestId),
+        `/api/v1/recordings/${file.cameraId}/${file.requestId}/thumbnail`,
+      ),
       downloadUrl: `/api/v1/live-recordings/${file.cameraId}/${file.requestId}/file`,
       transcodeUrl: `/api/v1/recordings/${file.cameraId}/${file.requestId}/transcode`,
       mp4Url: `/api/v1/recordings/${file.cameraId}/${file.requestId}/mp4`,
@@ -132,9 +151,20 @@ export class MediaLibraryService {
       capturedAt: manifest.storedAt,
       durationSeconds: manifest.durationSeconds,
       size: manifest.size,
-      thumbnailUrl: '/api/v1/media/thumbnail-placeholder',
+      thumbnailUrl: this.thumbnailUrl(
+        this.storage.audioThumbnailPath(
+          manifest.cameraId,
+          manifest.requestId,
+        ),
+        `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
+      ),
       downloadUrl: `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/file`,
     }));
+  }
+
+  /** Real thumbnail URL if the sidecar file has already been generated, else the shared placeholder. */
+  private thumbnailUrl(thumbnailPath: string, thumbnailUrl: string): string {
+    return existsSync(thumbnailPath) ? thumbnailUrl : THUMBNAIL_PLACEHOLDER_URL;
   }
 
   listCaptureFrames(cameraId: string, requestId: string) {

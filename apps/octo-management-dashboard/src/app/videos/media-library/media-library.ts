@@ -76,8 +76,7 @@ export class MediaLibrary {
       image: [],
     };
     for (const item of this.items()) {
-      const kind = item.kind === 'image' && (item.frameCount ?? 0) > 1 ? 'timelapse' : item.kind;
-      grouped[kind].push(item);
+      grouped[item.kind].push(item);
     }
     return grouped;
   });

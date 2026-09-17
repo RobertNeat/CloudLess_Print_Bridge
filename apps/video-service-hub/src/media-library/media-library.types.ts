@@ -1,4 +1,4 @@
-export type MediaKind = 'recording' | 'image' | 'audio';
+export type MediaKind = 'recording' | 'image' | 'timelapse' | 'audio';
 
 export type MediaItemDto = {
   id: string;

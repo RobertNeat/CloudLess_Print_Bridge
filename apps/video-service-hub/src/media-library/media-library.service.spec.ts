@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -184,7 +184,8 @@ describe('MediaLibraryService', () => {
 
     for (const item of items) {
       switch (item.kind) {
-        case 'image': {
+        case 'image':
+        case 'timelapse': {
           const path = storage.captureFilePath(
             item.cameraId,
             item.requestId,
@@ -211,6 +212,117 @@ describe('MediaLibraryService', () => {
         }
       }
     }
+  });
+
+  describe('timelapse kind', () => {
+    it('reports a single-frame capture as kind: image', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'capture-1',
+        'VGA',
+        0,
+      );
+
+      const result = await library.list({});
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]).toMatchObject({ kind: 'image' });
+      expect(result.items[0].id).toBe('image:camera-1:capture-1');
+    });
+
+    it('reports a multi-frame capture (periodic-capture) as kind: timelapse', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'timelapse-1',
+        'VGA',
+        0,
+      );
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'timelapse-1',
+        'VGA',
+        1,
+      );
+
+      const result = await library.list({});
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]).toMatchObject({
+        kind: 'timelapse',
+        frameCount: 2,
+      });
+      expect(result.items[0].id).toBe('timelapse:camera-1:timelapse-1');
+    });
+
+    it('filters by kind: timelapse without matching single-frame images', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'image-1',
+        'VGA',
+        0,
+      );
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'timelapse-1',
+        'VGA',
+        0,
+      );
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'timelapse-1',
+        'VGA',
+        1,
+      );
+
+      const result = await library.list({ kind: 'timelapse' });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].requestId).toBe('timelapse-1');
+    });
+  });
+
+  describe('thumbnailUrl', () => {
+    it('falls back to the shared placeholder when no thumbnail has been generated yet', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'capture-1',
+        'VGA',
+        0,
+      );
+
+      const result = await library.list({});
+      expect(result.items[0].thumbnailUrl).toBe(
+        '/api/v1/media/thumbnail-placeholder',
+      );
+    });
+
+    it('returns the real per-item thumbnail URL once a thumbnail file exists', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'capture-1',
+        'VGA',
+        0,
+      );
+      await writeFile(
+        storage.captureThumbnailPath('camera-1', 'capture-1'),
+        Buffer.from([1, 2, 3]),
+      );
+
+      const result = await library.list({});
+      expect(result.items[0].thumbnailUrl).toBe(
+        '/api/v1/captures/camera-1/capture-1/thumbnail',
+      );
+    });
   });
 });
 
