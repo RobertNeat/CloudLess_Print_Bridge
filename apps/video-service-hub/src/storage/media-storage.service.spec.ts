@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -123,6 +124,103 @@ describe('MediaStorageService', () => {
     await expect(finished).resolves.toMatchObject({
       stored: true,
       frames: 2,
+    });
+  });
+
+  describe('deletion cleans up sidecar thumbnails', () => {
+    it('deleteCapture removes the whole capture directory, thumbnail included', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await service.storeCapture(
+        requestFrom(jpeg),
+        'camera-1',
+        'capture-1',
+        'VGA',
+        0,
+      );
+      const thumbnailPath = service.captureThumbnailPath(
+        'camera-1',
+        'capture-1',
+      );
+      await writeFile(thumbnailPath, Buffer.from([1, 2, 3]));
+
+      await service.deleteCapture('camera-1', 'capture-1');
+
+      expect(existsSync(thumbnailPath)).toBe(false);
+    });
+
+    it('deleteRecording removes a manifest-backed recording directory, thumbnail included', async () => {
+      const part = Buffer.from('--unitcams3-frame\r\npart-zero\r\n');
+      await service.storeRecordingPart(
+        requestFrom(part),
+        'camera-1',
+        'recording-1',
+        0,
+        1,
+        'VGA',
+        4,
+        20,
+      );
+      const thumbnailPath = service.recordingThumbnailPath(
+        'camera-1',
+        'recording-1',
+      );
+      await writeFile(thumbnailPath, Buffer.from([1, 2, 3]));
+
+      await service.deleteRecording('camera-1', 'recording-1');
+
+      expect(existsSync(thumbnailPath)).toBe(false);
+    });
+
+    it('deleteRecording on a completed live recording also removes the leaked mp4 and thumbnail', async () => {
+      const upload = new PassThrough();
+      const finished = service.storeLive(
+        upload as unknown as Request,
+        'camera-1',
+        'live-1',
+        'VGA',
+        'multipart/x-mixed-replace; boundary=unitcams3-frame',
+      );
+      upload.end(
+        Buffer.from('--unitcams3-frame\r\nContent-Type: image/jpeg\r\n\r\nX\r\n'),
+      );
+      await finished;
+
+      const liveDirectory = join(storageRoot, 'live', 'camera-1');
+      const mp4Path = join(liveDirectory, 'live-1.mp4');
+      const thumbnailPath = service.recordingThumbnailPath(
+        'camera-1',
+        'live-1',
+      );
+      await mkdir(liveDirectory, { recursive: true });
+      await writeFile(mp4Path, Buffer.from([1, 2, 3]));
+      await writeFile(thumbnailPath, Buffer.from([1, 2, 3]));
+
+      await service.deleteRecording('camera-1', 'live-1');
+
+      expect(existsSync(mp4Path)).toBe(false);
+      expect(existsSync(thumbnailPath)).toBe(false);
+      expect(existsSync(service.liveRecordingFilePath('camera-1', 'live-1'))).toBe(
+        false,
+      );
+    });
+
+    it('deleteAudio removes the wav, manifest, and thumbnail', async () => {
+      const wav = Buffer.concat([
+        Buffer.from('RIFF'),
+        Buffer.alloc(4),
+        Buffer.from('WAVE'),
+        Buffer.alloc(10),
+      ]);
+      await service.storeAudio(requestFrom(wav), 'camera-1', 'audio-1', 2);
+      const thumbnailPath = service.audioThumbnailPath('camera-1', 'audio-1');
+      await writeFile(thumbnailPath, Buffer.from([1, 2, 3]));
+
+      await service.deleteAudio('camera-1', 'audio-1');
+
+      expect(existsSync(thumbnailPath)).toBe(false);
+      expect(
+        existsSync(service.audioFilePath('camera-1', 'audio-1.wav')),
+      ).toBe(false);
     });
   });
 });

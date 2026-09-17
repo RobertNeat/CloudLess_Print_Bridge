@@ -1,4 +1,4 @@
-export type BackendMediaKind = 'recording' | 'image' | 'audio';
+export type BackendMediaKind = 'recording' | 'image' | 'timelapse' | 'audio';
 
 export interface BackendCameraDto {
   readonly cameraId: string;

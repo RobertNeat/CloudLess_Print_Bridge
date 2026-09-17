@@ -30,7 +30,12 @@ const THUMBNAIL_PLACEHOLDER_PATH = join(
   'assets',
   'thumbnail-placeholder.png',
 );
-const knownKinds = new Set<MediaKind>(['recording', 'image', 'audio']);
+const knownKinds = new Set<MediaKind>([
+  'recording',
+  'image',
+  'timelapse',
+  'audio',
+]);
 
 @Controller('api/v1')
 export class MediaLibraryController {
@@ -63,6 +68,51 @@ export class MediaLibraryController {
       throw new NotFoundException('thumbnail placeholder is not available');
     }
     response.sendFile(THUMBNAIL_PLACEHOLDER_PATH);
+  }
+
+  @Get('recordings/:cameraId/:requestId/thumbnail')
+  recordingThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendIfExists(
+      this.storage.recordingThumbnailPath(
+        assertIdentifier(cameraId, 'cameraId'),
+        assertIdentifier(requestId, 'requestId'),
+      ),
+      response,
+    );
+  }
+
+  @Get('captures/:cameraId/:requestId/thumbnail')
+  captureThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendIfExists(
+      this.storage.captureThumbnailPath(
+        assertIdentifier(cameraId, 'cameraId'),
+        assertIdentifier(requestId, 'requestId'),
+      ),
+      response,
+    );
+  }
+
+  @Get('audio/:cameraId/:requestId/thumbnail')
+  audioThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendIfExists(
+      this.storage.audioThumbnailPath(
+        assertIdentifier(cameraId, 'cameraId'),
+        assertIdentifier(requestId, 'requestId'),
+      ),
+      response,
+    );
   }
 
   @Get('captures/:cameraId/:requestId/frames')

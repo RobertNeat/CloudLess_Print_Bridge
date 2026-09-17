@@ -610,6 +610,44 @@ export class MediaStorageService implements OnModuleInit {
     return join(this.config.storage.root, 'audio', cameraId, fileName);
   }
 
+  recordingThumbnailPath(cameraId: string, requestId: string): string {
+    const manifest = this.recordingManifests.get(`${cameraId}:${requestId}`);
+    if (manifest) {
+      return join(
+        this.config.storage.root,
+        'recordings',
+        cameraId,
+        requestId,
+        'thumbnail.jpg',
+      );
+    }
+    return join(
+      this.config.storage.root,
+      'live',
+      cameraId,
+      `${requestId}.thumb.jpg`,
+    );
+  }
+
+  captureThumbnailPath(cameraId: string, requestId: string): string {
+    return join(
+      this.config.storage.root,
+      'captures',
+      cameraId,
+      requestId,
+      'thumbnail.jpg',
+    );
+  }
+
+  audioThumbnailPath(cameraId: string, requestId: string): string {
+    return join(
+      this.config.storage.root,
+      'audio',
+      cameraId,
+      `${requestId}.thumb.png`,
+    );
+  }
+
   async deleteRecording(cameraId: string, requestId: string): Promise<void> {
     const key = `${cameraId}:${requestId}`;
     if (this.recordingManifests.has(key)) {
@@ -627,7 +665,12 @@ export class MediaStorageService implements OnModuleInit {
     if (!(await this.exists(filePath))) {
       throw new NotFoundException('recording was not found');
     }
-    await rm(filePath, { force: true });
+    const directory = join(this.config.storage.root, 'live', cameraId);
+    await Promise.all([
+      rm(filePath, { force: true }),
+      rm(join(directory, `${requestId}.mp4`), { force: true }),
+      rm(join(directory, `${requestId}.thumb.jpg`), { force: true }),
+    ]);
   }
 
   async deleteCapture(cameraId: string, requestId: string): Promise<void> {
@@ -652,6 +695,7 @@ export class MediaStorageService implements OnModuleInit {
     await Promise.all([
       rm(filePath, { force: true }),
       rm(manifestPath, { force: true }),
+      rm(join(directory, `${requestId}.thumb.png`), { force: true }),
     ]);
   }
 

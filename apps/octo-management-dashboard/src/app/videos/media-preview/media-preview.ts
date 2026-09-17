@@ -34,10 +34,10 @@ type CaptureFrame = { readonly fileName: string; readonly sequence: number };
  * A recording item with no transcodeUrl/mp4Url (older backend, or a
  * mock-data item) falls back to the legacy <img>-based MJPEG playback,
  * reusing VideoPlayer's cache-bust-on-open + retry-on-error technique.
- * Timelapses are a sequence of still capture frames (backend has no
- * distinct 'timelapse' kind — it's derived client-side as an 'image' item
- * with frameCount > 1) browsed with a frame slider, fetching a fresh
- * per-frame media token as the user scrubs.
+ * Timelapses are a sequence of still capture frames (kind: 'timelapse',
+ * backed by the same multi-frame capture manifest as a multi-shot 'image')
+ * browsed with a frame slider, fetching a fresh per-frame media token as the
+ * user scrubs.
  */
 @Component({
   selector: 'app-media-preview',
@@ -77,10 +77,7 @@ export class MediaPreview {
   protected readonly deleting = signal(false);
   protected readonly actionError = signal(false);
 
-  protected readonly isTimelapse = computed(() => {
-    const item = this.item();
-    return item?.kind === 'image' && (item.frameCount ?? 0) > 1;
-  });
+  protected readonly isTimelapse = computed(() => this.item()?.kind === 'timelapse');
 
   /**
    * Whether the player box should keep its fixed 12rem-20rem height budget.
@@ -145,7 +142,7 @@ export class MediaPreview {
     if (!item.requestId || !item.downloadUrl) return;
     this.loading.set(true);
     try {
-      if (item.kind === 'image' && (item.frameCount ?? 0) > 1) {
+      if (item.kind === 'timelapse') {
         await this.loadTimelapseFrames(item);
       } else if (item.kind === 'recording' && item.transcodeUrl && item.mp4Url) {
         await this.startMp4Playback(item);
