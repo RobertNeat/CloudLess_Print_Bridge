@@ -20,9 +20,11 @@ export type MediaItemDto = {
   thumbnailUrlDark?: string;
   thumbnailUrlLight?: string;
   downloadUrl: string;
-  /** Present only for kind: 'recording'. MP4 playback for this item is
-   * available by POSTing transcodeUrl (idempotent; encodes once, then
-   * hands off the cached file) and then GETing mp4Url with Range support. */
+  /** Present only for kind: 'recording' and kind: 'timelapse'. MP4 playback
+   * for this item is available by POSTing transcodeUrl (idempotent; encodes
+   * once, then hands off the cached file -- a timelapse re-encodes instead
+   * if a newer capture frame has arrived since) and then GETing mp4Url with
+   * Range support. */
   transcodeUrl?: string;
   mp4Url?: string;
 };

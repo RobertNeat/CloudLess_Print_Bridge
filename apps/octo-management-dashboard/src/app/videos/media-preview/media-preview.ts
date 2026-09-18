@@ -27,17 +27,18 @@ const MAX_MP4_PLAYBACK_RETRIES = 3;
 type CaptureFrame = { readonly fileName: string; readonly sequence: number };
 
 /**
- * Preview/CRUD popup for one recorded media item. Recordings are played back
- * as MP4 via Mp4Player (Video.js + native HTTP Range requests): clicking a
- * recording triggers server-side transcoding (encodes once, then a fast
- * cached handoff on every later click) before a tokened <video> src is set.
- * A recording item with no transcodeUrl/mp4Url (older backend, or a
- * mock-data item) falls back to the legacy <img>-based MJPEG playback,
- * reusing VideoPlayer's cache-bust-on-open + retry-on-error technique.
- * Timelapses are a sequence of still capture frames (kind: 'timelapse',
- * backed by the same multi-frame capture manifest as a multi-shot 'image')
- * browsed with a frame slider, fetching a fresh per-frame media token as the
- * user scrubs.
+ * Preview/CRUD popup for one recorded media item. Recordings and timelapses
+ * are both played back as MP4 via Mp4Player (Video.js + native HTTP Range
+ * requests): clicking either triggers server-side transcoding (encodes
+ * once, then a fast cached handoff on every later click -- a timelapse
+ * re-encodes if a newer capture frame has arrived since) before a tokened
+ * <video> src is set. A recording item with no transcodeUrl/mp4Url (older
+ * backend, or a mock-data item) falls back to the legacy <img>-based MJPEG
+ * playback, reusing VideoPlayer's cache-bust-on-open + retry-on-error
+ * technique. A timelapse item with no transcodeUrl/mp4Url falls back to
+ * browsing its still capture frames (kind: 'timelapse', backed by the same
+ * multi-frame capture manifest as a multi-shot 'image') with a frame slider,
+ * fetching a fresh per-frame media token as the user scrubs.
  */
 @Component({
   selector: 'app-media-preview',
@@ -77,7 +78,19 @@ export class MediaPreview {
   protected readonly deleting = signal(false);
   protected readonly actionError = signal(false);
 
-  protected readonly isTimelapse = computed(() => this.item()?.kind === 'timelapse');
+  /** True only when falling back to the frame-slider view: a timelapse with no transcodeUrl/mp4Url (older backend, or a mock-data item). */
+  protected readonly isTimelapse = computed(
+    () => this.item()?.kind === 'timelapse' && !this.hasMp4Source(),
+  );
+
+  private hasMp4Source(): boolean {
+    const item = this.item();
+    return (
+      (item?.kind === 'recording' || item?.kind === 'timelapse') &&
+      !!item.transcodeUrl &&
+      !!item.mp4Url
+    );
+  }
 
   /**
    * Whether the player box should keep its fixed 12rem-20rem height budget.
@@ -87,11 +100,8 @@ export class MediaPreview {
    * media type.
    */
   protected readonly playerIsBounded = computed(() => {
-    const item = this.item();
     const showingMp4Player =
-      item?.kind === 'recording' &&
-      !!item.transcodeUrl &&
-      !!item.mp4Url &&
+      this.hasMp4Source() &&
       !!this.mp4Src() &&
       !this.mp4Transcoding() &&
       !this.mp4TranscodeFailed() &&
@@ -142,10 +152,10 @@ export class MediaPreview {
     if (!item.requestId || !item.downloadUrl) return;
     this.loading.set(true);
     try {
-      if (item.kind === 'timelapse') {
-        await this.loadTimelapseFrames(item);
-      } else if (item.kind === 'recording' && item.transcodeUrl && item.mp4Url) {
+      if ((item.kind === 'recording' || item.kind === 'timelapse') && item.transcodeUrl && item.mp4Url) {
         await this.startMp4Playback(item);
+      } else if (item.kind === 'timelapse') {
+        await this.loadTimelapseFrames(item);
       } else {
         const token = await this.mediaTokens.acquire({
           kind: mediaKindToTokenKind(item.kind),
@@ -169,16 +179,18 @@ export class MediaPreview {
   }
 
   /**
-   * Click-to-play for a recording: (1) POST the transcode endpoint, which
-   * encodes on first call and is a fast no-op handoff on every call after
-   * (MediaStorageService/TranscodingService cache the .mp4 on disk) —
-   * retried a few times since a cold encode can outlast a transient network
-   * blip; (2) acquire a 'recording-mp4' media token, since a plain <video>
-   * element cannot send an Authorization header; (3) hand the tokened URL to
-   * Mp4Player, which plays it via native HTTP Range requests (browser-driven
-   * progressive download + seeking, buffered-ranges bar from
-   * video.buffered()). See Mp4Player's doc comment for why per-byte-range
-   * retry isn't reachable once playback is handed to native <video>.
+   * Click-to-play for a recording or timelapse: (1) POST the transcode
+   * endpoint, which encodes on first call and is a fast cached handoff on
+   * every call after (MediaStorageService/TranscodingService cache the .mp4
+   * on disk; a timelapse's cache is invalidated once a newer capture frame
+   * has arrived) — retried a few times since a cold encode can outlast a
+   * transient network blip; (2) acquire a 'recording-mp4' or 'capture-mp4'
+   * media token, since a plain <video> element cannot send an Authorization
+   * header; (3) hand the tokened URL to Mp4Player, which plays it via native
+   * HTTP Range requests (browser-driven progressive download + seeking,
+   * buffered-ranges bar from video.buffered()). See Mp4Player's doc comment
+   * for why per-byte-range retry isn't reachable once playback is handed to
+   * native <video>.
    */
   private async startMp4Playback(item: MediaItem): Promise<void> {
     if (!item.requestId || !item.transcodeUrl || !item.mp4Url) return;
@@ -211,7 +223,7 @@ export class MediaPreview {
     if (!item.requestId || !item.mp4Url) return;
     try {
       const token = await this.mediaTokens.acquire({
-        kind: 'recording-mp4',
+        kind: item.kind === 'timelapse' ? 'capture-mp4' : 'recording-mp4',
         cameraId: item.sourceId,
         requestId: item.requestId,
       });

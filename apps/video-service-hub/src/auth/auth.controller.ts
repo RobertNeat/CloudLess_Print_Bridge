@@ -22,6 +22,7 @@ const mediaFileKinds = new Set<MediaFileKind>([
   'recording',
   'recording-mp4',
   'capture',
+  'capture-mp4',
   'audio',
   'live-recording',
 ]);
@@ -106,7 +107,7 @@ export class AuthController {
       !mediaFileKinds.has(body.kind as MediaFileKind)
     ) {
       throw new UnauthorizedException(
-        'kind must be one of: recording, recording-mp4, capture, audio, live-recording.',
+        'kind must be one of: recording, recording-mp4, capture, capture-mp4, audio, live-recording.',
       );
     }
     const cameraId = assertIdentifier(body?.cameraId, 'cameraId');

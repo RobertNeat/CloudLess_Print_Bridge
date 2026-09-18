@@ -97,6 +97,7 @@ export class MediaLibraryService {
         right.storedAt.localeCompare(left.storedAt),
       )[0];
       const kind = manifest.captures.length > 1 ? 'timelapse' : 'image';
+      const isTimelapse = kind === 'timelapse';
       return {
         id: `${kind}:${manifest.cameraId}:${manifest.requestId}`,
         kind,
@@ -115,6 +116,12 @@ export class MediaLibraryService {
           `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
         ),
         downloadUrl: `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/file?fileName=${encodeURIComponent(latest.fileName)}`,
+        transcodeUrl: isTimelapse
+          ? `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/transcode`
+          : undefined,
+        mp4Url: isTimelapse
+          ? `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/mp4`
+          : undefined,
       };
     });
   }

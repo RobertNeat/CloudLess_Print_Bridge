@@ -6,6 +6,7 @@ export type ServiceConfig = {
   http: {
     host: string;
     port: number;
+    corsOrigins: string[] | true;
   };
   storage: {
     root: string;
@@ -18,6 +19,10 @@ export type ServiceConfig = {
   cameraCommandTimeoutMs: number;
   transcoding: {
     fps: number;
+  };
+  timelapse: {
+    fps: number;
+    encodeInactivityMs: number;
   };
   mqtt: {
     port: number;
@@ -55,6 +60,9 @@ export function loadServiceConfig(
         10322,
         0,
         65_535,
+      ),
+      corsOrigins: parseCorsOrigins(
+        envValue(environment, 'VIDEO_SERVICE_HUB_CORS_ORIGINS'),
       ),
     },
     storage: {
@@ -106,6 +114,27 @@ export function loadServiceConfig(
         12,
         1,
         240,
+      ),
+    },
+    timelapse: {
+      fps: readIntegerValue(
+        envValue(environment, 'TIMELAPSE_FPS'),
+        'TIMELAPSE_FPS',
+        12,
+        1,
+        240,
+      ),
+      // Must clear the camera firmware's own upload latency: the uploader
+      // task only wakes on a 30s fallback timer for periodic/single
+      // captures (no immediate wake, unlike recordings -- see uploadTask in
+      // firmware/.../video_service.cpp), so the gap between the last frame
+      // finishing capture and it actually reaching this hub can approach
+      // 30s on its own, before any per-frame upload time on top.
+      encodeInactivityMs: readIntegerValue(
+        envValue(environment, 'TIMELAPSE_ENCODE_INACTIVITY_MS'),
+        'TIMELAPSE_ENCODE_INACTIVITY_MS',
+        45_000,
+        100,
       ),
     },
     mqtt: {
@@ -207,6 +236,15 @@ function envValue(
   name: string,
 ): string | undefined {
   return environment[name]?.trim() || undefined;
+}
+
+function parseCorsOrigins(input: string | undefined): string[] | true {
+  const value = input ?? 'http://localhost:10300';
+  if (value === '*') return true;
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 function readIntegerValue(

@@ -607,6 +607,48 @@ export class MediaStorageService implements OnModuleInit {
     );
   }
 
+  /** Capture frame file paths in sequence order, for joining into a timelapse MP4. */
+  capturePartPaths(cameraId: string, requestId: string): string[] {
+    const manifest = this.captureManifests.get(`${cameraId}:${requestId}`);
+    if (!manifest) {
+      throw new NotFoundException('capture was not found');
+    }
+    const directory = join(
+      this.config.storage.root,
+      'captures',
+      cameraId,
+      requestId,
+    );
+    return [...manifest.captures]
+      .sort((left, right) => left.sequence - right.sequence)
+      .map((capture) => join(directory, capture.fileName));
+  }
+
+  /** Number of frames stored for a capture so far, 0 if the capture is unknown. */
+  captureFrameCount(cameraId: string, requestId: string): number {
+    return this.captureManifests.get(`${cameraId}:${requestId}`)?.captures.length ?? 0;
+  }
+
+  /** Latest storedAt among a capture's frames, used to detect a timelapse MP4 that predates a newly-arrived frame. */
+  captureLastStoredAt(cameraId: string, requestId: string): string | undefined {
+    const manifest = this.captureManifests.get(`${cameraId}:${requestId}`);
+    if (!manifest || manifest.captures.length === 0) return undefined;
+    return manifest.captures.reduce(
+      (latest, capture) => (capture.storedAt > latest ? capture.storedAt : latest),
+      manifest.captures[0].storedAt,
+    );
+  }
+
+  captureMp4Path(cameraId: string, requestId: string): string {
+    return join(
+      this.config.storage.root,
+      'captures',
+      cameraId,
+      requestId,
+      `${requestId}.mp4`,
+    );
+  }
+
   audioFilePath(cameraId: string, fileName: string): string {
     return join(this.config.storage.root, 'audio', cameraId, fileName);
   }

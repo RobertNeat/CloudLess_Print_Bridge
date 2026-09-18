@@ -8,6 +8,7 @@ import { StreamTokenService } from '../auth/stream-token.service';
 import { loadServiceConfig } from '../config/service-config';
 import { MediaStorageService } from '../storage/media-storage.service';
 import { ThumbnailService } from '../thumbnails/thumbnail.service';
+import { TranscodingService } from '../transcoding/transcoding.service';
 import { CameraIngestController } from './camera-ingest.controller';
 
 // Real, ffmpeg-decodable fixtures -- see thumbnail.service.spec.ts for why a
@@ -40,25 +41,31 @@ function multipartPart(frameCount: number): Buffer {
 describe('CameraIngestController (thumbnail generation on ingest)', () => {
   let storageRoot: string;
   let storage: MediaStorageService;
+  let transcoding: TranscodingService;
   let controller: CameraIngestController;
 
   beforeEach(async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'video-service-hub-ingest-'));
-    storage = new MediaStorageService(
-      loadServiceConfig({
-        VIDEO_SERVICE_HUB_STORAGE_PATH: storageRoot,
-        VIDEO_SERVICE_HUB_MQTT_PORT: '0',
-      }),
-    );
+    const config = loadServiceConfig({
+      VIDEO_SERVICE_HUB_STORAGE_PATH: storageRoot,
+      VIDEO_SERVICE_HUB_MQTT_PORT: '0',
+    });
+    storage = new MediaStorageService(config);
     await storage.initialize();
+    transcoding = new TranscodingService(config, storage);
     controller = new CameraIngestController(
       storage,
       new StreamTokenService(),
       new ThumbnailService(),
+      transcoding,
     );
   });
 
   afterEach(async () => {
+    // Every capture() call schedules a real 45s debounce timer
+    // (scheduleTimelapseEncodeAfterInactivity) -- cancel it so it doesn't
+    // fire against a storage root this same afterEach is about to delete.
+    transcoding.onModuleDestroy();
     await rm(storageRoot, { recursive: true, force: true });
   });
 

@@ -17,20 +17,34 @@ const recording: MediaItem = {
   mp4Url: 'http://hub/api/v1/recordings/camera-1/req-1/mp4',
 };
 
+const timelapse: MediaItem = {
+  id: 'timelapse:camera-1:tl-1',
+  kind: 'timelapse',
+  name: '000000.jpg',
+  sourceId: 'camera-1',
+  requestId: 'tl-1',
+  capturedAt: '2026-08-03T10:00:00Z',
+  downloadUrl: 'http://hub/api/v1/captures/camera-1/tl-1/file?fileName=000001.jpg',
+  transcodeUrl: 'http://hub/api/v1/captures/camera-1/tl-1/transcode',
+  mp4Url: 'http://hub/api/v1/captures/camera-1/tl-1/mp4',
+};
+
 describe('MediaPreview mp4 playback', () => {
   let transcode: ReturnType<typeof vi.fn>;
   let acquire: ReturnType<typeof vi.fn>;
   let deleteMedia: ReturnType<typeof vi.fn>;
+  let listCaptureFrames: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     transcode = vi.fn().mockResolvedValue(undefined);
     acquire = vi.fn().mockResolvedValue('tok-123');
     deleteMedia = vi.fn().mockResolvedValue(undefined);
+    listCaptureFrames = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         {
           provide: MediaLibraryApiService,
-          useValue: { transcode, listCaptureFrames: vi.fn(), delete: deleteMedia },
+          useValue: { transcode, listCaptureFrames, delete: deleteMedia },
         },
         {
           provide: MediaTokenApiService,
@@ -61,6 +75,46 @@ describe('MediaPreview mp4 playback', () => {
     expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
       `${recording.mp4Url}?mediaToken=tok-123`,
     );
+  });
+
+  it('triggers transcode then acquires a capture-mp4 token for a timelapse with transcodeUrl/mp4Url', async () => {
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', timelapse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(transcode).toHaveBeenCalledWith(timelapse.transcodeUrl);
+    expect(acquire).toHaveBeenCalledWith({
+      kind: 'capture-mp4',
+      cameraId: 'camera-1',
+      requestId: 'tl-1',
+    });
+    expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
+      `${timelapse.mp4Url}?mediaToken=tok-123`,
+    );
+  });
+
+  it('falls back to the frame slider for a timelapse with no transcodeUrl/mp4Url', async () => {
+    const legacyTimelapse: MediaItem = { ...timelapse, transcodeUrl: undefined, mp4Url: undefined };
+    listCaptureFrames.mockResolvedValue([{ fileName: '000000.jpg', sequence: 0 }]);
+
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', legacyTimelapse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // showFrame's token acquisition is one more microtask beyond
+    // loadTimelapseFrames' own await, so whenStable alone can observe
+    // frames already populated but loading() not yet flipped back to false.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+
+    expect(transcode).not.toHaveBeenCalled();
+    expect(listCaptureFrames).toHaveBeenCalledWith('camera-1', 'tl-1');
+    expect(
+      fixture.nativeElement.querySelector('#media-preview-frame-slider'),
+    ).not.toBeNull();
   });
 
   it('retries a failing transcode call before giving up', async () => {
