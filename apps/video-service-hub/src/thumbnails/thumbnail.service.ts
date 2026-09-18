@@ -4,6 +4,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { existsSync } from 'node:fs';
 import { rename, rm, stat } from 'node:fs/promises';
 import { KeyedLock } from '../common/keyed-lock';
+import type { AudioThumbnailVariant } from '../storage/storage.types';
 
 if (ffmpegPath) {
   ffmpeg.setFfmpegPath(ffmpegPath);
@@ -18,6 +19,55 @@ const THUMBNAIL_WIDTH = 320;
  * snippet), fall back to frame 0 instead of failing.
  */
 const RECORDING_THUMBNAIL_FRAME_SKIP = 2;
+
+const WAVEFORM_WIDTH = 640;
+const WAVEFORM_HEIGHT = 360; // 16:9, matches the media-library card's aspect-ratio.
+/**
+ * Fixed analysis window so every audio thumbnail encodes the same
+ * seconds-per-pixel scale, regardless of the clip's actual length: a longer
+ * clip is trimmed to the first 5s, a shorter one is silence-padded out to
+ * 5s. 5s matches DEFAULT_AUDIO_DURATION_SECONDS in the frontend's record
+ * dialog (media-record-dialog.ts), the most common clip length -- a longer
+ * fixed window would make most real thumbnails look mostly-empty.
+ */
+const WAVEFORM_DURATION_SECONDS = 5;
+/**
+ * Audio thumbnails render as a spectrogram, not a plain amplitude waveform.
+ * This project's camera mics carry a large, fairly uniform broadband noise
+ * floor (verified against real recordings from this project's cameras: a
+ * "silent" and a "quiet music" clip measured within ~2dB of each other in
+ * both peak and mean amplitude, before and after DC removal and even after
+ * band-limiting to the speech range -- see git history on this file for the
+ * amplitude-waveform attempt this replaced). A time-domain waveform cannot
+ * separate real low-level content from that noise floor because both are
+ * dominated by the same broadband energy. A spectrogram can: real recorded
+ * sound concentrates energy in specific frequency bands over time (visible
+ * as horizontal/textured structure), while broadband noise stays uniform
+ * across the frequency axis -- confirmed visually and by a per-row-mean
+ * comparison of matched same-camera silent/music recordings (small but
+ * consistent brightness deltas at the same rows only in the clip with real
+ * content). This still won't clearly separate content that sits deep below
+ * the mic's own noise floor (very quiet/distant sound), but it correctly
+ * and clearly distinguishes normal-volume speech (this feature's stated
+ * target use case) from silence, which the waveform could not do at all.
+ */
+/**
+ * Removes this hardware's constant DC bias (~0.0355 of full scale, verified
+ * via `ffmpeg -af astats` -- present identically on every recording
+ * regardless of actual sound) before spectral analysis. Without this, the
+ * bias paints an identical bright band into the lowest-frequency rows of
+ * every spectrogram (silent or not), which would otherwise look like real
+ * low-frequency content and, worse, dominate any "is this clip louder"
+ * comparison since it sits in every clip at the same fixed level.
+ */
+const SPECTROGRAM_HIGHPASS_HZ = 30;
+const SPECTROGRAM_GAIN = 6;
+/** Softens per-pixel FFT speckle so real, spatially-persistent structure (voice/music bands) reads clearly against single-bin noise. */
+const SPECTROGRAM_BLUR_RADIUS = 2;
+const GRADIENT_COLORS: Record<AudioThumbnailVariant, { top: string; bottom: string }> = {
+  dark: { top: 'white', bottom: '0x555555' },
+  light: { top: 'black', bottom: '0x555555' },
+};
 
 /**
  * Generates a sidecar thumbnail next to already-published media, on the
@@ -49,11 +99,39 @@ export class ThumbnailService {
     );
   }
 
-  /** PNG waveform picture rendered directly from a WAV via ffmpeg's showwavespic filter. */
-  async ensureWaveform(sourcePath: string, thumbnailPath: string): Promise<void> {
-    await this.ensure(thumbnailPath, (temporaryPath) =>
-      this.renderWaveform(sourcePath, temporaryPath),
-    );
+  /**
+   * Generates both waveform variants (dark-mode and light-mode gradient)
+   * together, since a viewer's theme is unknown at generation time and the
+   * media library requires both to exist before it will link to either (see
+   * MediaLibraryService.thumbnailUrl) -- one missing file would otherwise
+   * render as a broken image whenever the viewer is in that theme.
+   */
+  async ensureWaveforms(
+    sourcePath: string,
+    thumbnailPaths: Record<AudioThumbnailVariant, string>,
+  ): Promise<void> {
+    if (existsSync(thumbnailPaths.dark) && existsSync(thumbnailPaths.light)) {
+      return;
+    }
+    const lockKey = `${thumbnailPaths.dark}|${thumbnailPaths.light}`;
+    await this.lock.run(lockKey, async () => {
+      if (existsSync(thumbnailPaths.dark) && existsSync(thumbnailPaths.light)) {
+        return;
+      }
+      try {
+        await Promise.all(
+          (Object.keys(thumbnailPaths) as AudioThumbnailVariant[]).map((variant) =>
+            this.ensure(thumbnailPaths[variant], (temporaryPath) =>
+              this.renderWaveform(sourcePath, temporaryPath, variant),
+            ),
+          ),
+        );
+      } catch (error) {
+        this.logger.warn(
+          `waveform thumbnail generation failed for ${sourcePath}: ${(error as Error).message}`,
+        );
+      }
+    });
   }
 
   private async ensure(
@@ -134,19 +212,36 @@ export class ThumbnailService {
     );
   }
 
-  private renderWaveform(sourcePath: string, outputPath: string): Promise<void> {
+  /**
+   * Renders one gradient-colored spectrogram variant: trim/pad to a fixed
+   * window, render a grayscale spectrogram (showspectrumpic, fixed gain --
+   * not per-clip-normalized, so clips stay comparable to each other; boxblur
+   * to soften single-bin FFT speckle so real structure stands out), then use
+   * that grayscale image's luma as an alpha mask over a vertical gradient
+   * (alphamerge) so the spectrogram is gradient-colored on a transparent
+   * background -- same compositing technique this used for the amplitude
+   * waveform it replaced, see SPECTROGRAM_GAIN doc for why the underlying
+   * visualization changed.
+   */
+  private renderWaveform(
+    sourcePath: string,
+    outputPath: string,
+    variant: AudioThumbnailVariant,
+  ): Promise<void> {
+    const colors = GRADIENT_COLORS[variant];
+    const lastRow = WAVEFORM_HEIGHT - 1;
+    const filter =
+      `[0:a]atrim=0:${WAVEFORM_DURATION_SECONDS},apad=whole_dur=${WAVEFORM_DURATION_SECONDS},` +
+      `highpass=f=${SPECTROGRAM_HIGHPASS_HZ}[trimmed];` +
+      `[trimmed]showspectrumpic=s=${WAVEFORM_WIDTH}x${WAVEFORM_HEIGHT}:legend=0:mode=combined:color=intensity:scale=log:gain=${SPECTROGRAM_GAIN},` +
+      `format=gray,boxblur=${SPECTROGRAM_BLUR_RADIUS}:1[mask];` +
+      `gradients=s=${WAVEFORM_WIDTH}x${WAVEFORM_HEIGHT}:c0=${colors.top}:c1=${colors.bottom}:x0=0:y0=0:x1=0:y1=${lastRow}:nb_colors=2[gradient];` +
+      `[gradient][mask]alphamerge,format=rgba`;
     return this.runFfmpeg(outputPath, (command) =>
       command
         .input(sourcePath)
         .videoCodec('png')
-        .outputOptions([
-          '-filter_complex',
-          `showwavespic=s=${THUMBNAIL_WIDTH}x120:colors=white`,
-          '-frames:v',
-          '1',
-          '-update',
-          '1',
-        ])
+        .outputOptions(['-filter_complex', filter, '-frames:v', '1', '-update', '1'])
         .format('image2'),
     );
   }

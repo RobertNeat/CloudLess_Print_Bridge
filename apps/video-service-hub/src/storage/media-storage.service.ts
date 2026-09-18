@@ -30,6 +30,7 @@ import type { ServiceConfig } from '../config/service-config';
 import { MjpegCountingTransform, SizeAndHashTransform } from './stream-utils';
 import type {
   AudioManifest,
+  AudioThumbnailVariant,
   CaptureManifest,
   CompletedLive,
   CompletedLiveFile,
@@ -639,12 +640,16 @@ export class MediaStorageService implements OnModuleInit {
     );
   }
 
-  audioThumbnailPath(cameraId: string, requestId: string): string {
+  audioThumbnailPath(
+    cameraId: string,
+    requestId: string,
+    variant: AudioThumbnailVariant,
+  ): string {
     return join(
       this.config.storage.root,
       'audio',
       cameraId,
-      `${requestId}.thumb.png`,
+      `${requestId}.thumb-${variant}.png`,
     );
   }
 
@@ -695,7 +700,8 @@ export class MediaStorageService implements OnModuleInit {
     await Promise.all([
       rm(filePath, { force: true }),
       rm(manifestPath, { force: true }),
-      rm(join(directory, `${requestId}.thumb.png`), { force: true }),
+      rm(join(directory, `${requestId}.thumb-dark.png`), { force: true }),
+      rm(join(directory, `${requestId}.thumb-light.png`), { force: true }),
     ]);
   }
 

@@ -31,8 +31,8 @@
             (click)="itemOpened.emit(item)"
           >
             <span class="thumbnail" [class.thumbnail--image]="item.kind === 'image'">
-              @if (item.thumbnailUrl) {
-                <img [src]="item.thumbnailUrl" alt="" />
+              @if (thumbnailSrc(item); as src) {
+                <img [src]="src" alt="" />
               } @else {
                 <i [class]="section.icon" aria-hidden="true"></i>
               }

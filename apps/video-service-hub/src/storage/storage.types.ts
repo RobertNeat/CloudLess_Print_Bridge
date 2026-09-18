@@ -80,4 +80,13 @@ export type LiveViewer = {
   contentType: string;
   requestId: string;
 };
+
+/**
+ * Audio waveform thumbnails render as a gradient (white-to-darkgrey for dark
+ * mode, black-to-darkgrey for light mode) baked in at generation time, since
+ * the backend generates the file once at ingest and has no way to know a
+ * viewer's live theme preference. Both variants are generated together.
+ */
+export type AudioThumbnailVariant = 'dark' | 'light';
+
 import type { Readable } from 'node:stream';

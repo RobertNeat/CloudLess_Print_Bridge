@@ -104,12 +104,17 @@ export class MediaLibraryController {
   audioThumbnail(
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
+    @Query('variant') variant: string | undefined,
     @Res() response: Response,
   ): void {
+    if (variant !== 'dark' && variant !== 'light') {
+      throw new NotFoundException('unsupported thumbnail variant');
+    }
     this.sendIfExists(
       this.storage.audioThumbnailPath(
         assertIdentifier(cameraId, 'cameraId'),
         assertIdentifier(requestId, 'requestId'),
+        variant,
       ),
       response,
     );

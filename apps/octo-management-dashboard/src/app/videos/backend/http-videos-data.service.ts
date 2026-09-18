@@ -165,6 +165,12 @@ export class HttpVideosDataService implements VideosRepositoryPort {
         item.durationSeconds === undefined ? undefined : formatDuration(item.durationSeconds),
       frameCount: item.frameCount,
       thumbnailUrl: `${this.config.baseUrl}${item.thumbnailUrl}`,
+      thumbnailUrlDark: item.thumbnailUrlDark
+        ? `${this.config.baseUrl}${item.thumbnailUrlDark}`
+        : undefined,
+      thumbnailUrlLight: item.thumbnailUrlLight
+        ? `${this.config.baseUrl}${item.thumbnailUrlLight}`
+        : undefined,
       downloadUrl: `${this.config.baseUrl}${item.downloadUrl}`,
       transcodeUrl: item.transcodeUrl ? `${this.config.baseUrl}${item.transcodeUrl}` : undefined,
       mp4Url: item.mp4Url ? `${this.config.baseUrl}${item.mp4Url}` : undefined,

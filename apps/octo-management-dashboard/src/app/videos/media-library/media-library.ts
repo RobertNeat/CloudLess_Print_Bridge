@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { I18nService, type TranslationKey } from '../../core/i18n.service';
+import { ThemeService } from '../../core/theme.service';
 import type { MediaRecordAction } from '../media-record-dialog/media-record-dialog.models';
 import type { MediaItem, MediaKind } from '../videos-dashboard.models';
 
@@ -23,6 +24,7 @@ interface MediaSectionDefinition {
 })
 export class MediaLibrary {
   protected readonly i18n = inject(I18nService);
+  private readonly theme = inject(ThemeService);
   readonly items = input.required<readonly MediaItem[]>();
   readonly canRecord = input(false);
   readonly pendingActions = input<ReadonlySet<MediaRecordAction>>(new Set());
@@ -95,6 +97,18 @@ export class MediaLibrary {
 
   protected itemLabel(item: MediaItem): string {
     return item.displayName || item.name;
+  }
+
+  /**
+   * Audio waveform thumbnails are pre-rendered in two theme-specific color
+   * variants (see ThumbnailService on the backend, which bakes the gradient
+   * in at generation time since it has no way to know a viewer's live theme
+   * preference). Every other kind only ever has thumbnailUrl.
+   */
+  protected thumbnailSrc(item: MediaItem): string | undefined {
+    if (item.kind !== 'audio') return item.thumbnailUrl;
+    const themed = this.theme.isDark() ? item.thumbnailUrlDark : item.thumbnailUrlLight;
+    return themed ?? item.thumbnailUrl;
   }
 
   protected requestRecord(action: MediaRecordAction): void {

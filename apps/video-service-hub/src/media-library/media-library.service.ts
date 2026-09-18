@@ -141,25 +141,43 @@ export class MediaLibraryService {
 
   private async audioItems(): Promise<MediaItemDto[]> {
     const manifests = await this.storage.listAudioManifests();
-    return manifests.map((manifest) => ({
-      id: `audio:${manifest.cameraId}:${manifest.requestId}`,
-      kind: 'audio',
-      cameraId: manifest.cameraId,
-      requestId: manifest.requestId,
-      fileName: manifest.fileName,
-      displayName: manifest.displayName,
-      capturedAt: manifest.storedAt,
-      durationSeconds: manifest.durationSeconds,
-      size: manifest.size,
-      thumbnailUrl: this.thumbnailUrl(
-        this.storage.audioThumbnailPath(
-          manifest.cameraId,
-          manifest.requestId,
-        ),
-        `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
-      ),
-      downloadUrl: `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/file`,
-    }));
+    return manifests.map((manifest) => {
+      const darkPath = this.storage.audioThumbnailPath(
+        manifest.cameraId,
+        manifest.requestId,
+        'dark',
+      );
+      const lightPath = this.storage.audioThumbnailPath(
+        manifest.cameraId,
+        manifest.requestId,
+        'light',
+      );
+      // Both variants are generated together (ThumbnailService.ensureWaveforms),
+      // so require both before linking to either -- a partial pair would 404
+      // in whichever theme's variant didn't make it.
+      const bothGenerated = existsSync(darkPath) && existsSync(lightPath);
+      const darkUrl = bothGenerated
+        ? `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail?variant=dark`
+        : THUMBNAIL_PLACEHOLDER_URL;
+      const lightUrl = bothGenerated
+        ? `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail?variant=light`
+        : THUMBNAIL_PLACEHOLDER_URL;
+      return {
+        id: `audio:${manifest.cameraId}:${manifest.requestId}`,
+        kind: 'audio',
+        cameraId: manifest.cameraId,
+        requestId: manifest.requestId,
+        fileName: manifest.fileName,
+        displayName: manifest.displayName,
+        capturedAt: manifest.storedAt,
+        durationSeconds: manifest.durationSeconds,
+        size: manifest.size,
+        thumbnailUrl: darkUrl,
+        thumbnailUrlDark: darkUrl,
+        thumbnailUrlLight: lightUrl,
+        downloadUrl: `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/file`,
+      };
+    });
   }
 
   /** Real thumbnail URL if the sidecar file has already been generated, else the shared placeholder. */
