@@ -30,6 +30,11 @@ export interface BackendMediaItemDto {
   readonly frameCount?: number;
   readonly size: number;
   readonly thumbnailUrl: string;
+  /** Present only for kind: 'audio'. See BackendMediaItemDto.thumbnailUrl doc
+   * in media-library.types.ts (video-service-hub) -- two theme-specific
+   * waveform renders, since the backend generates them once at ingest. */
+  readonly thumbnailUrlDark?: string;
+  readonly thumbnailUrlLight?: string;
   readonly downloadUrl: string;
   readonly transcodeUrl?: string;
   readonly mp4Url?: string;

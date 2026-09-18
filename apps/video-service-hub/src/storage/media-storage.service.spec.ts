@@ -204,7 +204,7 @@ describe('MediaStorageService', () => {
       );
     });
 
-    it('deleteAudio removes the wav, manifest, and thumbnail', async () => {
+    it('deleteAudio removes the wav, manifest, and both thumbnail variants', async () => {
       const wav = Buffer.concat([
         Buffer.from('RIFF'),
         Buffer.alloc(4),
@@ -212,12 +212,23 @@ describe('MediaStorageService', () => {
         Buffer.alloc(10),
       ]);
       await service.storeAudio(requestFrom(wav), 'camera-1', 'audio-1', 2);
-      const thumbnailPath = service.audioThumbnailPath('camera-1', 'audio-1');
-      await writeFile(thumbnailPath, Buffer.from([1, 2, 3]));
+      const darkThumbnailPath = service.audioThumbnailPath(
+        'camera-1',
+        'audio-1',
+        'dark',
+      );
+      const lightThumbnailPath = service.audioThumbnailPath(
+        'camera-1',
+        'audio-1',
+        'light',
+      );
+      await writeFile(darkThumbnailPath, Buffer.from([1, 2, 3]));
+      await writeFile(lightThumbnailPath, Buffer.from([1, 2, 3]));
 
       await service.deleteAudio('camera-1', 'audio-1');
 
-      expect(existsSync(thumbnailPath)).toBe(false);
+      expect(existsSync(darkThumbnailPath)).toBe(false);
+      expect(existsSync(lightThumbnailPath)).toBe(false);
       expect(
         existsSync(service.audioFilePath('camera-1', 'audio-1.wav')),
       ).toBe(false);

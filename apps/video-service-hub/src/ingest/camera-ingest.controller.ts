@@ -255,12 +255,11 @@ export class CameraIngestController {
       cameraId,
       `${requestId}.wav`,
     );
-    const thumbnailPath = this.storage.audioThumbnailPath(
-      cameraId,
-      requestId,
-    );
     await this.thumbnails
-      .ensureWaveform(sourcePath, thumbnailPath)
+      .ensureWaveforms(sourcePath, {
+        dark: this.storage.audioThumbnailPath(cameraId, requestId, 'dark'),
+        light: this.storage.audioThumbnailPath(cameraId, requestId, 'light'),
+      })
       .catch((error: Error) =>
         this.logger.warn(`audio thumbnail failed: ${error.message}`),
       );

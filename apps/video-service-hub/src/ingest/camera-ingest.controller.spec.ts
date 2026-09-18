@@ -153,7 +153,7 @@ describe('CameraIngestController (thumbnail generation on ingest)', () => {
     expect(existsSync(thumbnailPath)).toBe(true);
   }, 30_000);
 
-  it('generates a waveform thumbnail after audio is stored', async () => {
+  it('generates both waveform thumbnail variants after audio is stored', async () => {
     const wav = Buffer.from(TINY_WAV_BASE64, 'base64');
     await controller.audio(
       requestFrom(wav),
@@ -163,7 +163,11 @@ describe('CameraIngestController (thumbnail generation on ingest)', () => {
       'audio/wav',
     );
 
-    const thumbnailPath = storage.audioThumbnailPath('camera-1', 'audio-1');
-    expect(existsSync(thumbnailPath)).toBe(true);
+    expect(
+      existsSync(storage.audioThumbnailPath('camera-1', 'audio-1', 'dark')),
+    ).toBe(true);
+    expect(
+      existsSync(storage.audioThumbnailPath('camera-1', 'audio-1', 'light')),
+    ).toBe(true);
   }, 30_000);
 });

@@ -42,6 +42,11 @@ export interface MediaItem {
   readonly duration?: string;
   readonly frameCount?: number;
   readonly thumbnailUrl?: string;
+  /** Present only for kind: 'audio'. Two pre-rendered waveform gradients
+   * (white-to-darkgrey / black-to-darkgrey); pick the one matching
+   * ThemeService.isDark() at render time, falling back to thumbnailUrl. */
+  readonly thumbnailUrlDark?: string;
+  readonly thumbnailUrlLight?: string;
   /** Absent for mock-data items, which have no backing file to fetch/delete/rename. */
   readonly downloadUrl?: string;
   /** Present only for kind: 'recording'. See media-preview.ts / mp4-player for the transcode-then-play flow. */
