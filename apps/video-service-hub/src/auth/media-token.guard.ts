@@ -16,20 +16,10 @@ interface MediaFileRequest {
 }
 
 const kindByPath: { pattern: RegExp; kind: MediaFileKind }[] = [
-  { pattern: /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/, kind: 'recording' },
-  {
-    pattern: /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/mp4$/,
-    kind: 'recording-mp4',
-  },
   { pattern: /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/, kind: 'capture' },
-  {
-    pattern: /^\/api\/v1\/captures\/[^/]+\/[^/]+\/mp4$/,
-    kind: 'capture-mp4',
-  },
-  {
-    pattern: /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
-    kind: 'live-recording',
-  },
+  { pattern: /^\/api\/v1\/timelapses\/[^/]+\/[^/]+\/file$/, kind: 'timelapse' },
+  { pattern: /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/, kind: 'recording' },
+  { pattern: /^\/api\/v1\/live\/[^/]+\/[^/]+\/file$/, kind: 'live' },
   { pattern: /^\/api\/v1\/audio\/[^/]+\/[^/]+\/file$/, kind: 'audio' },
 ];
 

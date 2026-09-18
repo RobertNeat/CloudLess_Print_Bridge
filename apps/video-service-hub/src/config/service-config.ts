@@ -11,8 +11,9 @@ export type ServiceConfig = {
   storage: {
     root: string;
     captureMaxBytes: number;
+    timelapsePartMaxBytes: number;
     recordingPartMaxBytes: number;
-    audioMaxBytes: number;
+    audioPartMaxBytes: number;
     liveMaxBytes: number;
     liveViewerBufferBytes: number;
   };
@@ -22,7 +23,6 @@ export type ServiceConfig = {
   };
   timelapse: {
     fps: number;
-    encodeInactivityMs: number;
   };
   mqtt: {
     port: number;
@@ -73,19 +73,25 @@ export function loadServiceConfig(
       captureMaxBytes: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES'),
         'VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES',
-        20 * 1024 * 1024,
+        8 * 1024 * 1024,
+        1,
+      ),
+      timelapsePartMaxBytes: readIntegerValue(
+        envValue(environment, 'VIDEO_SERVICE_HUB_TIMELAPSE_PART_MAX_BYTES'),
+        'VIDEO_SERVICE_HUB_TIMELAPSE_PART_MAX_BYTES',
+        8 * 1024 * 1024,
         1,
       ),
       recordingPartMaxBytes: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES'),
         'VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES',
-        16 * 1024 * 1024,
+        8 * 1024 * 1024,
         1,
       ),
-      audioMaxBytes: readIntegerValue(
-        envValue(environment, 'VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES'),
-        'VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES',
-        10 * 1024 * 1024,
+      audioPartMaxBytes: readIntegerValue(
+        envValue(environment, 'VIDEO_SERVICE_HUB_AUDIO_PART_MAX_BYTES'),
+        'VIDEO_SERVICE_HUB_AUDIO_PART_MAX_BYTES',
+        8 * 1024 * 1024,
         1,
       ),
       liveMaxBytes: readIntegerValue(
@@ -123,18 +129,6 @@ export function loadServiceConfig(
         12,
         1,
         240,
-      ),
-      // Must clear the camera firmware's own upload latency: the uploader
-      // task only wakes on a 30s fallback timer for periodic/single
-      // captures (no immediate wake, unlike recordings -- see uploadTask in
-      // firmware/.../video_service.cpp), so the gap between the last frame
-      // finishing capture and it actually reaching this hub can approach
-      // 30s on its own, before any per-frame upload time on top.
-      encodeInactivityMs: readIntegerValue(
-        envValue(environment, 'TIMELAPSE_ENCODE_INACTIVITY_MS'),
-        'TIMELAPSE_ENCODE_INACTIVITY_MS',
-        45_000,
-        100,
       ),
     },
     mqtt: {

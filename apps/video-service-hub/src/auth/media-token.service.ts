@@ -4,12 +4,7 @@ import { randomBytes } from 'node:crypto';
 const MEDIA_TOKEN_TTL_MS = 3 * 60 * 60 * 1000;
 
 export type MediaFileKind =
-  | 'recording'
-  | 'recording-mp4'
-  | 'capture'
-  | 'capture-mp4'
-  | 'audio'
-  | 'live-recording';
+  'capture' | 'timelapse' | 'recording' | 'live' | 'audio';
 
 export type MediaFileRef = {
   kind: MediaFileKind;

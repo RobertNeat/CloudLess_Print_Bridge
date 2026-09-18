@@ -8,10 +8,14 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream, type ReadStream } from 'node:fs';
+import {
+  createReadStream,
+  createWriteStream,
+  type Dirent,
+  type ReadStream,
+} from 'node:fs';
 import {
   mkdir,
-  open,
   readdir,
   readFile,
   rename,
@@ -23,19 +27,24 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Request } from 'express';
+import { CameraRegistryService } from '../camera-registry/camera-registry.service';
 import { KeyedLock } from '../common/keyed-lock';
 import { assertIdentifier } from '../common/validation';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
+import {
+  buildFinalFileName,
+  buildPartFileName,
+  resolveCameraNaming,
+} from './resource-naming';
 import { MjpegCountingTransform, SizeAndHashTransform } from './stream-utils';
 import type {
-  AudioManifest,
   AudioThumbnailVariant,
-  CaptureManifest,
-  CompletedLive,
-  CompletedLiveFile,
   LiveViewer,
-  RecordingManifest,
+  MediaResourceKind,
+  ManifestPart,
+  ResourceManifest,
+  ResourceMetadata,
   StoredFile,
 } from './storage.types';
 
@@ -57,7 +66,7 @@ type ActiveLive = {
   requestId: string;
   resolution: string;
   temporaryPath: string;
-  finalPath: string;
+  finalDirectory: string;
   startedAt: string;
   bytes: number;
   frames: number;
@@ -66,17 +75,28 @@ type ActiveLive = {
   viewers: Set<LiveViewerState>;
 };
 
+const resourceKinds: MediaResourceKind[] = [
+  'captures',
+  'timelapses',
+  'recordings',
+  'audio',
+  'live',
+];
+
 @Injectable()
 export class MediaStorageService implements OnModuleInit {
   private readonly logger = new Logger(MediaStorageService.name);
   private readonly lock = new KeyedLock();
-  private readonly captureManifests = new Map<string, CaptureManifest>();
-  private readonly recordingManifests = new Map<string, RecordingManifest>();
+  /** Keyed by `${kind}:${cameraId}:${requestId}`. */
+  private readonly manifests = new Map<string, ResourceManifest>();
+  private readonly metadata = new Map<string, ResourceMetadata>();
   private readonly activeLive = new Map<string, ActiveLive>();
-  private readonly completedLive: CompletedLive[] = [];
   private ready = false;
 
-  constructor(@Inject(SERVICE_CONFIG) private readonly config: ServiceConfig) {}
+  constructor(
+    @Inject(SERVICE_CONFIG) private readonly config: ServiceConfig,
+    private readonly cameraRegistry: CameraRegistryService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.initialize();
@@ -84,208 +104,114 @@ export class MediaStorageService implements OnModuleInit {
 
   async initialize(): Promise<void> {
     await Promise.all(
-      ['captures', 'recordings', 'live', 'audio', '.tmp'].map((directory) =>
+      [...resourceKinds, '.tmp'].map((directory) =>
         mkdir(join(this.config.storage.root, directory), { recursive: true }),
       ),
     );
     await this.removeStaleTemporaryFiles();
-    await Promise.all([
-      this.loadCaptureManifests(),
-      this.loadRecordingManifests(),
-    ]);
+    await this.loadAllManifestsAndMetadata();
     this.ready = true;
     this.logger.log(`Media storage ready at ${this.config.storage.root}`);
   }
 
-  async storeCapture(
-    request: Request,
-    cameraId: string,
-    requestId: string,
-    resolution: string,
-    captureSequence?: number,
-  ): Promise<Record<string, unknown>> {
-    assertIdentifier(cameraId, 'cameraId');
-    assertIdentifier(requestId, 'requestId');
-    const temporary = await this.receiveRequest(
-      request,
-      this.config.storage.captureMaxBytes,
-    );
-    const key = `${cameraId}:${requestId}`;
-
-    try {
-      await this.assertJpeg(temporary.path);
-      return await this.lock.run(`capture:${key}`, async () => {
-        const directory = join(
-          this.config.storage.root,
-          'captures',
-          cameraId,
-          requestId,
-        );
-        await mkdir(directory, { recursive: true });
-        const manifestPath = join(directory, 'manifest.json');
-        const existing =
-          this.captureManifests.get(key) ??
-          (await this.readJsonIfExists<CaptureManifest>(manifestPath));
-        const manifest: CaptureManifest =
-          existing ??
-          ({
-            schemaVersion: 1,
-            cameraId,
-            requestId,
-            resolution,
-            captures: [],
-          } satisfies CaptureManifest);
-        if (manifest.resolution !== resolution) {
-          throw new ConflictException(
-            'capture resolution differs from the existing request',
-          );
-        }
-
-        const highestSequence = manifest.captures.reduce(
-          (maximum, item) => Math.max(maximum, item.sequence),
-          -1,
-        );
-        const sequence = captureSequence ?? highestSequence + 1;
-        if (!Number.isInteger(sequence) || sequence < 0) {
-          throw new BadRequestException(
-            'X-Capture-Sequence must be a non-negative integer',
-          );
-        }
-        const fileName = `${String(sequence).padStart(6, '0')}.jpg`;
-        const published = await this.publishTemporary(
-          temporary,
-          join(directory, fileName),
-        );
-        const knownEntry = manifest.captures.find(
-          (item) => item.sequence === sequence,
-        );
-        if (
-          knownEntry &&
-          (knownEntry.sha256 !== published.sha256 ||
-            knownEntry.size !== published.size)
-        ) {
-          throw new ConflictException(
-            'capture sequence already contains different content',
-          );
-        }
-        if (!knownEntry) {
-          manifest.captures.push({
-            sequence,
-            size: published.size,
-            sha256: published.sha256,
-            fileName,
-            storedAt: new Date().toISOString(),
-          });
-          manifest.captures.sort(
-            (left, right) => left.sequence - right.sequence,
-          );
-          await this.writeJsonAtomically(manifestPath, manifest);
-        }
-        this.captureManifests.set(key, manifest);
-        return {
-          stored: true,
-          duplicate: published.duplicate,
-          cameraId,
-          requestId,
-          resolution,
-          sequence,
-          size: published.size,
-          sha256: published.sha256,
-          fileName,
-        };
-      });
-    } finally {
-      await rm(temporary.path, { force: true });
+  maxBytesForKind(kind: MediaResourceKind): number {
+    switch (kind) {
+      case 'captures':
+        return this.config.storage.captureMaxBytes;
+      case 'timelapses':
+        return this.config.storage.timelapsePartMaxBytes;
+      case 'recordings':
+        return this.config.storage.recordingPartMaxBytes;
+      case 'audio':
+        return this.config.storage.audioPartMaxBytes;
+      case 'live':
+        return this.config.storage.liveMaxBytes;
     }
   }
 
-  async storeRecordingPart(
+  /** Stores one part (or, for captures, the single file) of a resource. Returns storage result plus manifest completeness. */
+  async storePart(
     request: Request,
+    kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
-    partNumber: number,
-    totalParts: number,
-    resolution: string,
-    requestedDurationSeconds: number,
-    totalFrames: number,
+    options: {
+      partNumber: number;
+      totalParts: number;
+      resolution?: string;
+      durationSeconds?: number;
+      totalFrames?: number;
+      expectedSha256?: string;
+    },
   ): Promise<Record<string, unknown>> {
     assertIdentifier(cameraId, 'cameraId');
     assertIdentifier(requestId, 'requestId');
+    const { partNumber, totalParts } = options;
     if (!Number.isInteger(partNumber) || partNumber < 0) {
       throw new BadRequestException(
         'partNumber must be a non-negative integer',
       );
     }
     if (!Number.isInteger(totalParts) || totalParts <= partNumber) {
-      throw new BadRequestException('X-Total-Parts is invalid');
-    }
-    if (
-      !Number.isFinite(requestedDurationSeconds) ||
-      requestedDurationSeconds < 0
-    ) {
-      throw new BadRequestException('X-Requested-Duration-Seconds is invalid');
-    }
-    if (!Number.isInteger(totalFrames) || totalFrames < 0) {
-      throw new BadRequestException('X-Total-Frames is invalid');
+      throw new BadRequestException('totalParts is invalid');
     }
 
     const temporary = await this.receiveRequest(
       request,
-      this.config.storage.recordingPartMaxBytes,
+      this.maxBytesForKind(kind),
     );
-    const key = `${cameraId}:${requestId}`;
+    if (
+      options.expectedSha256 !== undefined &&
+      options.expectedSha256.toLowerCase() !== temporary.sha256
+    ) {
+      await rm(temporary.path, { force: true });
+      throw new BadRequestException(
+        'X-Sha256 does not match the received content',
+      );
+    }
+    const key = this.key(kind, cameraId, requestId);
     try {
-      await this.assertMultipartStartsWithBoundary(temporary.path);
-      return await this.lock.run(`recording:${key}`, async () => {
-        const directory = join(
-          this.config.storage.root,
-          'recordings',
-          cameraId,
-          requestId,
-        );
+      return await this.lock.run(key, async () => {
+        const directory = this.resourceDirectory(kind, cameraId, requestId);
         await mkdir(directory, { recursive: true });
         const manifestPath = join(directory, 'manifest.json');
         const now = new Date().toISOString();
         const existing =
-          this.recordingManifests.get(key) ??
-          (await this.readJsonIfExists<RecordingManifest>(manifestPath));
-        const manifest: RecordingManifest =
+          this.manifests.get(key) ??
+          (await this.readJsonIfExists<ResourceManifest>(manifestPath));
+        const manifest: ResourceManifest =
           existing ??
           ({
             schemaVersion: 1,
+            kind,
             cameraId,
             requestId,
-            resolution,
             totalParts,
-            requestedDurationSeconds,
-            totalFrames,
             receivedParts: [],
             complete: false,
+            parts: {},
+            resolution: options.resolution,
+            durationSeconds: options.durationSeconds,
+            totalFrames: options.totalFrames,
             createdAt: now,
             updatedAt: now,
-            parts: {},
-          } satisfies RecordingManifest);
-        this.assertRecordingMetadata(manifest, {
-          resolution,
-          totalParts,
-          requestedDurationSeconds,
-          totalFrames,
-        });
+          } satisfies ResourceManifest);
 
-        const fileName = `part-${String(partNumber).padStart(4, '0')}.mjpeg`;
+        this.assertManifestMetadataMatches(manifest, options);
+
+        const fileName = buildPartFileName(kind, partNumber);
         const published = await this.publishTemporary(
           temporary,
           join(directory, fileName),
         );
-        manifest.parts[String(partNumber)] = {
+        const part: ManifestPart = {
           partNumber,
           size: published.size,
           sha256: published.sha256,
           fileName,
-          storedAt:
-            manifest.parts[String(partNumber)]?.storedAt ??
-            new Date().toISOString(),
+          storedAt: manifest.parts[String(partNumber)]?.storedAt ?? now,
         };
+        manifest.parts[String(partNumber)] = part;
         manifest.receivedParts = Object.keys(manifest.parts)
           .map(Number)
           .sort((left, right) => left - right);
@@ -294,21 +220,18 @@ export class MediaStorageService implements OnModuleInit {
           manifest.receivedParts.every((value, index) => value === index);
         manifest.updatedAt = new Date().toISOString();
         await this.writeJsonAtomically(manifestPath, manifest);
-        this.recordingManifests.set(key, manifest);
+        this.manifests.set(key, manifest);
 
         return {
           stored: true,
           duplicate: published.duplicate,
           cameraId,
           requestId,
-          resolution,
           partNumber,
           totalParts,
-          requestedDurationSeconds,
-          totalFrames,
           size: published.size,
           sha256: published.sha256,
-          recordingComplete: manifest.complete,
+          complete: manifest.complete,
         };
       });
     } finally {
@@ -316,61 +239,20 @@ export class MediaStorageService implements OnModuleInit {
     }
   }
 
-  async storeAudio(
+  /** Convenience wrapper for captures: always a single part (partNumber 0, totalParts 1). */
+  async storeCapture(
     request: Request,
     cameraId: string,
     requestId: string,
-    durationSeconds: number,
+    resolution: string,
+    expectedSha256?: string,
   ): Promise<Record<string, unknown>> {
-    assertIdentifier(cameraId, 'cameraId');
-    assertIdentifier(requestId, 'requestId');
-    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-      throw new BadRequestException('X-Duration-Seconds is invalid');
-    }
-    const temporary = await this.receiveRequest(
-      request,
-      this.config.storage.audioMaxBytes,
-    );
-    try {
-      await this.assertWave(temporary.path);
-      return await this.lock.run(`audio:${cameraId}:${requestId}`, async () => {
-        const directory = join(this.config.storage.root, 'audio', cameraId);
-        await mkdir(directory, { recursive: true });
-        const fileName = `${requestId}.wav`;
-        const published = await this.publishTemporary(
-          temporary,
-          join(directory, fileName),
-        );
-        const manifestPath = join(directory, `${requestId}.manifest.json`);
-        const existingManifest =
-          await this.readJsonIfExists<AudioManifest>(manifestPath);
-        const manifest: AudioManifest = existingManifest ?? {
-          schemaVersion: 1,
-          cameraId,
-          requestId,
-          fileName,
-          durationSeconds,
-          size: published.size,
-          sha256: published.sha256,
-          storedAt: new Date().toISOString(),
-        };
-        if (!existingManifest) {
-          await this.writeJsonAtomically(manifestPath, manifest);
-        }
-        return {
-          stored: true,
-          duplicate: published.duplicate,
-          cameraId,
-          requestId,
-          durationSeconds,
-          size: published.size,
-          sha256: published.sha256,
-          fileName,
-        };
-      });
-    } finally {
-      await rm(temporary.path, { force: true });
-    }
+    return this.storePart(request, 'captures', cameraId, requestId, {
+      partNumber: 0,
+      totalParts: 1,
+      resolution,
+      expectedSha256,
+    });
   }
 
   async storeLive(
@@ -382,12 +264,12 @@ export class MediaStorageService implements OnModuleInit {
   ): Promise<Record<string, unknown>> {
     assertIdentifier(cameraId, 'cameraId');
     assertIdentifier(requestId, 'requestId');
-    const key = `${cameraId}:${requestId}`;
+    const key = this.key('live', cameraId, requestId);
     if (this.activeLive.has(key)) {
       throw new ConflictException('live stream is already active');
     }
 
-    const directory = join(this.config.storage.root, 'live', cameraId);
+    const directory = this.resourceDirectory('live', cameraId, requestId);
     await mkdir(directory, { recursive: true });
     const active: ActiveLive = {
       key,
@@ -395,7 +277,7 @@ export class MediaStorageService implements OnModuleInit {
       requestId,
       resolution,
       temporaryPath: this.temporaryPath(),
-      finalPath: join(directory, `${requestId}.mjpeg`),
+      finalDirectory: directory,
       startedAt: new Date().toISOString(),
       bytes: 0,
       frames: 0,
@@ -410,7 +292,7 @@ export class MediaStorageService implements OnModuleInit {
     try {
       const counter = new MjpegCountingTransform(
         active.boundary,
-        this.config.storage.liveMaxBytes,
+        this.maxBytesForKind('live'),
         (bytes, frames) => {
           active.bytes = bytes;
           active.frames = frames;
@@ -428,24 +310,41 @@ export class MediaStorageService implements OnModuleInit {
         throw new BadRequestException('live stream contains no MJPEG frames');
       }
       const temporary = await this.describeFile(active.temporaryPath);
-      const published = await this.lock.run(`live:${key}`, () =>
-        this.publishTemporary(temporary, active.finalPath),
+      const fileName = buildPartFileName('live', 0);
+      const published = await this.lock.run(key, () =>
+        this.publishTemporary(temporary, join(directory, fileName)),
       );
       duplicate = published.duplicate;
       completed = true;
-      const finished: CompletedLive = {
+
+      const now = new Date().toISOString();
+      const manifest: ResourceManifest = {
+        schemaVersion: 1,
+        kind: 'live',
         cameraId,
         requestId,
+        totalParts: 1,
+        receivedParts: [0],
+        complete: true,
+        parts: {
+          '0': {
+            partNumber: 0,
+            size: published.size,
+            sha256: published.sha256,
+            fileName,
+            storedAt: now,
+          },
+        },
         resolution,
-        filePath: active.finalPath,
-        bytes: active.bytes,
-        frames: active.frames,
-        finishedAt: new Date().toISOString(),
+        totalFrames: active.frames,
+        createdAt: active.startedAt,
+        updatedAt: now,
       };
-      this.completedLive.push(finished);
-      if (this.completedLive.length > 100) {
-        this.completedLive.shift();
-      }
+      await this.writeJsonAtomically(
+        join(directory, 'manifest.json'),
+        manifest,
+      );
+      this.manifests.set(key, manifest);
     } finally {
       this.activeLive.delete(key);
       for (const viewer of active.viewers) {
@@ -463,6 +362,7 @@ export class MediaStorageService implements OnModuleInit {
       resolution,
       bytes: active.bytes,
       frames: active.frames,
+      complete: completed,
     };
   }
 
@@ -500,14 +400,14 @@ export class MediaStorageService implements OnModuleInit {
   }
 
   getStatus(): Record<string, unknown> {
+    const allManifests = [...this.manifests.values()];
     return {
       ready: this.ready,
       storageRoot: this.config.storage.root,
-      captureRequestCount: this.captureManifests.size,
-      recordingCount: this.recordingManifests.size,
-      completedRecordingCount: [...this.recordingManifests.values()].filter(
-        (manifest) => manifest.complete,
-      ).length,
+      manifestCount: allManifests.length,
+      completeCount: allManifests.filter((manifest) => manifest.complete)
+        .length,
+      metadataCount: this.metadata.size,
       activeLive: [...this.activeLive.values()].map((item) => ({
         cameraId: item.cameraId,
         requestId: item.requestId,
@@ -517,167 +417,82 @@ export class MediaStorageService implements OnModuleInit {
         frames: item.frames,
         viewers: item.viewers.size,
       })),
-      recentlyCompletedLive: this.completedLive,
     };
   }
 
-  listRecordingManifests(): RecordingManifest[] {
-    return [...this.recordingManifests.values()];
-  }
-
-  listCaptureManifests(): CaptureManifest[] {
-    return [...this.captureManifests.values()];
-  }
-
-  async listCompletedLiveRecordings(): Promise<CompletedLiveFile[]> {
-    const root = join(this.config.storage.root, 'live');
-    const results: CompletedLiveFile[] = [];
-    for (const cameraId of await this.directories(root)) {
-      const files = await readdir(join(root, cameraId)).catch(() => []);
-      for (const file of files) {
-        if (!file.endsWith('.mjpeg')) continue;
-        const filePath = join(root, cameraId, file);
-        const info = await stat(filePath);
-        results.push({
-          cameraId,
-          requestId: file.slice(0, -'.mjpeg'.length),
-          fileName: file,
-          size: info.size,
-          finishedAt: info.mtime.toISOString(),
-        });
-      }
-    }
-    return results;
-  }
-
-  liveRecordingFilePath(cameraId: string, requestId: string): string {
-    return join(
-      this.config.storage.root,
-      'live',
-      cameraId,
-      `${requestId}.mjpeg`,
+  listManifests(kind: MediaResourceKind): ResourceManifest[] {
+    return [...this.manifests.values()].filter(
+      (manifest) => manifest.kind === kind,
     );
   }
 
-  async listAudioManifests(): Promise<AudioManifest[]> {
-    const root = join(this.config.storage.root, 'audio');
-    const manifests: AudioManifest[] = [];
-    for (const cameraId of await this.directories(root)) {
-      const files = await readdir(join(root, cameraId)).catch(() => []);
-      for (const file of files) {
-        if (!file.endsWith('.manifest.json')) continue;
-        const manifest = await this.readJsonIfExists<AudioManifest>(
-          join(root, cameraId, file),
-        );
-        if (manifest?.schemaVersion === 1) {
-          manifests.push(manifest);
-        }
-      }
-    }
-    return manifests;
+  listMetadata(kind: MediaResourceKind): ResourceMetadata[] {
+    return [...this.metadata.values()].filter((entry) => entry.kind === kind);
   }
 
-  recordingPartPaths(cameraId: string, requestId: string): string[] {
-    const manifest = this.recordingManifests.get(`${cameraId}:${requestId}`);
+  getManifest(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): ResourceManifest | undefined {
+    return this.manifests.get(this.key(kind, cameraId, requestId));
+  }
+
+  getMetadata(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): ResourceMetadata | undefined {
+    return this.metadata.get(this.key(kind, cameraId, requestId));
+  }
+
+  partPaths(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): string[] {
+    const manifest = this.manifests.get(this.key(kind, cameraId, requestId));
     if (!manifest?.complete) {
-      throw new NotFoundException('recording was not found');
+      throw new NotFoundException(
+        'resource was not found or is not complete yet',
+      );
     }
-    const directory = join(
-      this.config.storage.root,
-      'recordings',
-      cameraId,
-      requestId,
-    );
+    const directory = this.resourceDirectory(kind, cameraId, requestId);
     return manifest.receivedParts.map((partNumber) =>
       join(directory, manifest.parts[String(partNumber)].fileName),
     );
   }
 
-  captureFilePath(
+  resourceDirectory(
+    kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
-    fileName: string,
+  ): string {
+    return join(this.config.storage.root, kind, cameraId, requestId);
+  }
+
+  finalFilePath(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): string {
+    const metadata = this.metadata.get(this.key(kind, cameraId, requestId));
+    if (!metadata) {
+      throw new NotFoundException('resource is not finished yet');
+    }
+    return join(
+      this.resourceDirectory(kind, cameraId, requestId),
+      metadata.fileName,
+    );
+  }
+
+  thumbnailPath(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
   ): string {
     return join(
-      this.config.storage.root,
-      'captures',
-      cameraId,
-      requestId,
-      fileName,
-    );
-  }
-
-  /** Capture frame file paths in sequence order, for joining into a timelapse MP4. */
-  capturePartPaths(cameraId: string, requestId: string): string[] {
-    const manifest = this.captureManifests.get(`${cameraId}:${requestId}`);
-    if (!manifest) {
-      throw new NotFoundException('capture was not found');
-    }
-    const directory = join(
-      this.config.storage.root,
-      'captures',
-      cameraId,
-      requestId,
-    );
-    return [...manifest.captures]
-      .sort((left, right) => left.sequence - right.sequence)
-      .map((capture) => join(directory, capture.fileName));
-  }
-
-  /** Number of frames stored for a capture so far, 0 if the capture is unknown. */
-  captureFrameCount(cameraId: string, requestId: string): number {
-    return this.captureManifests.get(`${cameraId}:${requestId}`)?.captures.length ?? 0;
-  }
-
-  /** Latest storedAt among a capture's frames, used to detect a timelapse MP4 that predates a newly-arrived frame. */
-  captureLastStoredAt(cameraId: string, requestId: string): string | undefined {
-    const manifest = this.captureManifests.get(`${cameraId}:${requestId}`);
-    if (!manifest || manifest.captures.length === 0) return undefined;
-    return manifest.captures.reduce(
-      (latest, capture) => (capture.storedAt > latest ? capture.storedAt : latest),
-      manifest.captures[0].storedAt,
-    );
-  }
-
-  captureMp4Path(cameraId: string, requestId: string): string {
-    return join(
-      this.config.storage.root,
-      'captures',
-      cameraId,
-      requestId,
-      `${requestId}.mp4`,
-    );
-  }
-
-  audioFilePath(cameraId: string, fileName: string): string {
-    return join(this.config.storage.root, 'audio', cameraId, fileName);
-  }
-
-  recordingThumbnailPath(cameraId: string, requestId: string): string {
-    const manifest = this.recordingManifests.get(`${cameraId}:${requestId}`);
-    if (manifest) {
-      return join(
-        this.config.storage.root,
-        'recordings',
-        cameraId,
-        requestId,
-        'thumbnail.jpg',
-      );
-    }
-    return join(
-      this.config.storage.root,
-      'live',
-      cameraId,
-      `${requestId}.thumb.jpg`,
-    );
-  }
-
-  captureThumbnailPath(cameraId: string, requestId: string): string {
-    return join(
-      this.config.storage.root,
-      'captures',
-      cameraId,
-      requestId,
+      this.resourceDirectory(kind, cameraId, requestId),
       'thumbnail.jpg',
     );
   }
@@ -688,128 +503,151 @@ export class MediaStorageService implements OnModuleInit {
     variant: AudioThumbnailVariant,
   ): string {
     return join(
-      this.config.storage.root,
-      'audio',
-      cameraId,
-      `${requestId}.thumb-${variant}.png`,
+      this.resourceDirectory('audio', cameraId, requestId),
+      `thumbnail_${variant}.jpg`,
     );
   }
 
-  async deleteRecording(cameraId: string, requestId: string): Promise<void> {
-    const key = `${cameraId}:${requestId}`;
-    if (this.recordingManifests.has(key)) {
-      this.recordingManifests.delete(key);
-      await rm(
-        join(this.config.storage.root, 'recordings', cameraId, requestId),
-        {
-          recursive: true,
-          force: true,
-        },
+  /**
+   * Finalizes a resource once its last part (or transcoded output) is ready:
+   * resolves the camera's display name/IP, renames the finished file to the
+   * spec's naming scheme, deletes the numbered parts and manifest.json, and
+   * writes metadata.json. `producedFilePath` is the transcoded MP4/joined WAV
+   * (or, for captures, the single already-stored image) to move into place.
+   */
+  async finalizeResource(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+    producedFilePath: string,
+  ): Promise<ResourceMetadata> {
+    const key = this.key(kind, cameraId, requestId);
+    return this.lock.run(`${key}:finalize`, async () => {
+      const manifest = this.manifests.get(key);
+      if (!manifest?.complete) {
+        throw new NotFoundException('resource is not complete yet');
+      }
+      const directory = this.resourceDirectory(kind, cameraId, requestId);
+      const naming = resolveCameraNaming(
+        cameraId,
+        this.cameraRegistry.tryGet(cameraId),
       );
-      return;
-    }
-    const filePath = this.liveRecordingFilePath(cameraId, requestId);
-    if (!(await this.exists(filePath))) {
-      throw new NotFoundException('recording was not found');
-    }
-    const directory = join(this.config.storage.root, 'live', cameraId);
-    await Promise.all([
-      rm(filePath, { force: true }),
-      rm(join(directory, `${requestId}.mp4`), { force: true }),
-      rm(join(directory, `${requestId}.thumb.jpg`), { force: true }),
-    ]);
+      const fileName = buildFinalFileName(kind, naming);
+      const finalPath = join(directory, fileName);
+
+      const described = await this.describeFile(producedFilePath);
+      if (producedFilePath !== finalPath) {
+        await rename(producedFilePath, finalPath);
+      }
+
+      const partPaths = manifest.receivedParts
+        .map((partNumber) =>
+          join(directory, manifest.parts[String(partNumber)].fileName),
+        )
+        .filter((path) => path !== finalPath);
+      await Promise.all(partPaths.map((path) => rm(path, { force: true })));
+
+      const now = new Date().toISOString();
+      const metadata: ResourceMetadata = {
+        schemaVersion: 1,
+        kind,
+        cameraId,
+        requestId,
+        fileName,
+        cameraName: naming.name,
+        cameraIp: naming.ip,
+        resolution: manifest.resolution,
+        durationSeconds: manifest.durationSeconds,
+        totalFrames: manifest.totalFrames,
+        size: described.size,
+        sha256: described.sha256,
+        createdAt: manifest.createdAt,
+        completedAt: now,
+        displayName: manifest.displayName,
+      };
+      await this.writeJsonAtomically(
+        join(directory, 'metadata.json'),
+        metadata,
+      );
+      await rm(join(directory, 'manifest.json'), { force: true });
+      this.metadata.set(key, metadata);
+      this.manifests.delete(key);
+      return metadata;
+    });
   }
 
-  async deleteCapture(cameraId: string, requestId: string): Promise<void> {
-    const key = `${cameraId}:${requestId}`;
-    if (!this.captureManifests.has(key)) {
-      throw new NotFoundException('capture was not found');
+  async deleteResource(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): Promise<void> {
+    const key = this.key(kind, cameraId, requestId);
+    if (!this.manifests.has(key) && !this.metadata.has(key)) {
+      throw new NotFoundException('resource was not found');
     }
-    this.captureManifests.delete(key);
-    await rm(join(this.config.storage.root, 'captures', cameraId, requestId), {
+    this.manifests.delete(key);
+    this.metadata.delete(key);
+    await rm(this.resourceDirectory(kind, cameraId, requestId), {
       recursive: true,
       force: true,
     });
   }
 
-  async deleteAudio(cameraId: string, requestId: string): Promise<void> {
-    const directory = join(this.config.storage.root, 'audio', cameraId);
-    const filePath = join(directory, `${requestId}.wav`);
-    const manifestPath = join(directory, `${requestId}.manifest.json`);
-    if (!(await this.exists(filePath)) && !(await this.exists(manifestPath))) {
-      throw new NotFoundException('audio recording was not found');
-    }
-    await Promise.all([
-      rm(filePath, { force: true }),
-      rm(manifestPath, { force: true }),
-      rm(join(directory, `${requestId}.thumb-dark.png`), { force: true }),
-      rm(join(directory, `${requestId}.thumb-light.png`), { force: true }),
-    ]);
-  }
-
-  async renameRecording(
+  async renameResource(
+    kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
     displayName: string,
   ): Promise<void> {
-    const key = `${cameraId}:${requestId}`;
-    const manifest = this.recordingManifests.get(key);
+    const key = this.key(kind, cameraId, requestId);
+    const directory = this.resourceDirectory(kind, cameraId, requestId);
+    const metadata = this.metadata.get(key);
+    if (metadata) {
+      metadata.displayName = displayName;
+      await this.writeJsonAtomically(
+        join(directory, 'metadata.json'),
+        metadata,
+      );
+      return;
+    }
+    const manifest = this.manifests.get(key);
     if (!manifest) {
-      throw new NotFoundException('recording was not found');
+      throw new NotFoundException('resource was not found');
     }
     manifest.displayName = displayName;
-    await this.writeJsonAtomically(
-      join(
-        this.config.storage.root,
-        'recordings',
-        cameraId,
-        requestId,
-        'manifest.json',
-      ),
-      manifest,
-    );
+    await this.writeJsonAtomically(join(directory, 'manifest.json'), manifest);
   }
 
-  async renameCapture(
+  private key(
+    kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
-    displayName: string,
-  ): Promise<void> {
-    const key = `${cameraId}:${requestId}`;
-    const manifest = this.captureManifests.get(key);
-    if (!manifest) {
-      throw new NotFoundException('capture was not found');
-    }
-    manifest.displayName = displayName;
-    await this.writeJsonAtomically(
-      join(
-        this.config.storage.root,
-        'captures',
-        cameraId,
-        requestId,
-        'manifest.json',
-      ),
-      manifest,
-    );
+  ): string {
+    return `${kind}:${cameraId}:${requestId}`;
   }
 
-  async renameAudio(
-    cameraId: string,
-    requestId: string,
-    displayName: string,
-  ): Promise<void> {
-    const manifestPath = join(
-      this.config.storage.root,
-      'audio',
-      cameraId,
-      `${requestId}.manifest.json`,
-    );
-    const manifest = await this.readJsonIfExists<AudioManifest>(manifestPath);
-    if (!manifest) {
-      throw new NotFoundException('audio recording was not found');
+  private assertManifestMetadataMatches(
+    manifest: ResourceManifest,
+    options: {
+      totalParts: number;
+      resolution?: string;
+      durationSeconds?: number;
+      totalFrames?: number;
+    },
+  ): void {
+    if (
+      manifest.totalParts !== options.totalParts ||
+      (options.resolution !== undefined &&
+        manifest.resolution !== options.resolution) ||
+      (options.durationSeconds !== undefined &&
+        manifest.durationSeconds !== options.durationSeconds) ||
+      (options.totalFrames !== undefined &&
+        manifest.totalFrames !== options.totalFrames)
+    ) {
+      throw new ConflictException(
+        'resource metadata differs from the existing manifest',
+      );
     }
-    manifest.displayName = displayName;
-    await this.writeJsonAtomically(manifestPath, manifest);
   }
 
   private async receiveRequest(
@@ -858,11 +696,7 @@ export class MediaStorageService implements OnModuleInit {
       };
     }
     await rename(temporary.path, finalPath);
-    return {
-      size: temporary.size,
-      sha256: temporary.sha256,
-      duplicate: false,
-    };
+    return { size: temporary.size, sha256: temporary.sha256, duplicate: false };
   }
 
   private async describeFile(filePath: string): Promise<TemporaryFile> {
@@ -875,25 +709,6 @@ export class MediaStorageService implements OnModuleInit {
       hash.update(buffer);
     }
     return { path: filePath, size, sha256: hash.digest('hex') };
-  }
-
-  private assertRecordingMetadata(
-    manifest: RecordingManifest,
-    metadata: Pick<
-      RecordingManifest,
-      'resolution' | 'totalParts' | 'requestedDurationSeconds' | 'totalFrames'
-    >,
-  ): void {
-    if (
-      manifest.resolution !== metadata.resolution ||
-      manifest.totalParts !== metadata.totalParts ||
-      manifest.requestedDurationSeconds !== metadata.requestedDurationSeconds ||
-      manifest.totalFrames !== metadata.totalFrames
-    ) {
-      throw new ConflictException(
-        'recording metadata differs from the manifest',
-      );
-    }
   }
 
   private broadcastLiveChunk(active: ActiveLive, chunk: Buffer): void {
@@ -935,83 +750,37 @@ export class MediaStorageService implements OnModuleInit {
     return Buffer.from(`--${boundary}`);
   }
 
-  private async assertJpeg(filePath: string): Promise<void> {
-    const content = await readFile(filePath);
-    if (
-      content.length < 4 ||
-      content[0] !== 0xff ||
-      content[1] !== 0xd8 ||
-      content.at(-2) !== 0xff ||
-      content.at(-1) !== 0xd9
-    ) {
-      throw new BadRequestException('upload is not a complete JPEG file');
-    }
-  }
-
-  private async assertWave(filePath: string): Promise<void> {
-    const handle = await open(filePath, 'r');
-    try {
-      const header = Buffer.alloc(12);
-      const { bytesRead } = await handle.read(header, 0, header.length, 0);
-      if (
-        bytesRead !== 12 ||
-        header.toString('ascii', 0, 4) !== 'RIFF' ||
-        header.toString('ascii', 8, 12) !== 'WAVE'
-      ) {
-        throw new BadRequestException('upload is not a WAV file');
-      }
-    } finally {
-      await handle.close();
-    }
-  }
-
-  private async assertMultipartStartsWithBoundary(
-    filePath: string,
-  ): Promise<void> {
-    const handle = await open(filePath, 'r');
-    try {
-      const prefix = Buffer.alloc(2);
-      const { bytesRead } = await handle.read(prefix, 0, prefix.length, 0);
-      if (bytesRead !== 2 || prefix.toString('ascii') !== '--') {
-        throw new BadRequestException(
-          'recording part is not an MJPEG multipart body',
-        );
-      }
-    } finally {
-      await handle.close();
-    }
-  }
-
-  private async loadCaptureManifests(): Promise<void> {
-    const root = join(this.config.storage.root, 'captures');
-    for (const camera of await this.directories(root)) {
-      for (const requestId of await this.directories(join(root, camera))) {
-        const manifest = await this.readJsonIfExists<CaptureManifest>(
-          join(root, camera, requestId, 'manifest.json'),
-        );
-        if (manifest?.schemaVersion === 1) {
-          this.captureManifests.set(`${camera}:${requestId}`, manifest);
-        }
-      }
-    }
-  }
-
-  private async loadRecordingManifests(): Promise<void> {
-    const root = join(this.config.storage.root, 'recordings');
-    for (const camera of await this.directories(root)) {
-      for (const requestId of await this.directories(join(root, camera))) {
-        const manifest = await this.readJsonIfExists<RecordingManifest>(
-          join(root, camera, requestId, 'manifest.json'),
-        );
-        if (manifest?.schemaVersion === 1) {
-          this.recordingManifests.set(`${camera}:${requestId}`, manifest);
+  private async loadAllManifestsAndMetadata(): Promise<void> {
+    for (const kind of resourceKinds) {
+      const root = join(this.config.storage.root, kind);
+      for (const cameraId of await this.directories(root)) {
+        for (const requestId of await this.directories(join(root, cameraId))) {
+          const directory = join(root, cameraId, requestId);
+          const key = this.key(kind, cameraId, requestId);
+          const manifest = await this.readJsonIfExists<ResourceManifest>(
+            join(directory, 'manifest.json'),
+          );
+          if (manifest?.schemaVersion === 1) {
+            this.manifests.set(key, manifest);
+          }
+          const metadata = await this.readJsonIfExists<ResourceMetadata>(
+            join(directory, 'metadata.json'),
+          );
+          if (metadata?.schemaVersion === 1) {
+            this.metadata.set(key, metadata);
+          }
         }
       }
     }
   }
 
   private async directories(path: string): Promise<string[]> {
-    const entries = await readdir(path, { withFileTypes: true });
+    let entries: Dirent[];
+    try {
+      entries = await readdir(path, { withFileTypes: true });
+    } catch {
+      return [];
+    }
     return entries
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
@@ -1024,9 +793,7 @@ export class MediaStorageService implements OnModuleInit {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
       }
-      throw new Error(`Cannot read storage manifest ${filePath}`, {
-        cause: error,
-      });
+      throw new Error(`Cannot read storage file ${filePath}`, { cause: error });
     }
   }
 
@@ -1049,7 +816,7 @@ export class MediaStorageService implements OnModuleInit {
 
   private async removeStaleTemporaryFiles(): Promise<void> {
     const directory = join(this.config.storage.root, '.tmp');
-    const files = await readdir(directory);
+    const files = await readdir(directory).catch(() => []);
     await Promise.all(
       files.map((file) => rm(join(directory, file), { force: true })),
     );

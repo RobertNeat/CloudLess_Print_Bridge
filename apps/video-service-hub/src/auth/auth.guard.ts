@@ -51,11 +51,12 @@ export class AuthGuard implements CanActivate {
 
 const publicAuthPaths = new Set(['/auth/config', '/auth/token']);
 const liveViewPathPattern = /^\/api\/v1\/cameras\/[^/]+\/live$/;
+const streamPathPattern = /^\/api\/v1\/live\/[^/]+\/[^/]+\/stream$/;
 const mediaFilePathPatterns = [
-  /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/,
-  /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/mp4$/,
   /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/,
-  /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/timelapses\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/recordings\/[^/]+\/[^/]+\/file$/,
+  /^\/api\/v1\/live\/[^/]+\/[^/]+\/file$/,
   /^\/api\/v1\/audio\/[^/]+\/[^/]+\/file$/,
 ];
 
@@ -70,7 +71,7 @@ function isPublicPath(path: string, method: string): boolean {
   // Authorization header; it is instead protected by StreamTokenGuard using a
   // short-lived ?streamToken= issued through the (Bearer-protected)
   // POST /auth/stream-token endpoint.
-  if (liveViewPathPattern.test(path)) {
+  if (liveViewPathPattern.test(path) || streamPathPattern.test(path)) {
     return true;
   }
   // Media file routes are likewise consumed by plain <img>/<audio src>

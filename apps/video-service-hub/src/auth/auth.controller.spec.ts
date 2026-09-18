@@ -12,12 +12,11 @@ import { StreamTokenService } from './stream-token.service';
 // against (capture-mp4 was added to the guard and MediaFileKind but not to
 // this controller's own allowlist).
 const allMediaFileKinds: MediaFileKind[] = [
-  'recording',
-  'recording-mp4',
   'capture',
-  'capture-mp4',
+  'timelapse',
+  'recording',
+  'live',
   'audio',
-  'live-recording',
 ];
 
 describe('AuthController.createMediaToken', () => {

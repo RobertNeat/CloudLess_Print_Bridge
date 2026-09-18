@@ -30,12 +30,13 @@ describe('AuthGuard', () => {
   });
 
   it.each([
-    ['GET', '/api/v1/recordings/camera-1/req-1/file'],
-    ['GET', '/api/v1/recordings/camera-1/req-1/mp4'],
     ['GET', '/api/v1/captures/camera-1/req-1/file'],
-    ['GET', '/api/v1/live-recordings/camera-1/req-1/file'],
+    ['GET', '/api/v1/timelapses/camera-1/req-1/file'],
+    ['GET', '/api/v1/recordings/camera-1/req-1/file'],
+    ['GET', '/api/v1/live/camera-1/req-1/file'],
     ['GET', '/api/v1/audio/camera-1/req-1/file'],
     ['GET', '/api/v1/cameras/camera-1/live'],
+    ['GET', '/api/v1/live/camera-1/req-1/stream'],
   ])(
     'treats %s %s as public (delegated to its own token guard), not rejected for a missing bearer token',
     (method, path) => {
@@ -43,10 +44,10 @@ describe('AuthGuard', () => {
     },
   );
 
-  it('does NOT treat the mp4 transcode trigger (POST) as public — it still needs a bearer token', () => {
+  it('does NOT treat a POST to an ingest route as public — it still needs a bearer token', () => {
     expect(() =>
       guard.canActivate(
-        contextFor('POST', '/api/v1/recordings/camera-1/req-1/transcode'),
+        contextFor('POST', '/api/v1/cameras/camera-1/recordings/req-1/parts/0'),
       ),
     ).toThrow(UnauthorizedException);
   });

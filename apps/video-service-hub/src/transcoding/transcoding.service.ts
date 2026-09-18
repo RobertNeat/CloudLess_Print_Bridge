@@ -3,15 +3,11 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
-  type OnModuleDestroy,
-  type OnModuleInit,
 } from '@nestjs/common';
 import ffmpegPath from 'ffmpeg-static';
 import ffmpeg from 'fluent-ffmpeg';
-import { existsSync } from 'node:fs';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
+import { appendFile, open, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -19,324 +15,209 @@ import { KeyedLock } from '../common/keyed-lock';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
 import { MediaStorageService } from '../storage/media-storage.service';
+import type {
+  MediaResourceKind,
+  ResourceMetadata,
+} from '../storage/storage.types';
 
 if (ffmpegPath) {
   ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
-export type TranscodeResult = {
-  cameraId: string;
-  requestId: string;
-  fps: number;
-  filePath: string;
-  size: number;
-  reused: boolean;
-};
-
 /**
- * Turns a recording's MJPEG source into a single MP4, re-timed to
- * TRANSCODING_FPS. Runs as post-processing, separate from the ingest path:
- * it only reads already-published media and never touches manifests.
+ * Produces the single finished file for a completed resource and hands it to
+ * MediaStorageService.finalizeResource for renaming/metadata.json writing.
+ * Triggered eagerly and synchronously from the ingest path the moment a
+ * resource's manifest reports `complete: true` -- there is no client-visible
+ * "transcode" step or endpoint; the client only ever sees the finished file.
  *
- * Two distinct sources share this pipeline, both surfaced to clients as
- * kind: 'recording' by MediaLibraryService:
- *  - manifest-backed recordings: multiple MJPEG parts joined in manifest
- *    order (MediaStorageService.recordingPartPaths);
- *  - completed live recordings: a single already-complete MJPEG file
- *    (MediaStorageService.liveRecordingFilePath), with no manifest.
+ * - captures: already a single JPEG, no encode needed -- just finalize.
+ * - timelapses: JPEG stills joined and encoded at TIMELAPSE_FPS.
+ * - recordings / live: MJPEG parts joined and encoded at TRANSCODING_FPS.
+ * - audio: WAV parts concatenated (parts share one PCM stream, so a plain
+ *   byte-join reproduces a valid WAV once the header is fixed up)
  */
 @Injectable()
-export class TranscodingService implements OnModuleInit, OnModuleDestroy {
+export class TranscodingService {
   private readonly logger = new Logger(TranscodingService.name);
   private readonly lock = new KeyedLock();
-  private readonly inactivityTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     @Inject(SERVICE_CONFIG) private readonly config: ServiceConfig,
     private readonly storage: MediaStorageService,
   ) {}
 
-  /**
-   * Backfills MP4s for any multi-frame timelapse left over from before this
-   * feature existed, or from a session whose debounced encode
-   * (scheduleTimelapseEncodeAfterInactivity) never fired -- a hub restart
-   * mid-session, for example. Runs once at boot, sequentially (not
-   * Promise.all): each encode already spawns an ffmpeg process, and this
-   * avoids starting one per timelapse all at once.
-   */
-  async onModuleInit(): Promise<void> {
-    const pending = this.storage
-      .listCaptureManifests()
-      .filter((manifest) => manifest.captures.length > 1)
-      .filter(
-        (manifest) =>
-          !existsSync(this.storage.captureMp4Path(manifest.cameraId, manifest.requestId)),
-      );
-    for (const manifest of pending) {
-      try {
-        await this.ensureTimelapseMp4(manifest.cameraId, manifest.requestId);
-      } catch (error) {
-        this.logger.warn(
-          `Startup timelapse backfill failed for ${manifest.cameraId}/${manifest.requestId}: ${(error as Error).message}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Resolves which of the two recording sources (manifest-backed or
-   * completed live) matches cameraId/requestId, then transcodes it.
-   * Throws NotFoundException if neither exists.
-   */
-  async ensureMp4(
+  /** Runs the appropriate pipeline for `kind`, then finalizes the resource. Safe to call more than once (finalize is a no-op past the first successful run since parts get deleted). */
+  async finalize(
+    kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
-  ): Promise<TranscodeResult> {
-    if (this.hasRecordingManifest(cameraId, requestId)) {
-      return this.transcodeRecordingToMp4(cameraId, requestId);
-    }
-    if (existsSync(this.storage.liveRecordingFilePath(cameraId, requestId))) {
-      return this.transcodeLiveRecordingToMp4(cameraId, requestId);
-    }
-    throw new NotFoundException('recording was not found');
-  }
+  ): Promise<ResourceMetadata> {
+    const key = `${kind}:${cameraId}:${requestId}`;
+    return this.lock.run(key, async () => {
+      const existing = this.storage.getMetadata(kind, cameraId, requestId);
+      if (existing) return existing;
 
-  async transcodeRecordingToMp4(
-    cameraId: string,
-    requestId: string,
-  ): Promise<TranscodeResult> {
-    const outputPath = this.mp4Path(cameraId, requestId);
-    return this.transcode(cameraId, requestId, outputPath, () => {
-      const partPaths = this.storage.recordingPartPaths(cameraId, requestId);
-      return {
-        sourcePaths: partPaths,
-        outputDirectory: this.recordingDirectory(cameraId, requestId),
-      };
-    });
-  }
+      const producedPath =
+        kind === 'captures'
+          ? this.storage.partPaths(kind, cameraId, requestId)[0]
+          : await this.produceFinalFile(kind, cameraId, requestId);
 
-  async transcodeLiveRecordingToMp4(
-    cameraId: string,
-    requestId: string,
-  ): Promise<TranscodeResult> {
-    const sourcePath = this.storage.liveRecordingFilePath(cameraId, requestId);
-    if (!existsSync(sourcePath)) {
-      throw new NotFoundException('recording was not found');
-    }
-    const outputPath = this.liveMp4Path(cameraId, requestId);
-    return this.transcode(cameraId, requestId, outputPath, () => ({
-      sourcePaths: [sourcePath],
-      outputDirectory: join(this.config.storage.root, 'live', cameraId),
-    }));
-  }
-
-  private async transcode(
-    cameraId: string,
-    requestId: string,
-    outputPath: string,
-    resolveSource: () => { sourcePaths: string[]; outputDirectory: string },
-  ): Promise<TranscodeResult> {
-    const fps = this.config.transcoding.fps;
-    const key = `${cameraId}:${requestId}`;
-    return this.lock.run(`transcode:${key}`, async () => {
-      const existingSize = await this.fileSize(outputPath);
-      if (existingSize !== undefined) {
-        return {
-          cameraId,
-          requestId,
-          fps,
-          filePath: outputPath,
-          size: existingSize,
-          reused: true,
-        };
-      }
-
-      const { sourcePaths, outputDirectory } = resolveSource();
-      await mkdir(outputDirectory, { recursive: true });
-      const joinedPath = join(
-        this.config.storage.root,
-        '.tmp',
-        `${cameraId}-${requestId}-${Date.now()}.mjpeg`,
-      );
-      const temporaryOutputPath = `${outputPath}.${Date.now()}.tmp`;
-
-      try {
-        await this.joinParts(sourcePaths, joinedPath);
-        await this.encodeToMp4(joinedPath, temporaryOutputPath, fps);
-        await rename(temporaryOutputPath, outputPath);
-      } finally {
-        await rm(joinedPath, { force: true });
-        await rm(temporaryOutputPath, { force: true });
-      }
-
-      const size = await this.fileSize(outputPath);
-      if (size === undefined) {
-        throw new InternalServerErrorException(
-          'transcoding finished but the output file is missing',
-        );
-      }
-      return {
+      return this.storage.finalizeResource(
+        kind,
         cameraId,
         requestId,
-        fps,
-        filePath: outputPath,
-        size,
-        reused: false,
-      };
+        producedPath,
+      );
     });
   }
 
-  /** Where a finished MP4 lives, regardless of which source produced it. */
-  resolveMp4Path(cameraId: string, requestId: string): string {
-    const manifestBacked = this.mp4Path(cameraId, requestId);
-    if (
-      existsSync(manifestBacked) ||
-      this.hasRecordingManifest(cameraId, requestId)
-    ) {
-      return manifestBacked;
+  private async produceFinalFile(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): Promise<string> {
+    const partPaths = this.storage.partPaths(kind, cameraId, requestId);
+    const stagingPath = join(
+      this.config.storage.root,
+      '.tmp',
+      `${kind}-${cameraId}-${requestId}-${Date.now()}.output`,
+    );
+
+    try {
+      if (kind === 'audio') {
+        await this.joinWaveParts(partPaths, stagingPath);
+      } else if (kind === 'timelapses') {
+        const joinedPath = `${stagingPath}.jpegs`;
+        try {
+          await this.joinParts(partPaths, joinedPath);
+          await this.encodeFramesToMp4(
+            joinedPath,
+            stagingPath,
+            this.config.timelapse.fps,
+          );
+        } finally {
+          await rm(joinedPath, { force: true });
+        }
+      } else {
+        // recordings / live: MJPEG parts joined then encoded.
+        const joinedPath = `${stagingPath}.mjpeg`;
+        try {
+          await this.joinParts(partPaths, joinedPath);
+          await this.encodeToMp4(
+            joinedPath,
+            stagingPath,
+            this.config.transcoding.fps,
+          );
+        } finally {
+          await rm(joinedPath, { force: true });
+        }
+      }
+      return stagingPath;
+    } catch (error) {
+      await rm(stagingPath, { force: true });
+      throw error;
     }
-    return this.liveMp4Path(cameraId, requestId);
   }
 
-  mp4Path(cameraId: string, requestId: string): string {
-    return join(
-      this.recordingDirectory(cameraId, requestId),
-      `${requestId}.mp4`,
+  /**
+   * Concatenates every part into one file via a single pipeline over an
+   * async-generator source, rather than one pipeline per part sharing the
+   * same destination stream: the latter attaches a fresh set of listeners
+   * to the shared WriteStream on every part (MaxListenersExceededWarning
+   * once a timelapse has more than ~10 frames) and, worse, calls
+   * output.end() without awaiting its 'close', risking a truncated file if
+   * ffmpeg opens it before the last write actually flushes.
+   */
+  private async joinParts(
+    partPaths: string[],
+    joinedPath: string,
+  ): Promise<void> {
+    async function* readParts(): AsyncGenerator<Buffer> {
+      for (const partPath of partPaths) {
+        yield* createReadStream(partPath);
+      }
+    }
+    await pipeline(
+      Readable.from(readParts()),
+      createWriteStream(joinedPath, { flags: 'wx' }),
     );
   }
 
-  liveMp4Path(cameraId: string, requestId: string): string {
-    return join(this.config.storage.root, 'live', cameraId, `${requestId}.mp4`);
-  }
-
   /**
-   * Encodes a timelapse's capture frames (JPEG stills, ordered by
-   * CaptureEntry.sequence) into an MP4 at TIMELAPSE_FPS. Unlike a recording's
-   * fixed part set, a timelapse's frame set can keep growing after an MP4
-   * has already been cached (storeCapture accepts new frames at any time),
-   * so the cached file is invalidated -- and re-encoded -- whenever a frame
-   * newer than it has arrived, rather than being reused unconditionally.
+   * WAV parts are each a standalone playable RIFF/WAVE file (the firmware
+   * writes every part with its own header so a part is valid on its own).
+   * A real WAV's `data` chunk does not reliably start at a fixed offset --
+   * encoders commonly insert a LIST/INFO chunk between `fmt ` and `data` --
+   * so each part's RIFF chunk list is walked to find its actual `fmt ` and
+   * `data` chunks rather than assuming a 44-byte header. The joined output
+   * gets a single canonical 44-byte PCM header (from the first part's fmt
+   * chunk) followed by every part's data payload concatenated, with the
+   * RIFF/data chunk sizes patched to cover the full concatenated length.
    */
-  async ensureTimelapseMp4(
-    cameraId: string,
-    requestId: string,
-  ): Promise<TranscodeResult> {
-    const fps = this.config.timelapse.fps;
-    const outputPath = this.storage.captureMp4Path(cameraId, requestId);
-    const key = `timelapse:${cameraId}:${requestId}`;
-    return this.lock.run(`transcode:${key}`, async () => {
-      const existing = await this.fileInfo(outputPath);
-      if (existing && !(await this.timelapseIsStale(cameraId, requestId, existing.mtimeMs))) {
-        return {
-          cameraId,
-          requestId,
-          fps,
-          filePath: outputPath,
-          size: existing.size,
-          reused: true,
-        };
-      }
-
-      const framePaths = this.storage.capturePartPaths(cameraId, requestId);
-      const outputDirectory = join(
-        this.config.storage.root,
-        'captures',
-        cameraId,
-        requestId,
+  private async joinWaveParts(
+    partPaths: string[],
+    outputPath: string,
+  ): Promise<void> {
+    if (partPaths.length === 0) {
+      throw new InternalServerErrorException('no audio parts to join');
+    }
+    const first = await readFile(partPaths[0]);
+    const fmtChunk = this.findRiffChunk(first, 'fmt ');
+    if (!fmtChunk) {
+      throw new InternalServerErrorException(
+        'audio part is missing a fmt chunk',
       );
-      await mkdir(outputDirectory, { recursive: true });
-      const joinedPath = join(
-        this.config.storage.root,
-        '.tmp',
-        `${cameraId}-${requestId}-${Date.now()}.jpegs`,
-      );
-      const temporaryOutputPath = `${outputPath}.${Date.now()}.tmp`;
+    }
 
-      try {
-        await this.joinParts(framePaths, joinedPath);
-        await this.encodeFramesToMp4(joinedPath, temporaryOutputPath, fps);
-        await rename(temporaryOutputPath, outputPath);
-      } finally {
-        await rm(joinedPath, { force: true });
-        await rm(temporaryOutputPath, { force: true });
-      }
+    const header = Buffer.alloc(44);
+    header.write('RIFF', 0, 'ascii');
+    header.write('WAVE', 8, 'ascii');
+    header.write('fmt ', 12, 'ascii');
+    header.writeUInt32LE(16, 16);
+    fmtChunk.copy(header, 20, 0, 16);
+    header.write('data', 36, 'ascii');
+    await writeFile(outputPath, header);
 
-      const size = await this.fileSize(outputPath);
-      if (size === undefined) {
+    let dataBytes = 0;
+    for (const partPath of partPaths) {
+      const partBuffer = await readFile(partPath);
+      const dataChunk = this.findRiffChunk(partBuffer, 'data');
+      if (!dataChunk) {
         throw new InternalServerErrorException(
-          'transcoding finished but the output file is missing',
+          'audio part is missing a data chunk',
         );
       }
-      return {
-        cameraId,
-        requestId,
-        fps,
-        filePath: outputPath,
-        size,
-        reused: false,
-      };
-    });
+      await appendFile(outputPath, dataChunk);
+      dataBytes += dataChunk.length;
+    }
+
+    const handle = await open(outputPath, 'r+');
+    try {
+      const sizes = Buffer.alloc(8);
+      sizes.writeUInt32LE(36 + dataBytes, 0);
+      await handle.write(sizes.subarray(0, 4), 0, 4, 4);
+      sizes.writeUInt32LE(dataBytes, 4);
+      await handle.write(sizes.subarray(4, 8), 0, 4, 40);
+    } finally {
+      await handle.close();
+    }
   }
 
-  resolveTimelapseMp4Path(cameraId: string, requestId: string): string {
-    return this.storage.captureMp4Path(cameraId, requestId);
-  }
-
-  /** Cancels pending debounced encodes so none fire against storage that may already be torn down. */
-  onModuleDestroy(): void {
-    for (const timer of this.inactivityTimers.values()) clearTimeout(timer);
-    this.inactivityTimers.clear();
-  }
-
-  /**
-   * Debounces a timelapse's encode to fire once frames stop arriving,
-   * rather than at a fixed time after the camera command was sent: capture
-   * and upload are decoupled on the camera (frames are written to SD during
-   * the capture window, then drained to the hub afterward by a separate
-   * task -- see firmware/.../video_service.cpp's uploadTask), so no fixed
-   * delay derived from the command's durationMs can reliably predict when
-   * the last frame actually lands. Call this after every stored capture
-   * frame; each call resets the same request's timer. Not a per-frame
-   * re-encode -- ensureTimelapseMp4 only actually runs once inactivity
-   * lasts config.timelapse.encodeInactivityMs, and its own staleness check
-   * is the backstop if a late frame still slips in after that.
-   */
-  scheduleTimelapseEncodeAfterInactivity(
-    cameraId: string,
-    requestId: string,
-  ): void {
-    const key = `${cameraId}:${requestId}`;
-    const existing = this.inactivityTimers.get(key);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      this.inactivityTimers.delete(key);
-      if (this.storage.captureFrameCount(cameraId, requestId) <= 1) return;
-      this.ensureTimelapseMp4(cameraId, requestId).catch((error: Error) => {
-        this.logger.warn(
-          `Debounced timelapse encode failed for ${key}: ${error.message}`,
-        );
-      });
-    }, this.config.timelapse.encodeInactivityMs);
-    this.inactivityTimers.set(key, timer);
-  }
-
-  /**
-   * Compares the newest frame's storedAt against the mp4's mtime (set when
-   * ffmpeg finishes, not when the request started), so a frame that lands
-   * mid-encode can predate the mp4 it wasn't actually included in -- it
-   * self-heals on the next frame, except when it's the last frame of the
-   * capture session, which can then be permanently missing from the mp4.
-   * Acceptable for now: exact correctness would mean keying the cache on
-   * frame count instead of mtime.
-   */
-  private async timelapseIsStale(
-    cameraId: string,
-    requestId: string,
-    mp4MtimeMs: number,
-  ): Promise<boolean> {
-    const lastStoredAt = this.storage.captureLastStoredAt(cameraId, requestId);
-    if (!lastStoredAt) return false;
-    return Date.parse(lastStoredAt) > mp4MtimeMs;
+  /** Walks a RIFF file's chunk list (skipping the 12-byte RIFF/WAVE header) and returns the named chunk's payload, or undefined if absent. */
+  private findRiffChunk(buffer: Buffer, chunkId: string): Buffer | undefined {
+    let offset = 12;
+    while (offset + 8 <= buffer.length) {
+      const id = buffer.toString('ascii', offset, offset + 4);
+      const size = buffer.readUInt32LE(offset + 4);
+      const payloadStart = offset + 8;
+      if (id === chunkId) {
+        return buffer.subarray(payloadStart, payloadStart + size);
+      }
+      // Chunks are word-aligned: a chunk with an odd size is followed by one pad byte.
+      offset = payloadStart + size + (size % 2);
+    }
+    return undefined;
   }
 
   private encodeFramesToMp4(
@@ -364,7 +245,9 @@ export class TranscodingService implements OnModuleInit, OnModuleDestroy {
           '+faststart',
         ])
         .on('error', (error: Error) => {
-          this.logger.error(`ffmpeg timelapse encoding failed: ${error.message}`);
+          this.logger.error(
+            `ffmpeg timelapse encoding failed: ${error.message}`,
+          );
           reject(
             new InternalServerErrorException('failed to encode timelapse'),
           );
@@ -372,45 +255,6 @@ export class TranscodingService implements OnModuleInit, OnModuleDestroy {
         .on('end', () => resolvePromise())
         .save(outputPath);
     });
-  }
-
-  private recordingDirectory(cameraId: string, requestId: string): string {
-    return join(this.config.storage.root, 'recordings', cameraId, requestId);
-  }
-
-  private hasRecordingManifest(cameraId: string, requestId: string): boolean {
-    return this.storage
-      .listRecordingManifests()
-      .some(
-        (manifest) =>
-          manifest.cameraId === cameraId &&
-          manifest.requestId === requestId &&
-          manifest.complete,
-      );
-  }
-
-  /**
-   * Concatenates every part into one file via a single pipeline over an
-   * async-generator source, rather than one pipeline per part sharing the
-   * same destination stream: the latter attaches a fresh set of listeners
-   * to the shared WriteStream on every part (MaxListenersExceededWarning
-   * once a timelapse has more than ~10 frames) and, worse, calls
-   * output.end() without awaiting its 'close', risking a truncated file if
-   * ffmpeg opens it before the last write actually flushes.
-   */
-  private async joinParts(
-    partPaths: string[],
-    joinedPath: string,
-  ): Promise<void> {
-    async function* readParts(): AsyncGenerator<Buffer> {
-      for (const partPath of partPaths) {
-        yield* createReadStream(partPath);
-      }
-    }
-    await pipeline(
-      Readable.from(readParts()),
-      createWriteStream(joinedPath, { flags: 'wx' }),
-    );
   }
 
   private encodeToMp4(
@@ -423,10 +267,6 @@ export class TranscodingService implements OnModuleInit, OnModuleDestroy {
         .inputFormat('mpjpeg')
         .inputFPS(fps)
         .videoCodec('libx264')
-        // The temporary output path does not end in .mp4 (it carries a
-        // .tmp suffix so a crash mid-encode never leaves a file that looks
-        // published), so ffmpeg cannot infer the container from the
-        // extension and must be told explicitly.
         .format('mp4')
         .outputOptions([
           '-pix_fmt',
@@ -445,24 +285,5 @@ export class TranscodingService implements OnModuleInit, OnModuleDestroy {
         .on('end', () => resolvePromise())
         .save(outputPath);
     });
-  }
-
-  private async fileSize(filePath: string): Promise<number | undefined> {
-    const info = await this.fileInfo(filePath);
-    return info?.size;
-  }
-
-  private async fileInfo(
-    filePath: string,
-  ): Promise<{ size: number; mtimeMs: number } | undefined> {
-    try {
-      const info = await stat(filePath);
-      return { size: info.size, mtimeMs: info.mtimeMs };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return undefined;
-      }
-      throw error;
-    }
   }
 }

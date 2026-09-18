@@ -16,7 +16,6 @@ if (ffmpegPath) {
 const TINY_JPEG_BASE64 =
   '/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYwLjMxLjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABNAAEBAAAAAAAAAAAAAAAAAAAABwEBAQEAAAAAAAAAAAAAAAAAAAUHEAEAAAAAAAAAAAAAAAAAAAAAEQEAAAAAAAAAAAAAAAAAAAAA/8AAEQgAGAAgAwEiAAIRAAMRAP/aAAwDAQACEQMRAD8AjgDf0sAAAAAB/9k=';
 
-
 // A real 300ms mono WAV at 4kHz with a near-silent (-64dB peak) sine tone,
 // rendered by ffmpeg (`sine=frequency=300:duration=0.3` at `volume=0.005`).
 // Stands in for room-tone/white-noise: a clip with no real recorded signal.
@@ -57,7 +56,9 @@ const BOUNDARY = 'unitcams3-frame';
  * (e.g. a dropped highpass reintroducing a DC bias band), so assertions are
  * made on raw decoded pixels, not on how the PNG looks.
  */
-async function loadAlphaChannel(pngPath: string): Promise<{ buffer: Buffer; width: number; height: number }> {
+async function loadAlphaChannel(
+  pngPath: string,
+): Promise<{ buffer: Buffer; width: number; height: number }> {
   const width = 640;
   const height = 360;
   const rawPath = `${pngPath}.rgba.raw`;
@@ -190,7 +191,10 @@ describe('ThumbnailService', () => {
       const darkPath = join(root, 'waveform-dark.png');
       const lightPath = join(root, 'waveform-light.png');
 
-      await service.ensureWaveforms(sourcePath, { dark: darkPath, light: lightPath });
+      await service.ensureWaveforms(sourcePath, {
+        dark: darkPath,
+        light: lightPath,
+      });
 
       expect(existsSync(darkPath)).toBe(true);
       expect(existsSync(lightPath)).toBe(true);
@@ -208,20 +212,31 @@ describe('ThumbnailService', () => {
       const darkPath = join(root, 'waveform-dark.png');
       const lightPath = join(root, 'waveform-light.png');
 
-      await service.ensureWaveforms(sourcePath, { dark: darkPath, light: lightPath });
+      await service.ensureWaveforms(sourcePath, {
+        dark: darkPath,
+        light: lightPath,
+      });
       const firstDarkBytes = await readFile(darkPath);
       await rm(sourcePath, { force: true });
 
-      await service.ensureWaveforms(sourcePath, { dark: darkPath, light: lightPath });
+      await service.ensureWaveforms(sourcePath, {
+        dark: darkPath,
+        light: lightPath,
+      });
 
       expect(await readFile(darkPath)).toEqual(firstDarkBytes);
-      const leftovers = (await readdir(root)).filter((name) => name.endsWith('.tmp'));
+      const leftovers = (await readdir(root)).filter((name) =>
+        name.endsWith('.tmp'),
+      );
       expect(leftovers).toEqual([]);
     }, 30_000);
 
     it('renders a near-full-scale (loud/close speech) clip with a much brighter spectrogram than near-silence', async () => {
       const loudPath = join(root, 'near-full.wav');
-      await writeFile(loudPath, Buffer.from(NEAR_FULL_SCALE_WAV_BASE64, 'base64'));
+      await writeFile(
+        loudPath,
+        Buffer.from(NEAR_FULL_SCALE_WAV_BASE64, 'base64'),
+      );
       const loudDarkPath = join(root, 'near-full-dark.png');
       await service.ensureWaveforms(loudPath, {
         dark: loudDarkPath,
@@ -258,7 +273,10 @@ describe('ThumbnailService', () => {
       // this DC-only clip should look about as dim as genuine near-silence,
       // not brighter.
       const dcBiasedPath = join(root, 'dc-biased.wav');
-      await writeFile(dcBiasedPath, Buffer.from(DC_BIASED_WAV_BASE64, 'base64'));
+      await writeFile(
+        dcBiasedPath,
+        Buffer.from(DC_BIASED_WAV_BASE64, 'base64'),
+      );
       const dcBiasedDarkPath = join(root, 'dc-biased-dark.png');
       await service.ensureWaveforms(dcBiasedPath, {
         dark: dcBiasedDarkPath,
@@ -284,18 +302,28 @@ describe('ThumbnailService', () => {
 
     it('renders the dark variant lighter near the top of the frame and the light variant darker near the top (gradient direction)', async () => {
       const sourcePath = join(root, 'audio.wav');
-      await writeFile(sourcePath, Buffer.from(NEAR_FULL_SCALE_WAV_BASE64, 'base64'));
+      await writeFile(
+        sourcePath,
+        Buffer.from(NEAR_FULL_SCALE_WAV_BASE64, 'base64'),
+      );
       const darkPath = join(root, 'waveform-dark.png');
       const lightPath = join(root, 'waveform-light.png');
 
-      await service.ensureWaveforms(sourcePath, { dark: darkPath, light: lightPath });
+      await service.ensureWaveforms(sourcePath, {
+        dark: darkPath,
+        light: lightPath,
+      });
 
       // Find the brightest row (the tone's frequency bin) in the dark
       // variant's alpha/intensity channel, then compare that row's opaque
       // color against a row near the bottom of the frame, for both
       // variants -- rather than assuming any particular row index, since
       // that depends on the tone's exact frequency.
-      const findBrightestRow = (alpha: Buffer, width: number, height: number): number => {
+      const findBrightestRow = (
+        alpha: Buffer,
+        width: number,
+        height: number,
+      ): number => {
         let bestRow = 0;
         let bestValue = -1;
         for (let y = 0; y < height; y += 1) {
@@ -324,7 +352,8 @@ describe('ThumbnailService', () => {
       };
       const width = 640;
       const height = 360;
-      const redAt = (buffer: Buffer, x: number, y: number) => buffer[(y * width + x) * 4];
+      const redAt = (buffer: Buffer, x: number, y: number) =>
+        buffer[(y * width + x) * 4];
 
       const { buffer: darkAlpha } = await loadAlphaChannel(darkPath);
       const darkRgba = await loadRgba(darkPath);
@@ -334,10 +363,14 @@ describe('ThumbnailService', () => {
 
       // Dark-mode gradient is white (bright) near the top of the frame,
       // fading to darkgrey toward the bottom.
-      expect(redAt(darkRgba, 0, brightRow)).toBeGreaterThan(redAt(darkRgba, 0, bottomRow));
+      expect(redAt(darkRgba, 0, brightRow)).toBeGreaterThan(
+        redAt(darkRgba, 0, bottomRow),
+      );
       // Light-mode gradient is black (dark) near the top, fading to
       // darkgrey toward the bottom -- the opposite direction from dark-mode.
-      expect(redAt(lightRgba, 0, brightRow)).toBeLessThan(redAt(lightRgba, 0, bottomRow));
+      expect(redAt(lightRgba, 0, brightRow)).toBeLessThan(
+        redAt(lightRgba, 0, bottomRow),
+      );
     }, 30_000);
   });
 

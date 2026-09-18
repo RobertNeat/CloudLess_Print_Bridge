@@ -19,12 +19,11 @@ import { MediaTokenService } from './media-token.service';
 import { StreamTokenService } from './stream-token.service';
 
 const mediaFileKinds = new Set<MediaFileKind>([
-  'recording',
-  'recording-mp4',
   'capture',
-  'capture-mp4',
+  'timelapse',
+  'recording',
+  'live',
   'audio',
-  'live-recording',
 ]);
 
 const DEFAULT_PERMISSIONS = [
@@ -107,7 +106,7 @@ export class AuthController {
       !mediaFileKinds.has(body.kind as MediaFileKind)
     ) {
       throw new UnauthorizedException(
-        'kind must be one of: recording, recording-mp4, capture, capture-mp4, audio, live-recording.',
+        'kind must be one of: capture, timelapse, recording, live, audio.',
       );
     }
     const cameraId = assertIdentifier(body?.cameraId, 'cameraId');
