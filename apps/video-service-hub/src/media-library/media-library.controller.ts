@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -11,55 +12,73 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { createReadStream, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
 import { MediaTokenGuard } from '../auth/media-token.guard';
-import {
-  assertDisplayName,
-  assertIdentifier,
-  assertSafeFileName,
-} from '../common/validation';
+import { StreamTokenGuard } from '../auth/stream-token.guard';
+import { StreamTokenService } from '../auth/stream-token.service';
+import { assertDisplayName, assertIdentifier } from '../common/validation';
 import { MediaStorageService } from '../storage/media-storage.service';
+import type { MediaResourceKind } from '../storage/storage.types';
 import { MediaLibraryService } from './media-library.service';
-import type { MediaKind } from './media-library.types';
 
 const THUMBNAIL_PLACEHOLDER_PATH = join(
   __dirname,
   'assets',
   'thumbnail-placeholder.png',
 );
-const knownKinds = new Set<MediaKind>([
-  'recording',
-  'image',
-  'timelapse',
-  'audio',
-]);
 
 @Controller('api/v1')
 export class MediaLibraryController {
   constructor(
     private readonly library: MediaLibraryService,
     private readonly storage: MediaStorageService,
+    private readonly streamTokens: StreamTokenService,
   ) {}
 
-  @Get('recordings')
-  list(
-    @Query('cameraId') cameraId: string | undefined,
-    @Query('kind') kind: string | undefined,
-    @Query('cursor') cursor: string | undefined,
-    @Query('limit') limit: string | undefined,
-  ) {
-    if (kind !== undefined && !knownKinds.has(kind as MediaKind)) {
-      throw new NotFoundException('unsupported media kind');
-    }
-    return this.library.list({
-      cameraId: cameraId ? assertIdentifier(cameraId, 'cameraId') : undefined,
-      kind: kind as MediaKind | undefined,
-      cursor,
-      limit: limit !== undefined ? Number(limit) : undefined,
+  @Get('live/:cameraId/:requestId/stream')
+  @UseGuards(StreamTokenGuard)
+  watchLive(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Query('streamToken') streamToken: string | undefined,
+    @Res() response: Response,
+  ): void {
+    const viewer = this.storage.openLiveViewer(cameraId, requestId);
+    response.status(HttpStatus.OK);
+    response.setHeader('Content-Type', viewer.contentType);
+    response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.setHeader('Pragma', 'no-cache');
+    response.setHeader('X-Request-Id', viewer.requestId);
+    response.flushHeaders();
+    response.once('close', () => {
+      viewer.stream.destroy();
+      if (streamToken) {
+        this.streamTokens.releaseViewer(streamToken);
+      }
     });
+    viewer.stream.pipe(response);
+  }
+
+  @Get('captures')
+  listCaptures(@Query() query: Record<string, string | undefined>) {
+    return this.library.listKind('captures', this.parseQuery(query));
+  }
+
+  @Get('timelapses')
+  listTimelapses(@Query() query: Record<string, string | undefined>) {
+    return this.library.listKind('timelapses', this.parseQuery(query));
+  }
+
+  @Get('video')
+  listVideo(@Query() query: Record<string, string | undefined>) {
+    return this.library.listVideo(this.parseQuery(query));
+  }
+
+  @Get('audio')
+  listAudio(@Query() query: Record<string, string | undefined>) {
+    return this.library.listKind('audio', this.parseQuery(query));
   }
 
   @Get('media/thumbnail-placeholder')
@@ -70,34 +89,40 @@ export class MediaLibraryController {
     response.sendFile(THUMBNAIL_PLACEHOLDER_PATH);
   }
 
-  @Get('recordings/:cameraId/:requestId/thumbnail')
-  recordingThumbnail(
-    @Param('cameraId') cameraId: string,
-    @Param('requestId') requestId: string,
-    @Res() response: Response,
-  ): void {
-    this.sendIfExists(
-      this.storage.recordingThumbnailPath(
-        assertIdentifier(cameraId, 'cameraId'),
-        assertIdentifier(requestId, 'requestId'),
-      ),
-      response,
-    );
-  }
-
   @Get('captures/:cameraId/:requestId/thumbnail')
   captureThumbnail(
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendIfExists(
-      this.storage.captureThumbnailPath(
-        assertIdentifier(cameraId, 'cameraId'),
-        assertIdentifier(requestId, 'requestId'),
-      ),
-      response,
-    );
+    this.sendThumbnail('captures', cameraId, requestId, response);
+  }
+
+  @Get('timelapses/:cameraId/:requestId/thumbnail')
+  timelapseThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendThumbnail('timelapses', cameraId, requestId, response);
+  }
+
+  @Get('recordings/:cameraId/:requestId/thumbnail')
+  recordingThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendThumbnail('recordings', cameraId, requestId, response);
+  }
+
+  @Get('live/:cameraId/:requestId/thumbnail')
+  liveThumbnail(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendThumbnail('live', cameraId, requestId, response);
   }
 
   @Get('audio/:cameraId/:requestId/thumbnail')
@@ -120,67 +145,44 @@ export class MediaLibraryController {
     );
   }
 
-  @Get('captures/:cameraId/:requestId/frames')
-  listCaptureFrames(
-    @Param('cameraId') cameraId: string,
-    @Param('requestId') requestId: string,
-  ) {
-    return this.library.listCaptureFrames(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-    );
-  }
-
-  @UseGuards(MediaTokenGuard)
-  @Get('recordings/:cameraId/:requestId/file')
-  async recordingFile(
-    @Param('cameraId') cameraId: string,
-    @Param('requestId') requestId: string,
-    @Res() response: Response,
-  ): Promise<void> {
-    const partPaths = this.storage.recordingPartPaths(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-    );
-    response.setHeader('Content-Type', 'multipart/x-mixed-replace');
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${requestId}.mjpeg"`,
-    );
-    for (const partPath of partPaths) {
-      await pipeline(createReadStream(partPath), response, { end: false });
-    }
-    response.end();
-  }
-
   @UseGuards(MediaTokenGuard)
   @Get('captures/:cameraId/:requestId/file')
   captureFile(
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
-    @Query('fileName') fileName: string,
     @Res() response: Response,
   ): void {
-    const filePath = this.storage.captureFilePath(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-      assertSafeFileName(fileName, 'fileName'),
-    );
-    this.sendIfExists(filePath, response);
+    this.sendFile('captures', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
-  @Get('live-recordings/:cameraId/:requestId/file')
-  liveRecordingFile(
+  @Get('timelapses/:cameraId/:requestId/file')
+  timelapseFile(
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    const filePath = this.storage.liveRecordingFilePath(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-    );
-    this.sendIfExists(filePath, response);
+    this.sendFile('timelapses', cameraId, requestId, response);
+  }
+
+  @UseGuards(MediaTokenGuard)
+  @Get('recordings/:cameraId/:requestId/file')
+  recordingFile(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendFile('recordings', cameraId, requestId, response);
+  }
+
+  @UseGuards(MediaTokenGuard)
+  @Get('live/:cameraId/:requestId/file')
+  liveFile(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    this.sendFile('live', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
@@ -190,24 +192,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    const filePath = this.storage.audioFilePath(
-      assertIdentifier(cameraId, 'cameraId'),
-      `${assertIdentifier(requestId, 'requestId')}.wav`,
-    );
-    this.sendIfExists(filePath, response);
-  }
-
-  @Patch('recordings/:cameraId/:requestId')
-  renameRecording(
-    @Param('cameraId') cameraId: string,
-    @Param('requestId') requestId: string,
-    @Body() body: { displayName?: unknown },
-  ) {
-    return this.library.renameRecording(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-      assertDisplayName(body?.displayName),
-    );
+    this.sendFile('audio', cameraId, requestId, response);
   }
 
   @Patch('captures/:cameraId/:requestId')
@@ -216,11 +201,34 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Body() body: { displayName?: unknown },
   ) {
-    return this.library.renameCapture(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-      assertDisplayName(body?.displayName),
-    );
+    return this.rename('captures', cameraId, requestId, body);
+  }
+
+  @Patch('timelapses/:cameraId/:requestId')
+  renameTimelapse(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.rename('timelapses', cameraId, requestId, body);
+  }
+
+  @Patch('recordings/:cameraId/:requestId')
+  renameRecording(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.rename('recordings', cameraId, requestId, body);
+  }
+
+  @Patch('live/:cameraId/:requestId')
+  renameLive(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: { displayName?: unknown },
+  ) {
+    return this.rename('live', cameraId, requestId, body);
   }
 
   @Patch('audio/:cameraId/:requestId')
@@ -229,23 +237,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Body() body: { displayName?: unknown },
   ) {
-    return this.library.renameAudio(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-      assertDisplayName(body?.displayName),
-    );
-  }
-
-  @HttpCode(204)
-  @Delete('recordings/:cameraId/:requestId')
-  deleteRecording(
-    @Param('cameraId') cameraId: string,
-    @Param('requestId') requestId: string,
-  ) {
-    return this.library.deleteRecording(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-    );
+    return this.rename('audio', cameraId, requestId, body);
   }
 
   @HttpCode(204)
@@ -254,10 +246,34 @@ export class MediaLibraryController {
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
   ) {
-    return this.library.deleteCapture(
-      assertIdentifier(cameraId, 'cameraId'),
-      assertIdentifier(requestId, 'requestId'),
-    );
+    return this.delete('captures', cameraId, requestId);
+  }
+
+  @HttpCode(204)
+  @Delete('timelapses/:cameraId/:requestId')
+  deleteTimelapse(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.delete('timelapses', cameraId, requestId);
+  }
+
+  @HttpCode(204)
+  @Delete('recordings/:cameraId/:requestId')
+  deleteRecording(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.delete('recordings', cameraId, requestId);
+  }
+
+  @HttpCode(204)
+  @Delete('live/:cameraId/:requestId')
+  deleteLive(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.delete('live', cameraId, requestId);
   }
 
   @HttpCode(204)
@@ -266,7 +282,66 @@ export class MediaLibraryController {
     @Param('cameraId') cameraId: string,
     @Param('requestId') requestId: string,
   ) {
-    return this.library.deleteAudio(
+    return this.delete('audio', cameraId, requestId);
+  }
+
+  private parseQuery(query: Record<string, string | undefined>) {
+    return {
+      cameraId: query.cameraId
+        ? assertIdentifier(query.cameraId, 'cameraId')
+        : undefined,
+      cursor: query.cursor,
+      limit: query.limit !== undefined ? Number(query.limit) : undefined,
+    };
+  }
+
+  private sendThumbnail(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+    response: Response,
+  ): void {
+    this.sendIfExists(
+      this.storage.thumbnailPath(
+        kind,
+        assertIdentifier(cameraId, 'cameraId'),
+        assertIdentifier(requestId, 'requestId'),
+      ),
+      response,
+    );
+  }
+
+  private sendFile(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+    response: Response,
+  ): void {
+    const filePath = this.storage.finalFilePath(
+      kind,
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+    this.sendIfExists(filePath, response);
+  }
+
+  private rename(
+    kind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+    body: { displayName?: unknown },
+  ) {
+    return this.library.renameResource(
+      kind,
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+      assertDisplayName(body?.displayName),
+    );
+  }
+
+  private delete(kind: MediaResourceKind, cameraId: string, requestId: string) {
+    return this.library.deleteResource(
+      kind,
       assertIdentifier(cameraId, 'cameraId'),
       assertIdentifier(requestId, 'requestId'),
     );

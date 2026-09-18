@@ -1,12 +1,14 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { existsSync } from 'node:fs';
 import { MediaStorageService } from '../storage/media-storage.service';
 import type {
+  AudioThumbnailVariant,
+  MediaResourceKind,
+} from '../storage/storage.types';
+import { assignDayCounters, withCounterSuffix } from './day-counter';
+import type {
   MediaItemDto,
+  MediaKind,
   MediaListQuery,
   MediaListResult,
 } from './media-library.types';
@@ -16,29 +18,67 @@ const THUMBNAIL_PLACEHOLDER_URL = '/api/v1/media/thumbnail-placeholder';
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+const kindByResourceKind: Record<MediaResourceKind, MediaKind> = {
+  captures: 'image',
+  timelapses: 'timelapse',
+  recordings: 'recording',
+  live: 'live',
+  audio: 'audio',
+};
+
 @Injectable()
 export class MediaLibraryService {
   constructor(private readonly storage: MediaStorageService) {}
 
-  async list(query: MediaListQuery): Promise<MediaListResult> {
+  /** Lists a single resource kind (captures/timelapses/recordings/audio), day-counter suffixed and cursor-paginated. */
+  listKind(
+    resourceKind: MediaResourceKind,
+    query: MediaListQuery,
+  ): MediaListResult {
+    return this.paginate(this.itemsForKind(resourceKind), query);
+  }
+
+  /** Lists recordings + live merged (the dashboard's single "video" panel), per spec. */
+  listVideo(query: MediaListQuery): MediaListResult {
+    return this.paginate(
+      [...this.itemsForKind('recordings'), ...this.itemsForKind('live')],
+      query,
+    );
+  }
+
+  private paginate(
+    rawItems: MediaItemDto[],
+    query: MediaListQuery,
+  ): MediaListResult {
     const limit = this.parseLimit(query.limit);
-    const items = (await this.collectAll())
-      .filter((item) => !query.cameraId || item.cameraId === query.cameraId)
-      .filter((item) => !query.kind || item.kind === query.kind)
-      .sort((left, right) =>
-        this.sortKey(right).localeCompare(this.sortKey(left)),
-      );
+    const filtered = rawItems.filter(
+      (item) => !query.cameraId || item.cameraId === query.cameraId,
+    );
+
+    // Day-counter suffix must be computed over the FULL filtered set before
+    // any cursor-based slicing, otherwise an item at a page boundary would
+    // incorrectly restart its counter (e.g. the 21st item of the day
+    // reading _001 instead of _021 just because it landed on page 2).
+    const counters = assignDayCounters(filtered);
+    const withSuffix = filtered.map((item) => ({
+      ...item,
+      fileName: withCounterSuffix(item.fileName, counters.get(item) ?? 1),
+    }));
+
+    const sorted = withSuffix.sort((left, right) =>
+      this.sortKey(right).localeCompare(this.sortKey(left)),
+    );
 
     const cursor = this.decodeCursor(query.cursor);
     const startIndex = cursor
-      ? items.findIndex((item) => this.sortKey(item) === cursor)
+      ? sorted.findIndex((item) => this.sortKey(item) === cursor)
       : 0;
     if (cursor && startIndex === -1) {
       throw new BadRequestException('cursor does not match any known item');
     }
 
-    const page = items.slice(startIndex, startIndex + limit);
-    const nextItem = items[startIndex + limit];
+    const page = sorted.slice(startIndex, startIndex + limit);
+    const nextItem = sorted[startIndex + limit];
     return {
       items: page,
       nextCursor: nextItem
@@ -47,144 +87,84 @@ export class MediaLibraryService {
     };
   }
 
-  private async collectAll(): Promise<MediaItemDto[]> {
-    const [audio, liveRecordings] = await Promise.all([
-      this.audioItems(),
-      this.liveRecordingItems(),
-    ]);
-    return [
-      ...this.recordingItems(),
-      ...this.captureItems(),
-      ...audio,
-      ...liveRecordings,
-    ];
-  }
+  private itemsForKind(resourceKind: MediaResourceKind): MediaItemDto[] {
+    const kind = kindByResourceKind[resourceKind];
+    return this.storage.listMetadata(resourceKind).map((metadata) => {
+      const isAudio = resourceKind === 'audio';
+      const darkPath = isAudio
+        ? this.storage.audioThumbnailPath(
+            metadata.cameraId,
+            metadata.requestId,
+            'dark',
+          )
+        : undefined;
+      const lightPath = isAudio
+        ? this.storage.audioThumbnailPath(
+            metadata.cameraId,
+            metadata.requestId,
+            'light',
+          )
+        : undefined;
 
-  private recordingItems(): MediaItemDto[] {
-    return this.storage
-      .listRecordingManifests()
-      .filter((manifest) => manifest.complete)
-      .map((manifest) => ({
-        id: `recording:${manifest.cameraId}:${manifest.requestId}`,
-        kind: 'recording',
-        cameraId: manifest.cameraId,
-        requestId: manifest.requestId,
-        fileName: `${manifest.requestId}.mjpeg`,
-        displayName: manifest.displayName,
-        capturedAt: manifest.createdAt,
-        durationSeconds: manifest.requestedDurationSeconds,
-        frameCount: manifest.totalFrames,
-        size: Object.values(manifest.parts).reduce(
-          (total, part) => total + part.size,
-          0,
-        ),
-        thumbnailUrl: this.thumbnailUrl(
-          this.storage.recordingThumbnailPath(
-            manifest.cameraId,
-            manifest.requestId,
-          ),
-          `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
-        ),
-        downloadUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/file`,
-        transcodeUrl: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/transcode`,
-        mp4Url: `/api/v1/recordings/${manifest.cameraId}/${manifest.requestId}/mp4`,
-      }));
-  }
-
-  private captureItems(): MediaItemDto[] {
-    return this.storage.listCaptureManifests().map((manifest) => {
-      const latest = [...manifest.captures].sort((left, right) =>
-        right.storedAt.localeCompare(left.storedAt),
-      )[0];
-      const kind = manifest.captures.length > 1 ? 'timelapse' : 'image';
-      const isTimelapse = kind === 'timelapse';
       return {
-        id: `${kind}:${manifest.cameraId}:${manifest.requestId}`,
+        id: `${kind}:${metadata.cameraId}:${metadata.requestId}`,
         kind,
-        cameraId: manifest.cameraId,
-        requestId: manifest.requestId,
-        fileName: latest.fileName,
-        displayName: manifest.displayName,
-        capturedAt: latest.storedAt,
-        frameCount: manifest.captures.length,
-        size: manifest.captures.reduce((total, item) => total + item.size, 0),
-        thumbnailUrl: this.thumbnailUrl(
-          this.storage.captureThumbnailPath(
-            manifest.cameraId,
-            manifest.requestId,
-          ),
-          `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/thumbnail`,
-        ),
-        downloadUrl: `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/file?fileName=${encodeURIComponent(latest.fileName)}`,
-        transcodeUrl: isTimelapse
-          ? `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/transcode`
+        cameraId: metadata.cameraId,
+        requestId: metadata.requestId,
+        fileName: metadata.fileName,
+        displayName: metadata.displayName,
+        capturedAt: metadata.completedAt,
+        durationSeconds: metadata.durationSeconds,
+        frameCount: metadata.totalFrames,
+        size: metadata.size,
+        thumbnailUrl: isAudio
+          ? this.thumbnailUrl(
+              darkPath!,
+              this.audioThumbnailUrl(
+                metadata.cameraId,
+                metadata.requestId,
+                'dark',
+              ),
+            )
+          : this.thumbnailUrl(
+              this.storage.thumbnailPath(
+                resourceKind,
+                metadata.cameraId,
+                metadata.requestId,
+              ),
+              `/api/v1/${resourceKind}/${metadata.cameraId}/${metadata.requestId}/thumbnail`,
+            ),
+        thumbnailUrlDark: isAudio
+          ? this.thumbnailUrl(
+              darkPath!,
+              this.audioThumbnailUrl(
+                metadata.cameraId,
+                metadata.requestId,
+                'dark',
+              ),
+            )
           : undefined,
-        mp4Url: isTimelapse
-          ? `/api/v1/captures/${manifest.cameraId}/${manifest.requestId}/mp4`
+        thumbnailUrlLight: isAudio
+          ? this.thumbnailUrl(
+              lightPath!,
+              this.audioThumbnailUrl(
+                metadata.cameraId,
+                metadata.requestId,
+                'light',
+              ),
+            )
           : undefined,
-      };
+        downloadUrl: `/api/v1/${resourceKind}/${metadata.cameraId}/${metadata.requestId}/file`,
+      } satisfies MediaItemDto;
     });
   }
 
-  private async liveRecordingItems(): Promise<MediaItemDto[]> {
-    const files = await this.storage.listCompletedLiveRecordings();
-    return files.map((file) => ({
-      id: `live-recording:${file.cameraId}:${file.requestId}`,
-      kind: 'recording',
-      cameraId: file.cameraId,
-      requestId: file.requestId,
-      fileName: file.fileName,
-      capturedAt: file.finishedAt,
-      size: file.size,
-      thumbnailUrl: this.thumbnailUrl(
-        this.storage.recordingThumbnailPath(file.cameraId, file.requestId),
-        `/api/v1/recordings/${file.cameraId}/${file.requestId}/thumbnail`,
-      ),
-      downloadUrl: `/api/v1/live-recordings/${file.cameraId}/${file.requestId}/file`,
-      transcodeUrl: `/api/v1/recordings/${file.cameraId}/${file.requestId}/transcode`,
-      mp4Url: `/api/v1/recordings/${file.cameraId}/${file.requestId}/mp4`,
-    }));
-  }
-
-  private async audioItems(): Promise<MediaItemDto[]> {
-    const manifests = await this.storage.listAudioManifests();
-    return manifests.map((manifest) => {
-      const darkPath = this.storage.audioThumbnailPath(
-        manifest.cameraId,
-        manifest.requestId,
-        'dark',
-      );
-      const lightPath = this.storage.audioThumbnailPath(
-        manifest.cameraId,
-        manifest.requestId,
-        'light',
-      );
-      // Both variants are generated together (ThumbnailService.ensureWaveforms),
-      // so require both before linking to either -- a partial pair would 404
-      // in whichever theme's variant didn't make it.
-      const bothGenerated = existsSync(darkPath) && existsSync(lightPath);
-      const darkUrl = bothGenerated
-        ? `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail?variant=dark`
-        : THUMBNAIL_PLACEHOLDER_URL;
-      const lightUrl = bothGenerated
-        ? `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/thumbnail?variant=light`
-        : THUMBNAIL_PLACEHOLDER_URL;
-      return {
-        id: `audio:${manifest.cameraId}:${manifest.requestId}`,
-        kind: 'audio',
-        cameraId: manifest.cameraId,
-        requestId: manifest.requestId,
-        fileName: manifest.fileName,
-        displayName: manifest.displayName,
-        capturedAt: manifest.storedAt,
-        durationSeconds: manifest.durationSeconds,
-        size: manifest.size,
-        thumbnailUrl: darkUrl,
-        thumbnailUrlDark: darkUrl,
-        thumbnailUrlLight: lightUrl,
-        downloadUrl: `/api/v1/audio/${manifest.cameraId}/${manifest.requestId}/file`,
-      };
-    });
+  private audioThumbnailUrl(
+    cameraId: string,
+    requestId: string,
+    variant: AudioThumbnailVariant,
+  ): string {
+    return `/api/v1/audio/${cameraId}/${requestId}/thumbnail?variant=${variant}`;
   }
 
   /** Real thumbnail URL if the sidecar file has already been generated, else the shared placeholder. */
@@ -192,61 +172,26 @@ export class MediaLibraryService {
     return existsSync(thumbnailPath) ? thumbnailUrl : THUMBNAIL_PLACEHOLDER_URL;
   }
 
-  listCaptureFrames(cameraId: string, requestId: string) {
-    const manifest = this.storage
-      .listCaptureManifests()
-      .find(
-        (item) => item.cameraId === cameraId && item.requestId === requestId,
-      );
-    if (!manifest) {
-      throw new NotFoundException('capture request was not found');
-    }
-    return {
-      items: [...manifest.captures]
-        .sort((left, right) => left.sequence - right.sequence)
-        .map((capture) => ({
-          fileName: capture.fileName,
-          sequence: capture.sequence,
-          size: capture.size,
-          storedAt: capture.storedAt,
-        })),
-    };
+  deleteResource(
+    resourceKind: MediaResourceKind,
+    cameraId: string,
+    requestId: string,
+  ): Promise<void> {
+    return this.storage.deleteResource(resourceKind, cameraId, requestId);
   }
 
-  deleteRecording(cameraId: string, requestId: string): Promise<void> {
-    return this.storage.deleteRecording(cameraId, requestId);
-  }
-
-  deleteCapture(cameraId: string, requestId: string): Promise<void> {
-    return this.storage.deleteCapture(cameraId, requestId);
-  }
-
-  deleteAudio(cameraId: string, requestId: string): Promise<void> {
-    return this.storage.deleteAudio(cameraId, requestId);
-  }
-
-  renameRecording(
+  renameResource(
+    resourceKind: MediaResourceKind,
     cameraId: string,
     requestId: string,
     displayName: string,
   ): Promise<void> {
-    return this.storage.renameRecording(cameraId, requestId, displayName);
-  }
-
-  renameCapture(
-    cameraId: string,
-    requestId: string,
-    displayName: string,
-  ): Promise<void> {
-    return this.storage.renameCapture(cameraId, requestId, displayName);
-  }
-
-  renameAudio(
-    cameraId: string,
-    requestId: string,
-    displayName: string,
-  ): Promise<void> {
-    return this.storage.renameAudio(cameraId, requestId, displayName);
+    return this.storage.renameResource(
+      resourceKind,
+      cameraId,
+      requestId,
+      displayName,
+    );
   }
 
   private sortKey(item: MediaItemDto): string {

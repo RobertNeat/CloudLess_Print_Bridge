@@ -50,14 +50,12 @@ describe('Video Service Hub (e2e)', () => {
     });
   });
 
-  it('accepts a firmware-compatible JPEG upload', async () => {
+  it('accepts a firmware-compatible JPEG upload and finalizes it', async () => {
     const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
     const response = await request(app.getHttpServer())
-      .post('/api/v1/cameras/a1b2c3/captures')
+      .post('/api/v1/cameras/a1b2c3/captures/capture-001')
       .set('Content-Type', 'image/jpeg')
-      .set('X-Request-Id', 'capture-001')
       .set('X-Resolution', 'UXGA')
-      .set('X-Capture-Sequence', '0')
       .send(jpeg)
       .expect(201);
     expect(response.body).toMatchObject({
@@ -65,19 +63,47 @@ describe('Video Service Hub (e2e)', () => {
       duplicate: false,
       cameraId: 'a1b2c3',
       requestId: 'capture-001',
-      resolution: 'UXGA',
-      sequence: 0,
+      complete: true,
     });
   });
 
   it('rejects a media type that only starts like image/jpeg', () =>
     request(app.getHttpServer())
-      .post('/api/v1/cameras/a1b2c3/captures')
+      .post('/api/v1/cameras/a1b2c3/captures/capture-002')
       .set('Content-Type', 'image/jpeg-invalid')
-      .set('X-Request-Id', 'capture-002')
       .set('X-Resolution', 'VGA')
       .send(Buffer.from('not-a-jpeg'))
       .expect(400));
+
+  it('lists a finalized capture and serves its file with a media token', async () => {
+    const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+    await request(app.getHttpServer())
+      .post('/api/v1/cameras/a1b2c3/captures/capture-list-1')
+      .set('Content-Type', 'image/jpeg')
+      .set('X-Resolution', 'UXGA')
+      .send(jpeg)
+      .expect(201);
+
+    const list = await request(app.getHttpServer())
+      .get('/api/v1/captures')
+      .expect(200);
+    const body = list.body as {
+      items: Array<{
+        requestId: string;
+        kind: string;
+        cameraId: string;
+        fileName: string;
+      }>;
+    };
+    const items = body.items;
+    const item = items.find((entry) => entry.requestId === 'capture-list-1');
+    expect(item).toMatchObject({ kind: 'image', cameraId: 'a1b2c3' });
+    expect(item?.fileName).toMatch(/^image-a1b2c3_\d{3}\.jpg$/);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/captures/a1b2c3/capture-list-1/file')
+      .expect(200);
+  });
 });
 
 function restoreEnvironment(name: string, value: string | undefined): void {

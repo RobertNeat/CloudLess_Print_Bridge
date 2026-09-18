@@ -35,18 +35,42 @@ describe('CORS origin configuration', () => {
 describe('timelapse configuration', () => {
   const baseEnv = { VIDEO_SERVICE_HUB_MQTT_PORT: '0' } as NodeJS.ProcessEnv;
 
-  it('defaults the encode inactivity window to 45 seconds', () => {
-    expect(loadServiceConfig(baseEnv).timelapse.encodeInactivityMs).toBe(
-      45_000,
-    );
+  it('defaults the encode fps to 12', () => {
+    expect(loadServiceConfig(baseEnv).timelapse.fps).toBe(12);
   });
 
-  it('reads a configured inactivity window', () => {
+  it('reads a configured fps', () => {
     const config = loadServiceConfig({
       ...baseEnv,
-      TIMELAPSE_ENCODE_INACTIVITY_MS: '5000',
+      TIMELAPSE_FPS: '24',
     });
-    expect(config.timelapse.encodeInactivityMs).toBe(5_000);
+    expect(config.timelapse.fps).toBe(24);
+  });
+});
+
+describe('storage part-size configuration', () => {
+  const baseEnv = { VIDEO_SERVICE_HUB_MQTT_PORT: '0' } as NodeJS.ProcessEnv;
+
+  it('defaults every per-kind byte limit to 8MB', () => {
+    const config = loadServiceConfig(baseEnv);
+    expect(config.storage.captureMaxBytes).toBe(8 * 1024 * 1024);
+    expect(config.storage.timelapsePartMaxBytes).toBe(8 * 1024 * 1024);
+    expect(config.storage.recordingPartMaxBytes).toBe(8 * 1024 * 1024);
+    expect(config.storage.audioPartMaxBytes).toBe(8 * 1024 * 1024);
+  });
+
+  it('reads each kind-specific override independently', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES: String(1024),
+      VIDEO_SERVICE_HUB_TIMELAPSE_PART_MAX_BYTES: String(2048),
+      VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES: String(4096),
+      VIDEO_SERVICE_HUB_AUDIO_PART_MAX_BYTES: String(8192),
+    });
+    expect(config.storage.captureMaxBytes).toBe(1024);
+    expect(config.storage.timelapsePartMaxBytes).toBe(2048);
+    expect(config.storage.recordingPartMaxBytes).toBe(4096);
+    expect(config.storage.audioPartMaxBytes).toBe(8192);
   });
 });
 
