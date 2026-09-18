@@ -44,4 +44,32 @@ export class TranscodingController {
     }
     response.sendFile(filePath);
   }
+
+  @Post('captures/:cameraId/:requestId/transcode')
+  transcodeTimelapse(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return this.transcoding.ensureTimelapseMp4(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+  }
+
+  @UseGuards(MediaTokenGuard)
+  @Get('captures/:cameraId/:requestId/mp4')
+  timelapseMp4(
+    @Param('cameraId') cameraId: string,
+    @Param('requestId') requestId: string,
+    @Res() response: Response,
+  ): void {
+    const filePath = this.transcoding.resolveTimelapseMp4Path(
+      assertIdentifier(cameraId, 'cameraId'),
+      assertIdentifier(requestId, 'requestId'),
+    );
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('transcoded timelapse was not found');
+    }
+    response.sendFile(filePath);
+  }
 }

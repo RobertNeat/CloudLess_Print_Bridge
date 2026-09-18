@@ -285,6 +285,23 @@ describe('MediaLibraryService', () => {
       expect(result.items).toHaveLength(1);
       expect(result.items[0].requestId).toBe('timelapse-1');
     });
+
+    it('exposes transcodeUrl/mp4Url for a timelapse but not for a single-frame image', async () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+      await storage.storeCapture(requestFrom(jpeg), 'camera-1', 'image-1', 'VGA', 0);
+      await storage.storeCapture(requestFrom(jpeg), 'camera-1', 'timelapse-1', 'VGA', 0);
+      await storage.storeCapture(requestFrom(jpeg), 'camera-1', 'timelapse-1', 'VGA', 1);
+
+      const result = await library.list({});
+      const image = result.items.find((item) => item.kind === 'image');
+      const timelapse = result.items.find((item) => item.kind === 'timelapse');
+
+      expect(image).toMatchObject({ transcodeUrl: undefined, mp4Url: undefined });
+      expect(timelapse).toMatchObject({
+        transcodeUrl: '/api/v1/captures/camera-1/timelapse-1/transcode',
+        mp4Url: '/api/v1/captures/camera-1/timelapse-1/mp4',
+      });
+    });
   });
 
   describe('thumbnailUrl', () => {

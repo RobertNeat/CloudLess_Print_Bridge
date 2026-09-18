@@ -24,6 +24,7 @@ import {
 } from '../common/validation';
 import { MediaStorageService } from '../storage/media-storage.service';
 import { ThumbnailService } from '../thumbnails/thumbnail.service';
+import { TranscodingService } from '../transcoding/transcoding.service';
 
 @Controller('api/v1/cameras')
 export class CameraIngestController {
@@ -33,6 +34,7 @@ export class CameraIngestController {
     private readonly storage: MediaStorageService,
     private readonly streamTokens: StreamTokenService,
     private readonly thumbnails: ThumbnailService,
+    private readonly transcoding: TranscodingService,
   ) {}
 
   @Post(':cameraId/captures')
@@ -66,6 +68,10 @@ export class CameraIngestController {
       sequence,
     );
     await this.generateCaptureThumbnail(cameraId, requestId, result);
+    // Debounced, not per-frame: this only resets a timer. The actual encode
+    // (ensureTimelapseMp4) runs once, after frames stop arriving for this
+    // request -- see TranscodingService.scheduleTimelapseEncodeAfterInactivity.
+    this.transcoding.scheduleTimelapseEncodeAfterInactivity(cameraId, requestId);
     return result;
   }
 

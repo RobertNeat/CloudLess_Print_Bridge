@@ -23,6 +23,10 @@ const kindByPath: { pattern: RegExp; kind: MediaFileKind }[] = [
   },
   { pattern: /^\/api\/v1\/captures\/[^/]+\/[^/]+\/file$/, kind: 'capture' },
   {
+    pattern: /^\/api\/v1\/captures\/[^/]+\/[^/]+\/mp4$/,
+    kind: 'capture-mp4',
+  },
+  {
     pattern: /^\/api\/v1\/live-recordings\/[^/]+\/[^/]+\/file$/,
     kind: 'live-recording',
   },
