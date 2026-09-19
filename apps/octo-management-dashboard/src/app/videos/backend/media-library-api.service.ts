@@ -2,21 +2,28 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { MediaKind } from '../videos-dashboard.models';
-import type { BackendCaptureFramesResponse } from './video-api.types';
 import { VideoServiceHubConfig } from './video-service-hub.config';
 
+/** Mirrors the hub's per-kind URL segments (media-library.controller.ts in video-service-hub). */
 const pathByKind: Record<MediaKind, string> = {
   audio: 'audio',
   recording: 'recordings',
-  timelapse: 'captures',
+  live: 'live',
+  timelapse: 'timelapses',
   image: 'captures',
 };
 
 /**
- * Rename/delete/frame-listing client for recorded media. Kept separate from
+ * Rename/delete client for recorded media. Kept separate from
  * VideosRepositoryPort (read-only `load()`) so the mock data service (the
  * fallback port implementation) is unaffected, matching the precedent set by
  * CameraCommandApiService/CameraRegistryApiService.
+ *
+ * There is no client-triggered transcode endpoint anymore: the hub
+ * transcodes eagerly/synchronously the moment a resource's manifest reports
+ * complete (see TranscodingService/CameraIngestController in
+ * video-service-hub), so MediaItem.downloadUrl already points at the
+ * finished asset by the time it appears in a list response.
  */
 @Injectable({ providedIn: 'root' })
 export class MediaLibraryApiService {
@@ -43,28 +50,5 @@ export class MediaLibraryApiService {
         `${this.config.baseUrl}/api/v1/${pathByKind[kind]}/${encodeURIComponent(cameraId)}/${encodeURIComponent(requestId)}`,
       ),
     );
-  }
-
-  /**
-   * Triggers (or, if already done, no-ops on) MP4 transcoding of one
-   * recording. transcodeUrl is the absolute URL already mapped onto
-   * MediaItem by HttpVideosDataService. Retried a few times with backoff by
-   * the caller (media-preview.ts) since first-time encoding can briefly
-   * outlast a transient network hiccup.
-   */
-  async transcode(transcodeUrl: string): Promise<void> {
-    await firstValueFrom(this.http.post(transcodeUrl, {}));
-  }
-
-  async listCaptureFrames(
-    cameraId: string,
-    requestId: string,
-  ): Promise<BackendCaptureFramesResponse['items']> {
-    const response = await firstValueFrom(
-      this.http.get<BackendCaptureFramesResponse>(
-        `${this.config.baseUrl}/api/v1/captures/${encodeURIComponent(cameraId)}/${encodeURIComponent(requestId)}/frames`,
-      ),
-    );
-    return response.items;
   }
 }

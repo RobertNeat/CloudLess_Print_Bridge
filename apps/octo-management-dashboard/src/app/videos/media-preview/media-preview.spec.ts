@@ -8,43 +8,65 @@ import { MediaPreview } from './media-preview';
 const recording: MediaItem = {
   id: 'recording:camera-1:req-1',
   kind: 'recording',
-  name: 'req-1.mjpeg',
+  name: 'req-1.mp4',
   sourceId: 'camera-1',
   requestId: 'req-1',
   capturedAt: '2026-08-03T10:00:00Z',
   downloadUrl: 'http://hub/api/v1/recordings/camera-1/req-1/file',
-  transcodeUrl: 'http://hub/api/v1/recordings/camera-1/req-1/transcode',
-  mp4Url: 'http://hub/api/v1/recordings/camera-1/req-1/mp4',
+};
+
+const live: MediaItem = {
+  id: 'live:camera-1:live-1',
+  kind: 'live',
+  name: 'live-1.mp4',
+  sourceId: 'camera-1',
+  requestId: 'live-1',
+  capturedAt: '2026-08-03T10:00:00Z',
+  downloadUrl: 'http://hub/api/v1/live/camera-1/live-1/file',
 };
 
 const timelapse: MediaItem = {
   id: 'timelapse:camera-1:tl-1',
   kind: 'timelapse',
-  name: '000000.jpg',
+  name: 'tl-1.mp4',
   sourceId: 'camera-1',
   requestId: 'tl-1',
   capturedAt: '2026-08-03T10:00:00Z',
-  downloadUrl: 'http://hub/api/v1/captures/camera-1/tl-1/file?fileName=000001.jpg',
-  transcodeUrl: 'http://hub/api/v1/captures/camera-1/tl-1/transcode',
-  mp4Url: 'http://hub/api/v1/captures/camera-1/tl-1/mp4',
+  downloadUrl: 'http://hub/api/v1/timelapses/camera-1/tl-1/file',
 };
 
-describe('MediaPreview mp4 playback', () => {
-  let transcode: ReturnType<typeof vi.fn>;
+const image: MediaItem = {
+  id: 'image:camera-1:img-1',
+  kind: 'image',
+  name: 'img-1.jpg',
+  sourceId: 'camera-1',
+  requestId: 'img-1',
+  capturedAt: '2026-08-03T10:00:00Z',
+  downloadUrl: 'http://hub/api/v1/captures/camera-1/img-1/file',
+};
+
+const audio: MediaItem = {
+  id: 'audio:camera-1:aud-1',
+  kind: 'audio',
+  name: 'aud-1.wav',
+  sourceId: 'camera-1',
+  requestId: 'aud-1',
+  capturedAt: '2026-08-03T10:00:00Z',
+  downloadUrl: 'http://hub/api/v1/audio/camera-1/aud-1/file',
+};
+
+describe('MediaPreview playback', () => {
   let acquire: ReturnType<typeof vi.fn>;
   let deleteMedia: ReturnType<typeof vi.fn>;
-  let listCaptureFrames: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    transcode = vi.fn().mockResolvedValue(undefined);
     acquire = vi.fn().mockResolvedValue('tok-123');
     deleteMedia = vi.fn().mockResolvedValue(undefined);
-    listCaptureFrames = vi.fn().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         {
           provide: MediaLibraryApiService,
-          useValue: { transcode, listCaptureFrames, delete: deleteMedia },
+          useValue: { delete: deleteMedia },
         },
         {
           provide: MediaTokenApiService,
@@ -58,129 +80,104 @@ describe('MediaPreview mp4 playback', () => {
     TestBed.inject(I18nService).language.set('en');
   });
 
-  it('triggers transcode then acquires a recording-mp4 token and sets a tokened mp4 src', async () => {
+  it('acquires a recording token and sets a tokened mp4 src directly, with no transcode call', async () => {
     const fixture = TestBed.createComponent(MediaPreview);
     fixture.componentRef.setInput('item', recording);
     fixture.detectChanges();
     await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
 
-    expect(transcode).toHaveBeenCalledWith(recording.transcodeUrl);
     expect(acquire).toHaveBeenCalledWith({
-      kind: 'recording-mp4',
+      kind: 'recording',
       cameraId: 'camera-1',
       requestId: 'req-1',
     });
     expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
-      `${recording.mp4Url}?mediaToken=tok-123`,
+      `${recording.downloadUrl}?mediaToken=tok-123`,
     );
   });
 
-  it('triggers transcode then acquires a capture-mp4 token for a timelapse with transcodeUrl/mp4Url', async () => {
+  it('acquires a live token and plays a live item through Mp4Player', async () => {
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', live);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(acquire).toHaveBeenCalledWith({
+      kind: 'live',
+      cameraId: 'camera-1',
+      requestId: 'live-1',
+    });
+    expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
+      `${live.downloadUrl}?mediaToken=tok-123`,
+    );
+    expect(fixture.nativeElement.querySelector('#media-preview-mp4-player')).not.toBeNull();
+  });
+
+  it('acquires a timelapse token and plays a timelapse through Mp4Player', async () => {
     const fixture = TestBed.createComponent(MediaPreview);
     fixture.componentRef.setInput('item', timelapse);
     fixture.detectChanges();
     await fixture.whenStable();
-    await Promise.resolve();
-    await Promise.resolve();
 
-    expect(transcode).toHaveBeenCalledWith(timelapse.transcodeUrl);
     expect(acquire).toHaveBeenCalledWith({
-      kind: 'capture-mp4',
+      kind: 'timelapse',
       cameraId: 'camera-1',
       requestId: 'tl-1',
     });
     expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
-      `${timelapse.mp4Url}?mediaToken=tok-123`,
+      `${timelapse.downloadUrl}?mediaToken=tok-123`,
     );
   });
 
-  it('falls back to the frame slider for a timelapse with no transcodeUrl/mp4Url', async () => {
-    const legacyTimelapse: MediaItem = { ...timelapse, transcodeUrl: undefined, mp4Url: undefined };
-    listCaptureFrames.mockResolvedValue([{ fileName: '000000.jpg', sequence: 0 }]);
-
+  it('acquires a capture token and sets a tokened image src for an image item', async () => {
     const fixture = TestBed.createComponent(MediaPreview);
-    fixture.componentRef.setInput('item', legacyTimelapse);
+    fixture.componentRef.setInput('item', image);
     fixture.detectChanges();
     await fixture.whenStable();
-    // showFrame's token acquisition is one more microtask beyond
-    // loadTimelapseFrames' own await, so whenStable alone can observe
-    // frames already populated but loading() not yet flipped back to false.
-    await new Promise((resolve) => setTimeout(resolve, 0));
     fixture.detectChanges();
 
-    expect(transcode).not.toHaveBeenCalled();
-    expect(listCaptureFrames).toHaveBeenCalledWith('camera-1', 'tl-1');
-    expect(
-      fixture.nativeElement.querySelector('#media-preview-frame-slider'),
-    ).not.toBeNull();
+    expect(acquire).toHaveBeenCalledWith({
+      kind: 'capture',
+      cameraId: 'camera-1',
+      requestId: 'img-1',
+    });
+    expect(fixture.nativeElement.querySelector('#media-preview-image')?.getAttribute('src')).toBe(
+      `${image.downloadUrl}?mediaToken=tok-123`,
+    );
   });
 
-  it('retries a failing transcode call before giving up', async () => {
-    vi.useFakeTimers();
-    try {
-      transcode.mockRejectedValueOnce(new Error('network error'));
-      transcode.mockRejectedValueOnce(new Error('network error'));
-      transcode.mockResolvedValueOnce(undefined);
+  it('acquires an audio token and sets a tokened audio src', async () => {
+    const fixture = TestBed.createComponent(MediaPreview);
+    fixture.componentRef.setInput('item', audio);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-      const fixture = TestBed.createComponent(MediaPreview);
-      fixture.componentRef.setInput('item', recording);
-      fixture.detectChanges();
-
-      // Let the first (failing) attempt's microtasks settle, then advance
-      // past its retry delay; repeat for the second failing attempt.
-      await vi.advanceTimersByTimeAsync(1500);
-      await vi.advanceTimersByTimeAsync(1500);
-      await vi.runAllTimersAsync();
-
-      expect(transcode).toHaveBeenCalledTimes(3);
-      expect(acquire).toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(acquire).toHaveBeenCalledWith({
+      kind: 'audio',
+      cameraId: 'camera-1',
+      requestId: 'aud-1',
+    });
+    expect(fixture.nativeElement.querySelector('#media-preview-audio')?.getAttribute('src')).toBe(
+      `${audio.downloadUrl}?mediaToken=tok-123`,
+    );
   });
 
-  it('surfaces a transcode failure after exhausting retries, without acquiring a token', async () => {
-    vi.useFakeTimers();
-    try {
-      transcode.mockRejectedValue(new Error('still failing'));
-
-      const fixture = TestBed.createComponent(MediaPreview);
-      fixture.componentRef.setInput('item', recording);
-      fixture.detectChanges();
-
-      await vi.runAllTimersAsync();
-
-      // MAX_TRANSCODE_RETRIES = 3 retries after the first attempt => 4 calls total.
-      expect(transcode).toHaveBeenCalledTimes(4);
-      expect(acquire).not.toHaveBeenCalled();
-      expect(
-        (fixture.componentInstance as unknown as { mp4TranscodeFailed: () => boolean })
-          .mp4TranscodeFailed(),
-      ).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('re-acquires a token on a player playback error instead of retrying the transcode', async () => {
+  it('re-acquires a token on a player playback error', async () => {
     const fixture = TestBed.createComponent(MediaPreview);
     fixture.componentRef.setInput('item', recording);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(transcode).toHaveBeenCalledTimes(1);
+    expect(acquire).toHaveBeenCalledTimes(1);
 
     acquire.mockResolvedValueOnce('tok-456');
     (fixture.componentInstance as unknown as { onMp4PlaybackError: () => void }).onMp4PlaybackError();
     await fixture.whenStable();
 
-    // A playback error re-acquires a token (the failure is assumed to be a
-    // stale/expired token or transient stream hiccup), not a re-transcode.
-    expect(transcode).toHaveBeenCalledTimes(1);
     expect(acquire).toHaveBeenCalledTimes(2);
     expect((fixture.componentInstance as unknown as { mp4Src: () => string }).mp4Src()).toBe(
-      `${recording.mp4Url}?mediaToken=tok-456`,
+      `${recording.downloadUrl}?mediaToken=tok-456`,
     );
   });
 
@@ -231,8 +228,6 @@ describe('MediaPreview mp4 playback', () => {
       id: 'recording:camera-1:req-2',
       requestId: 'req-2',
       downloadUrl: 'http://hub/api/v1/recordings/camera-1/req-2/file',
-      transcodeUrl: 'http://hub/api/v1/recordings/camera-1/req-2/transcode',
-      mp4Url: 'http://hub/api/v1/recordings/camera-1/req-2/mp4',
     };
 
     const fixture = TestBed.createComponent(MediaPreview);

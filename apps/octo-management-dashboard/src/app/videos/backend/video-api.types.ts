@@ -1,4 +1,5 @@
-export type BackendMediaKind = 'recording' | 'image' | 'timelapse' | 'audio';
+/** Mirrors the hub's MediaKind exactly (media-library.types.ts in video-service-hub). */
+export type BackendMediaKind = 'image' | 'timelapse' | 'recording' | 'live' | 'audio';
 
 export interface BackendCameraDto {
   readonly cameraId: string;
@@ -36,17 +37,6 @@ export interface BackendMediaItemDto {
   readonly thumbnailUrlDark?: string;
   readonly thumbnailUrlLight?: string;
   readonly downloadUrl: string;
-  readonly transcodeUrl?: string;
-  readonly mp4Url?: string;
-}
-
-export interface BackendCaptureFramesResponse {
-  readonly items: readonly {
-    readonly fileName: string;
-    readonly sequence: number;
-    readonly size: number;
-    readonly storedAt: string;
-  }[];
 }
 
 export interface BackendMediaTokenResponse {

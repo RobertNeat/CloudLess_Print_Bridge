@@ -36,7 +36,7 @@
             [canStart]="canStartStream()"
             [starting]="streamStarting()"
             [sourceName]="selectedSource()?.name ?? ''"
-            [previewUrl]="selectedSource()?.previewUrl ?? ''"
+            [previewUrl]="liveStreamUrl() || (selectedSource()?.previewUrl ?? '')"
             (activeChanged)="setStreamActive($event)"
             (resolutionChanged)="setResolution($event)"
           />

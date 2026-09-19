@@ -8,6 +8,7 @@ import { I18nService, type TranslationKey } from '../core/i18n.service';
 import { NotificationService } from '../core/notification.service';
 import { CameraCommandApiService } from './backend/camera-command-api.service';
 import { CameraRegistryApiService } from './backend/camera-registry-api.service';
+import { LiveStreamApiService } from './backend/live-stream-api.service';
 import { CameraPanel } from './camera-panel/camera-panel';
 import { MediaLibrary } from './media-library/media-library';
 import { MediaPreview } from './media-preview/media-preview';
@@ -50,6 +51,7 @@ export class VideosDashboardPage implements OnDestroy {
   private readonly repository = inject(VIDEOS_REPOSITORY);
   private readonly cameraCommands = inject(CameraCommandApiService);
   private readonly cameraRegistry = inject(CameraRegistryApiService);
+  private readonly liveStream = inject(LiveStreamApiService);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(I18nService);
@@ -67,6 +69,16 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly newCameraDisplayName = signal('');
   protected readonly recordDialogAction = signal<MediaRecordAction | null>(null);
   protected readonly pendingActions = signal<ReadonlySet<MediaRecordAction>>(new Set());
+  /**
+   * The tokened live-stream URL for the currently-active preview, resolved
+   * once start-live has actually been dispatched (see applyStreamActive) —
+   * unlike the old cameraId-only preview endpoint, the hub's
+   * `/api/v1/live/{cameraId}/{requestId}/stream` route needs a requestId
+   * that doesn't exist before then, so this can't be precomputed per source
+   * the way CameraSource.previewUrl (still populated by the mock data
+   * service) used to be.
+   */
+  protected readonly liveStreamUrl = signal('');
   private activeLiveRequestId: string | null = null;
   private readonly sourcePollHandle: ReturnType<typeof setInterval>;
 
@@ -76,7 +88,7 @@ export class VideosDashboardPage implements OnDestroy {
   });
 
   protected readonly canStartStream = computed(
-    () => this.selectedSource()?.status === 'online' && !!this.selectedSource()?.previewUrl,
+    () => this.selectedSource()?.status === 'online' && !!this.selectedSource()?.commandBaseUrl,
   );
 
   protected readonly hasCommandableSource = computed(() =>
@@ -149,6 +161,7 @@ export class VideosDashboardPage implements OnDestroy {
   }
 
   protected selectSource(sourceId: string): void {
+    this.liveStreamUrl.set('');
     this.dashboard.update((data) =>
       data
         ? {
@@ -192,6 +205,10 @@ export class VideosDashboardPage implements OnDestroy {
           this.dashboard()?.player.resolution ?? 'VGA',
           requestId,
         );
+        // Only now does the hub's /api/v1/live/{cameraId}/{requestId}/stream
+        // route resolve to anything — see LiveStreamApiService's doc comment.
+        const streamUrl = await this.liveStream.buildStreamUrl(source.id, requestId);
+        if (!this.destroyRef.destroyed) this.liveStreamUrl.set(streamUrl);
       } else if (this.activeLiveRequestId) {
         await this.cameraCommands.stopLive(
           source.id,
@@ -199,6 +216,7 @@ export class VideosDashboardPage implements OnDestroy {
           this.activeLiveRequestId,
         );
         this.activeLiveRequestId = null;
+        this.liveStreamUrl.set('');
       }
       if (!this.destroyRef.destroyed) this.updatePlayer({ active });
     } catch {

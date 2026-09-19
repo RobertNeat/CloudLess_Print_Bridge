@@ -5,13 +5,8 @@ import type { MediaKind } from '../videos-dashboard.models';
 import type { BackendMediaTokenResponse } from './video-api.types';
 import { VideoServiceHubConfig } from './video-service-hub.config';
 
-export type MediaTokenKind =
-  | 'recording'
-  | 'recording-mp4'
-  | 'capture'
-  | 'capture-mp4'
-  | 'audio'
-  | 'live-recording';
+/** Mirrors the hub's MediaFileKind exactly (media-token.service.ts in video-service-hub). */
+export type MediaTokenKind = 'capture' | 'timelapse' | 'recording' | 'live' | 'audio';
 
 export type MediaTokenRequest = {
   readonly kind: MediaTokenKind;
@@ -21,23 +16,23 @@ export type MediaTokenRequest = {
 };
 
 /**
- * Frontend MediaKind has no 'live-recording' distinction (both plain
- * recordings and completed live-view recordings map to kind 'recording'),
- * and the backend's file-serve routes are keyed by kind too. Default to
- * 'recording' — completed live-recordings are far rarer than normal timed
- * recordings, and a wrong guess here only means a 401 on playback, not data
- * loss, so this is an acceptable known limitation rather than plumbing a new
- * discriminator through the whole stack for a rare case.
+ * The hub's kind scheme is now unambiguous (no more 'live-recording' vs
+ * 'recording' guessing — a completed live-view recording is its own 'live'
+ * kind, fixed end to end from ingest through the media-library and token
+ * guards), so this is a straight 1:1 mapping from frontend MediaKind to the
+ * hub's MediaFileKind.
  */
 export function mediaKindToTokenKind(kind: MediaKind): MediaTokenKind {
   switch (kind) {
     case 'audio':
       return 'audio';
     case 'image':
-    case 'timelapse':
       return 'capture';
+    case 'timelapse':
+      return 'timelapse';
+    case 'live':
+      return 'live';
     case 'recording':
-    default:
       return 'recording';
   }
 }
