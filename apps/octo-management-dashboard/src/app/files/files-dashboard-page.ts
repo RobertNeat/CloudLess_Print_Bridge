@@ -186,7 +186,8 @@ export class FilesDashboardPage {
         return next;
       });
       return contents;
-    } catch {
+    } catch (error) {
+      console.error(`[files] failed to load folder "${path}":`, error);
       this.failedPaths.update((current) => new Set(current).add(path));
       return null;
     } finally {
@@ -381,7 +382,8 @@ export class FilesDashboardPage {
       this.selectedFile.set(
         this.filesForPath(data.initialFolderPath, data)[0] ?? data.files[0] ?? null,
       );
-    } catch {
+    } catch (error) {
+      console.error('[files] failed to load files dashboard data:', error);
       this.loadingError.set(true);
     }
   }
