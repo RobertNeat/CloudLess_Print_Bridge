@@ -1,4 +1,15 @@
-export type MediaKind = 'audio' | 'recording' | 'timelapse' | 'image';
+/**
+ * Mirrors the hub's MediaFileKind exactly (media-token.service.ts /
+ * media-library.types.ts in video-service-hub): 'capture' | 'timelapse' |
+ * 'recording' | 'live' | 'audio' on the wire map here as 'image' (frontend's
+ * existing name for a capture) | 'timelapse' | 'recording' | 'live' | 'audio'.
+ * 'live' items are completed live-view recordings, grouped into the same
+ * "recordings" media-library section as 'recording' in the UI (the hub also
+ * merges them server-side into one GET /api/v1/video list) but kept as a
+ * distinct MediaKind since it has its own URL segment, token kind, and
+ * rename/delete routes.
+ */
+export type MediaKind = 'audio' | 'recording' | 'live' | 'timelapse' | 'image';
 
 export type CameraMetricCode =
   'status' | 'power' | 'mode' | 'resolution' | 'fps' | 'temperature' | 'cameraIp' | 'serviceIp';
@@ -47,11 +58,15 @@ export interface MediaItem {
    * ThemeService.isDark() at render time, falling back to thumbnailUrl. */
   readonly thumbnailUrlDark?: string;
   readonly thumbnailUrlLight?: string;
-  /** Absent for mock-data items, which have no backing file to fetch/delete/rename. */
+  /**
+   * Absent for mock-data items, which have no backing file to fetch/delete/rename.
+   * Always points at the finished, already-transcoded asset directly — the hub
+   * transcodes eagerly/synchronously on ingest completion, so there is no
+   * separate transcode-trigger URL or intermediate "not ready yet" state to
+   * poll for. Captures are the one kind that were never transcoded to begin
+   * with (still JPEGs); this URL just serves the JPEG for those.
+   */
   readonly downloadUrl?: string;
-  /** Present only for kind: 'recording' and kind: 'timelapse'. See media-preview.ts / mp4-player for the transcode-then-play flow. */
-  readonly transcodeUrl?: string;
-  readonly mp4Url?: string;
 }
 
 export interface VideosDashboardData {

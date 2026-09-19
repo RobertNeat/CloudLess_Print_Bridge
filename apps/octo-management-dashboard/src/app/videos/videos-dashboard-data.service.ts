@@ -14,7 +14,7 @@ const metricCodes = [
   'serviceIp',
 ] as const;
 const metricValueCodes = ['stream', 'enabled', 'ready'] as const;
-const mediaKinds = ['audio', 'recording', 'timelapse', 'image'] as const;
+const mediaKinds = ['audio', 'recording', 'live', 'timelapse', 'image'] as const;
 const locationCodes = ['printerChamber', 'buildPlate', 'workshop'] as const;
 
 @Injectable({ providedIn: 'root' })

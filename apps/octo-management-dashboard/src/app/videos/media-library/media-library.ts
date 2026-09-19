@@ -70,15 +70,28 @@ export class MediaLibrary {
     },
   ];
 
+  /**
+   * A completed live-view recording (kind: 'live') has its own URL segment,
+   * token kind, and rename/delete routes on the hub, but there is no
+   * separate "live recordings" section in this grid — it is grouped into
+   * the same 'recording' section as a plain timed recording, matching the
+   * hub's own GET /api/v1/video, which merges recordings + live into one
+   * list for exactly this dashboard panel.
+   */
+  private sectionFor(kind: MediaKind): MediaKind {
+    return kind === 'live' ? 'recording' : kind;
+  }
+
   private readonly itemsByKind = computed(() => {
     const grouped: Record<MediaKind, MediaItem[]> = {
       audio: [],
       recording: [],
+      live: [],
       timelapse: [],
       image: [],
     };
     for (const item of this.items()) {
-      grouped[item.kind].push(item);
+      grouped[this.sectionFor(item.kind)].push(item);
     }
     return grouped;
   });

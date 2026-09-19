@@ -13,16 +13,17 @@ import type {
   BackendCameraListResponse,
   BackendMediaItemDto,
   BackendMediaListResponse,
-  BackendStreamTokenResponse,
 } from './video-api.types';
 import { VideoServiceHubConfig } from './video-service-hub.config';
 
 const AVAILABLE_RESOLUTIONS = ['QVGA', 'VGA', 'SVGA', 'XGA', 'UXGA'] as const;
 const DEFAULT_RESOLUTION = 'VGA';
-const MAX_LIVE_DURATION_MS = 600_000;
 const DEFAULT_LOCATION_CODE = 'workshop';
 const MEDIA_PAGE_LIMIT = 50;
 const MEDIA_PAGE_DRAIN_CAP = 20;
+
+/** The hub's 4 list endpoints (captures/timelapses/video/audio — video merges recordings+live server-side), each independently cursor-paginated. */
+const LIST_ENDPOINTS = ['captures', 'timelapses', 'video', 'audio'] as const;
 
 /**
  * Real VideosRepositoryPort implementation backed by video-service-hub.
@@ -31,24 +32,21 @@ const MEDIA_PAGE_DRAIN_CAP = 20;
  * only `status` and `cameraIp` are derived from `/api/v1/cameras`; the rest
  * stay absent (CameraMetric.value/valueCode are both optional) rather than
  * being faked.
+ *
+ * The live MJPEG preview URL is NOT built here: the hub's
+ * `GET /api/v1/live/{cameraId}/{requestId}/stream` route needs a requestId
+ * that only exists once start-live has actually been dispatched, so
+ * CameraSource carries no previewUrl — see LiveStreamApiService, called by
+ * VideosDashboardPage once it has minted that requestId.
  */
 @Injectable({ providedIn: 'root' })
 export class HttpVideosDataService implements VideosRepositoryPort {
   private readonly http = inject(HttpClient);
   private readonly config = inject(VideoServiceHubConfig);
 
-  /**
-   * Stream tokens are cached per cameraId for the lifetime of this service
-   * (a page load), because issuing a new token for the same (user, camera)
-   * pair invalidates the previous one on the backend — re-fetching on every
-   * `load()` (e.g. from retryLoad()) would kick any viewer already watching
-   * that camera's live stream off their own token.
-   */
-  private readonly streamTokens = new Map<string, string>();
-
   async load(): Promise<VideosDashboardData> {
     const [cameras, media] = await Promise.all([this.fetchCameras(), this.fetchAllMedia()]);
-    const sources = await this.mapSources(cameras);
+    const sources = this.mapSources(cameras);
     const firstOnline = sources.find((source) => source.status === 'online');
     const selectedSource = firstOnline ?? sources[0];
 
@@ -83,14 +81,30 @@ export class HttpVideosDataService implements VideosRepositoryPort {
     return response.items;
   }
 
+  /**
+   * Drains each of the 4 list endpoints (captures/timelapses/video/audio) in
+   * parallel and merges the results client-side. The dashboard's media
+   * library always displays every kind together in one grid (grouped into
+   * sections by kind — see MediaLibrary), so there is no view that only
+   * needs one kind's items; draining separately per kind and merging here is
+   * simplest for that single consumer. Each drain paginates independently
+   * since the hub's cursors are scoped per endpoint.
+   */
   private async fetchAllMedia(): Promise<readonly BackendMediaItemDto[]> {
+    const results = await Promise.all(
+      LIST_ENDPOINTS.map((endpoint) => this.drainEndpoint(endpoint)),
+    );
+    return results.flat();
+  }
+
+  private async drainEndpoint(endpoint: (typeof LIST_ENDPOINTS)[number]): Promise<BackendMediaItemDto[]> {
     const items: BackendMediaItemDto[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < MEDIA_PAGE_DRAIN_CAP; page++) {
       const params: Record<string, string> = { limit: String(MEDIA_PAGE_LIMIT) };
       if (cursor) params['cursor'] = cursor;
       const response = await firstValueFrom(
-        this.http.get<BackendMediaListResponse>(`${this.config.baseUrl}/api/v1/recordings`, {
+        this.http.get<BackendMediaListResponse>(`${this.config.baseUrl}/api/v1/${endpoint}`, {
           params,
         }),
       );
@@ -101,39 +115,17 @@ export class HttpVideosDataService implements VideosRepositoryPort {
     return items;
   }
 
-  private async mapSources(cameras: readonly BackendCameraDto[]): Promise<CameraSource[]> {
-    return Promise.all(
-      cameras.map(async (camera) => {
-        const status: 'online' | 'offline' = camera.online ? 'online' : 'offline';
-        const previewUrl =
-          status === 'online' ? await this.buildPreviewUrl(camera.cameraId) : undefined;
-        return {
-          id: camera.cameraId,
-          name: camera.displayName || camera.cameraId,
-          locationCode: this.mapLocationCode(camera.locationCode),
-          status,
-          previewUrl,
-          commandBaseUrl: camera.baseUrl,
-        };
-      }),
-    );
-  }
-
-  private async buildPreviewUrl(cameraId: string): Promise<string> {
-    const token = await this.acquireStreamToken(cameraId);
-    return `${this.config.baseUrl}/api/v1/cameras/${encodeURIComponent(cameraId)}/live?streamToken=${encodeURIComponent(token)}`;
-  }
-
-  private async acquireStreamToken(cameraId: string): Promise<string> {
-    const cached = this.streamTokens.get(cameraId);
-    if (cached) return cached;
-    const response = await firstValueFrom(
-      this.http.post<BackendStreamTokenResponse>(`${this.config.baseUrl}/auth/stream-token`, {
-        cameraId,
-      }),
-    );
-    this.streamTokens.set(cameraId, response.streamToken);
-    return response.streamToken;
+  private mapSources(cameras: readonly BackendCameraDto[]): CameraSource[] {
+    return cameras.map((camera) => {
+      const status: 'online' | 'offline' = camera.online ? 'online' : 'offline';
+      return {
+        id: camera.cameraId,
+        name: camera.displayName || camera.cameraId,
+        locationCode: this.mapLocationCode(camera.locationCode),
+        status,
+        commandBaseUrl: camera.baseUrl,
+      };
+    });
   }
 
   private mapLocationCode(value: string | undefined): string {
@@ -172,8 +164,6 @@ export class HttpVideosDataService implements VideosRepositoryPort {
         ? `${this.config.baseUrl}${item.thumbnailUrlLight}`
         : undefined,
       downloadUrl: `${this.config.baseUrl}${item.downloadUrl}`,
-      transcodeUrl: item.transcodeUrl ? `${this.config.baseUrl}${item.transcodeUrl}` : undefined,
-      mp4Url: item.mp4Url ? `${this.config.baseUrl}${item.mp4Url}` : undefined,
     };
   }
 }
