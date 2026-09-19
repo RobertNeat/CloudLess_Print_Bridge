@@ -51,6 +51,26 @@ describe('FileList', () => {
     expect(element.querySelector('input')?.placeholder).toBe('Szukaj w folderze');
   });
 
+  it('emits breadcrumbSelected with the ancestor path when a non-final crumb is clicked', () => {
+    const fixture = TestBed.createComponent(FileList);
+    fixture.componentRef.setInput('files', files);
+    fixture.componentRef.setInput('path', '/home/recorder');
+    fixture.detectChanges();
+
+    const emitted: string[] = [];
+    fixture.componentInstance.breadcrumbSelected.subscribe((path) => emitted.push(path));
+
+    const element = fixture.nativeElement as HTMLElement;
+    const crumbButtons = Array.from(element.querySelectorAll<HTMLButtonElement>('.crumb'));
+    expect(crumbButtons.map((button) => button.textContent?.trim())).toEqual(['home', 'recorder']);
+
+    crumbButtons[0].click();
+    expect(emitted).toEqual(['/home']);
+
+    element.querySelector<HTMLButtonElement>('.home-crumb')?.click();
+    expect(emitted).toEqual(['/home', '/']);
+  });
+
   it('renders a row with an empty modifiedAt instead of throwing', () => {
     const fixture = TestBed.createComponent(FileList);
     fixture.componentRef.setInput('files', filesWithMissingModifiedAt);

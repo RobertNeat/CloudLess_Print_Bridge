@@ -20,6 +20,7 @@ export class FileList {
   readonly path = input.required<string>();
   readonly fileSelected = output<FileListItem>();
   readonly fileAction = output<{ readonly action: FileAction; readonly file: FileListItem }>();
+  readonly breadcrumbSelected = output<string>();
   protected readonly query = signal('');
   protected readonly sortAscending = signal(true);
   protected readonly menuFile = signal<FileListItem | null>(null);
@@ -47,8 +48,13 @@ export class FileList {
     this.actionItem('delete', 'pi pi-trash'),
   ]);
 
-  protected breadcrumbs(): string[] {
-    return this.path().split('/').filter(Boolean);
+  protected breadcrumbs(): { label: string; path: string }[] {
+    const segments = this.path().split('/').filter(Boolean);
+    let cumulativePath = '';
+    return segments.map((label) => {
+      cumulativePath += `/${label}`;
+      return { label, path: cumulativePath };
+    });
   }
 
   protected fileIcon(file: FileListItem): string {
