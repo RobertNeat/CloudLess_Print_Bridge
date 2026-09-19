@@ -60,13 +60,13 @@
     @if (destinationPrompt()?.action === 'move') {
       <label>
         <span>{{ i18n.t(destinationPromptLabelKey()) }}</span>
-        @if (moveDestinationsLoading()) {
+        @if (destinationsLoading()) {
           <p class="destination-prompt-loading" id="destination-prompt-loading">
             <i class="pi pi-spin pi-spinner"></i>{{ i18n.t('files.movePromptLoading') }}
           </p>
         } @else {
           <p-select
-            [options]="moveDestinationOptions()"
+            [options]="destinationOptions()"
             optionLabel="label"
             optionValue="path"
             [placeholder]="i18n.t('files.movePromptPlaceholder')"
@@ -106,6 +106,55 @@
         [label]="i18n.t('files.confirm')"
         [disabled]="!canConfirmDestinationPrompt()"
         id="destination-prompt-confirm"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<p-dialog
+  [header]="i18n.t('files.uploadPromptTitle')"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('files.cancel')"
+  [visible]="!!uploadPrompt()"
+  [style]="{ width: 'min(26rem, calc(100vw - 2rem))' }"
+  id="upload-prompt-dialog"
+  (visibleChange)="!$event && cancelUploadPrompt()"
+>
+  <form class="destination-prompt-form" (ngSubmit)="confirmUploadPrompt()">
+    <label>
+      <span>{{ i18n.t('files.uploadPromptLabel') }}</span>
+      @if (destinationsLoading()) {
+        <p class="destination-prompt-loading" id="upload-prompt-loading">
+          <i class="pi pi-spin pi-spinner"></i>{{ i18n.t('files.movePromptLoading') }}
+        </p>
+      } @else {
+        <p-select
+          [options]="destinationOptions()"
+          optionLabel="label"
+          optionValue="path"
+          [placeholder]="i18n.t('files.movePromptPlaceholder')"
+          [ngModel]="uploadDestinationPath()"
+          (ngModelChange)="uploadDestinationPath.set($event)"
+          [appendTo]="'body'"
+          name="uploadDestination"
+          id="upload-prompt-select"
+        />
+      }
+    </label>
+    <div class="destination-prompt-actions">
+      <p-button
+        type="button"
+        size="small"
+        [text]="true"
+        [label]="i18n.t('files.cancel')"
+        (onClick)="cancelUploadPrompt()"
+      />
+      <p-button
+        type="submit"
+        size="small"
+        [label]="i18n.t('files.confirm')"
+        [disabled]="!canConfirmUploadPrompt()"
+        id="upload-prompt-confirm"
       />
     </div>
   </form>

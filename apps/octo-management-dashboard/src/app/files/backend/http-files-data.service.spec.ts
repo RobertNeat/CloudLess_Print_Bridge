@@ -132,4 +132,38 @@ describe('HttpFilesDataService', () => {
 
     expect(await promise).toEqual(['/']);
   });
+
+  it('caches a resolved listAllFolders result, issuing no new requests on a second call for the same rootPath', async () => {
+    const promise = service.listAllFolders('/');
+    expectList('/').flush([{ name: 'cache', path: '/cache', type: 'directory', size: 0 }]);
+    await flushMicrotasks();
+    expectList('/cache').flush([]);
+    const first = await promise;
+
+    const second = await service.listAllFolders('/');
+
+    expect(second).toEqual(first);
+    // httpMock.verify() in afterEach fails the test if a second walk issued
+    // any additional requests -- no explicit expectList() needed here.
+  });
+
+  it('shares one in-flight walk between concurrent callers instead of firing a redundant BFS', async () => {
+    const firstCall = service.listAllFolders('/');
+    const secondCall = service.listAllFolders('/');
+
+    expectList('/').flush([]);
+
+    expect(await firstCall).toEqual(['/']);
+    expect(await secondCall).toEqual(['/']);
+  });
+
+  it('does not permanently cache a rejected walk, allowing a later call to retry', async () => {
+    const promise = service.listAllFolders('/');
+    expectList('/').flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeTruthy();
+
+    const retry = service.listAllFolders('/');
+    expectList('/').flush([]);
+    expect(await retry).toEqual(['/']);
+  });
 });
