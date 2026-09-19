@@ -70,8 +70,7 @@ const messages = {
     'files.actions.rename': 'Zmień nazwę',
     'files.actions.move': 'Przenieś',
     'files.actions.delete': 'Usuń',
-    'files.operationUnavailable':
-      'Operacja „{{action}}” będzie dostępna po podłączeniu usługi FTPS.',
+    'files.operationUnavailable': 'Nie udało się wykonać operacji „{{action}}”.',
     'files.operationSucceeded': 'Operacja „{{action}}” zakończona powodzeniem.',
     'files.operationDenied': 'Nie masz uprawnień do wykonania tej operacji.',
     'files.uploadUnavailable': 'Nie udało się przesłać pliku.',
@@ -155,7 +154,8 @@ const messages = {
     'videos.searchPlaceholder': 'Szukaj pliku',
     'videos.searchInputAria': 'Szukaj pliku multimedialnego',
     'videos.loadError': 'Nie udało się wczytać danych dashboardu wideo.',
-    'videos.refreshError': 'Nie udało się odświeżyć biblioteki multimediów. Lista może być nieaktualna.',
+    'videos.refreshError':
+      'Nie udało się odświeżyć biblioteki multimediów. Lista może być nieaktualna.',
     'videos.loading': 'Ładowanie dashboardu…',
     'videos.retry': 'Spróbuj ponownie',
     'videos.streamCommandError':
@@ -188,7 +188,8 @@ const messages = {
     'videos.record.audioStarted': 'Nagranie dźwięku zostało zapisane w bibliotece multimediów.',
     'videos.record.requiresOnlineCamera': 'Wybierz kamerę online, aby rozpocząć nagrywanie.',
     'videos.record.commandError': 'Nie udało się wysłać polecenia do kamery.',
-    'videos.record.timedOut': 'Operacja trwa dłużej niż oczekiwano. Sprawdź bibliotekę multimediów później.',
+    'videos.record.timedOut':
+      'Operacja trwa dłużej niż oczekiwano. Sprawdź bibliotekę multimediów później.',
     'videos.record.source': 'Źródło',
     'videos.record.resolution': 'Rozdzielczość',
     'videos.record.submit': 'Uruchom',
@@ -362,8 +363,7 @@ const messages = {
     'files.actions.rename': 'Rename',
     'files.actions.move': 'Move',
     'files.actions.delete': 'Delete',
-    'files.operationUnavailable':
-      '“{{action}}” will be available after the FTPS service is connected.',
+    'files.operationUnavailable': '“{{action}}” could not be completed.',
     'files.operationSucceeded': '“{{action}}” completed successfully.',
     'files.operationDenied': 'You do not have permission to perform this operation.',
     'files.uploadUnavailable': 'The file could not be uploaded.',
