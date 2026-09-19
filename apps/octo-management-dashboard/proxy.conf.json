@@ -14,5 +14,13 @@
       "^/api/video": ""
     },
     "changeOrigin": true
+  },
+  "/api/ftps": {
+    "target": "http://localhost:10321",
+    "secure": false,
+    "pathRewrite": {
+      "^/api/ftps": ""
+    },
+    "changeOrigin": true
   }
 }
