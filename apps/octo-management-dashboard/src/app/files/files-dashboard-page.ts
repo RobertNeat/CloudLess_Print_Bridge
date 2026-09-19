@@ -77,8 +77,12 @@ export class FilesDashboardPage {
       return;
     }
 
-    await this.operations.execute(request.action, request.file);
-    this.operationNotice.set({ type: 'unavailable', action: request.action });
+    const result = await this.operations.execute(request.action, request.file);
+    // Reloading/patching the file list after a successful mutation is deferred
+    // to a later task; only surface a notice for the failure path for now.
+    if (result === 'error') {
+      this.operationNotice.set({ type: 'unavailable', action: request.action });
+    }
   }
 
   protected async requestUpload(): Promise<void> {
@@ -87,7 +91,10 @@ export class FilesDashboardPage {
       return;
     }
 
-    await this.operations.upload(this.selectedFolderPath());
+    // UploadZone's `uploadRequested` output carries no File payload yet — the
+    // file-picker/drop wiring that produces a real File lands in a later task.
+    // Until then there is nothing to upload, so this stays a stub notice
+    // rather than calling `operations.upload` with a fabricated File.
     this.operationNotice.set({ type: 'unavailable' });
   }
 
