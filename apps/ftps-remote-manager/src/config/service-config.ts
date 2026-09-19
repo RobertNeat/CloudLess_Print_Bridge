@@ -8,6 +8,7 @@ export interface ServiceConfig {
   http: {
     host: string;
     port: number;
+    corsOrigins: string[] | true;
   };
   ftps: {
     host: string;
@@ -59,6 +60,9 @@ export function loadServiceConfig(
         10321,
         0,
         65_535,
+      ),
+      corsOrigins: parseCorsOrigins(
+        envValue(environment, 'FTPS_REMOTE_MANAGER_CORS_ORIGINS'),
       ),
     },
     ftps: {
@@ -178,6 +182,15 @@ function envValue(
   name: string,
 ): string | undefined {
   return optionalValue(environment[name]);
+}
+
+function parseCorsOrigins(input: string | undefined): string[] | true {
+  const value = input ?? 'http://localhost:10300';
+  if (value === '*') return true;
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 function integerValue(
