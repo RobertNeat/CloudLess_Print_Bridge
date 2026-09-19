@@ -12,8 +12,10 @@
         [nodes]="data.tree"
         [selectedFolderPath]="selectedFolderPath()"
         [selectedFilePath]="selectedFile()?.path ?? null"
+        [failedPaths]="failedPaths()"
         (folderSelected)="selectFolder($event)"
         (fileSelected)="selectFileNode($event)"
+        (folderExpandRequested)="handleFolderExpandRequested($event)"
       />
     </div>
     <div class="panel panel--browser">

@@ -32,7 +32,18 @@ export class FilesDashboardPage {
   protected readonly selectedFolderPath = signal('');
   protected readonly selectedFile = signal<FileListItem | null>(null);
   protected readonly loadingError = signal(false);
+  protected readonly failedPaths = signal<ReadonlySet<string>>(new Set());
   private readonly operationNotice = signal<OperationNotice | null>(null);
+  // Paths whose contents are already present in dashboard().files -- either
+  // from the initial eager load() (root + its immediate subfolders) or from
+  // a completed loadFolder() call. Lets filesForPath/selectFolder tell
+  // "trust data.files" apart from "must fetch first" without re-deriving it
+  // from tree shape on every call.
+  private readonly loadedFolderPaths = new Set<string>();
+  // Fetches already in flight, keyed by path, so a folder clicked in both
+  // the tree (expand) and the list/pinned (select) in the same tick -- or
+  // double-clicked -- only triggers one loadFolder() call.
+  private readonly pendingFolderPaths = new Set<string>();
 
   protected readonly operationMessage = computed(() => {
     const notice = this.operationNotice();
@@ -59,13 +70,104 @@ export class FilesDashboardPage {
     if (!data) return;
     this.selectedFolderPath.set(folderPath);
     this.selectedFile.set(this.filesForPath(folderPath, data)[0] ?? null);
+
+    // Selecting a folder (pinned location, or clicking its label in the
+    // tree) must show its files in the list panel even if the tree itself
+    // was never expanded down to it -- expand and select are independent.
+    void this.ensureFolderLoaded(folderPath);
   }
 
   protected selectFileNode(node: FileTreeNode): void {
     const data = this.dashboard();
     if (!data) return;
-    this.selectedFolderPath.set(node.path.substring(0, node.path.lastIndexOf('/')));
+    this.selectedFolderPath.set(this.parentPath(node.path));
     this.selectedFile.set(data.files.find((candidate) => candidate.path === node.path) ?? null);
+  }
+
+  protected async handleFolderExpandRequested(node: FileTreeNode): Promise<void> {
+    const data = this.dashboard();
+    if (!data) return;
+    const contents = await this.fetchFolder(node.path);
+    if (!contents) return;
+
+    this.dashboard.set({
+      ...data,
+      tree: this.patchTreeChildren(data.tree, node.path, contents.children),
+      files: this.mergeFiles(data.files, contents.files),
+    });
+    if (this.selectedFolderPath() === node.path) {
+      this.selectedFile.set(contents.files[0] ?? null);
+    }
+  }
+
+  private async ensureFolderLoaded(folderPath: string): Promise<void> {
+    if (this.loadedFolderPaths.has(folderPath) || this.pendingFolderPaths.has(folderPath)) return;
+    const contents = await this.fetchFolder(folderPath);
+    const data = this.dashboard();
+    if (!contents || !data) return;
+
+    this.dashboard.set({
+      ...data,
+      tree: this.patchTreeChildren(data.tree, folderPath, contents.children),
+      files: this.mergeFiles(data.files, contents.files),
+    });
+    if (this.selectedFolderPath() === folderPath) {
+      this.selectedFile.set(this.filesForPath(folderPath, this.dashboard()!)[0] ?? null);
+    }
+  }
+
+  private async fetchFolder(path: string): Promise<{
+    readonly children: FileTreeNode[];
+    readonly files: FileListItem[];
+  } | null> {
+    this.pendingFolderPaths.add(path);
+    try {
+      const contents = await this.repository.loadFolder(path);
+      this.loadedFolderPaths.add(path);
+      this.failedPaths.update((current) => {
+        if (!current.has(path)) return current;
+        const next = new Set(current);
+        next.delete(path);
+        return next;
+      });
+      return contents;
+    } catch {
+      this.failedPaths.update((current) => new Set(current).add(path));
+      return null;
+    } finally {
+      this.pendingFolderPaths.delete(path);
+    }
+  }
+
+  private patchTreeChildren(
+    nodes: FileTreeNode[],
+    targetPath: string,
+    children: FileTreeNode[],
+  ): FileTreeNode[] {
+    return nodes.map((node) => {
+      if (node.path === targetPath) return { ...node, children };
+      if (node.children) {
+        return { ...node, children: this.patchTreeChildren(node.children, targetPath, children) };
+      }
+      return node;
+    });
+  }
+
+  private mergeFiles(existing: FileListItem[], incoming: FileListItem[]): FileListItem[] {
+    // Dedup by path: it's the stable id per Task 3 (backend entries have no
+    // separate id field). Existing entries win so an in-flight mutation
+    // elsewhere isn't clobbered by a stale re-fetch of the same folder.
+    const byPath = new Map(existing.map((file) => [file.path, file]));
+    for (const file of incoming) {
+      if (!byPath.has(file.path)) byPath.set(file.path, file);
+    }
+    return Array.from(byPath.values());
+  }
+
+  private parentPath(path: string): string {
+    const lastSlash = path.lastIndexOf('/');
+    if (lastSlash <= 0) return '/';
+    return path.substring(0, lastSlash);
   }
 
   protected async executeFileAction(request: {
@@ -102,6 +204,7 @@ export class FilesDashboardPage {
     try {
       const data = await this.repository.load();
       this.dashboard.set(data);
+      this.seedLoadedFolderPaths(data.tree, data.initialFolderPath);
       this.selectedFolderPath.set(data.initialFolderPath);
       this.selectedFile.set(
         this.filesForPath(data.initialFolderPath, data)[0] ?? data.files[0] ?? null,
@@ -111,11 +214,21 @@ export class FilesDashboardPage {
     }
   }
 
+  private seedLoadedFolderPaths(nodes: FileTreeNode[], rootPath: string): void {
+    // Derived from the children!==undefined invariant itself (not from "root
+    // is depth 0, its folders are depth 1") -- Task 3's adapter leaves a root
+    // subfolder at children:undefined when ITS fetch failed, and that must
+    // stay eligible for a retry via ensureFolderLoaded, not get marked loaded.
+    this.loadedFolderPaths.add(rootPath);
+    for (const node of nodes) {
+      if (node.type === 'folder' && Array.isArray(node.children)) {
+        this.loadedFolderPaths.add(node.path);
+      }
+    }
+  }
+
   private filesForPath(path: string, data: FilesDashboardData): FileListItem[] {
-    const exact = data.files.filter(
-      (file) => file.path.substring(0, file.path.lastIndexOf('/')) === path,
-    );
-    return exact.length ? exact : data.files.filter((file) => file.path.startsWith(path + '/'));
+    return data.files.filter((file) => this.parentPath(file.path) === path);
   }
 
   private permissionForAction(action: FileAction): Permission {
