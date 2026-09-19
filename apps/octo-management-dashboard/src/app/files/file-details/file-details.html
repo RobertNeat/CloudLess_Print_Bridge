@@ -73,7 +73,7 @@
       ><span>{{ i18n.t('files.noSelection') }}</span>
     </div>
   }
-  <app-upload-zone [path]="uploadPath()" (uploadRequested)="uploadRequested.emit()" />
+  <app-upload-zone [path]="uploadPath()" (uploadRequested)="uploadRequested.emit($event)" />
   @if (statusMessage()) {
     <p class="upload-message" role="status">{{ statusMessage() }}</p>
   }

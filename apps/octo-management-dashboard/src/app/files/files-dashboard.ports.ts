@@ -20,8 +20,15 @@ export interface FilesRepositoryPort {
 }
 
 export interface FilesOperationsPort {
-  execute(action: FileAction, file: FileListItem): Promise<'ok' | 'error'>;
-  upload(path: string, file: File): Promise<'ok' | 'conflict' | 'error'>;
+  // `destination` is required for 'rename' (the new filename) and 'move'
+  // (the destination directory); unused for 'delete'. The page collects it
+  // via a prompt before calling execute, since FileListItem alone never
+  // carries a target location.
+  execute(action: FileAction, file: FileListItem, destination?: string): Promise<'ok' | 'error'>;
+  upload(path: string, file: File, force?: boolean): Promise<'ok' | 'conflict' | 'error'>;
+  // Downloading isn't a mutating operation like rename/move/delete, so it gets
+  // its own method instead of another FileAction branch inside execute().
+  download(file: FileListItem): Promise<void>;
 }
 
 export const FILES_REPOSITORY = new InjectionToken<FilesRepositoryPort>('FILES_REPOSITORY', {
@@ -33,13 +40,21 @@ export const FILES_REPOSITORY = new InjectionToken<FilesRepositoryPort>('FILES_R
 export class DevelopmentFilesOperationsAdapter implements FilesOperationsPort {
   // No backend is wired for this dev stub, so every call is honestly reported
   // as a failure rather than a fabricated success.
-  async execute(_action: FileAction, _file: FileListItem): Promise<'ok' | 'error'> {
+  async execute(
+    _action: FileAction,
+    _file: FileListItem,
+    _destination?: string,
+  ): Promise<'ok' | 'error'> {
     return 'error';
   }
 
-  async upload(_path: string, _file: File): Promise<'ok' | 'conflict' | 'error'> {
+  async upload(_path: string, _file: File, _force?: boolean): Promise<'ok' | 'conflict' | 'error'> {
     return 'error';
   }
+
+  // No backend is wired for this dev stub; resolving immediately is the
+  // honest no-op since there is nothing to fetch and nothing to save.
+  async download(_file: FileListItem): Promise<void> {}
 }
 
 export const FILES_OPERATIONS = new InjectionToken<FilesOperationsPort>('FILES_OPERATIONS', {
