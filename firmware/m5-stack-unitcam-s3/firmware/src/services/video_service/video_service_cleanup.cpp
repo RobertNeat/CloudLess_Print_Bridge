@@ -1,111 +1,121 @@
-/** Startup/idle scans that discard invalid or orphaned recording/audio files. */
+/** Startup/idle scans that discard invalid resource directories across all
+ * four durable kinds (captures/timelapses/recordings/audio), plus resource
+ * directories the uploader has fully drained (manifest complete, every part
+ * already uploaded and removed).
+ *
+ * A directory is INVALID only if its manifest.json is missing, malformed, or
+ * declares `complete:false`/a mismatched kind/requestId -- a missing PART
+ * file is never itself evidence of invalidity, since the uploader removes
+ * parts one at a time as they're confirmed delivered (see
+ * video_service_upload_task.cpp) and leaves the manifest + remaining parts
+ * in place until every part is gone. Treating "part missing" as "garbage"
+ * would make this scan destroy an in-flight, partially-uploaded resource the
+ * moment its first part succeeds -- it can't be distinguished from "never
+ * written" by on-disk state alone. Part completeness is already enforced at
+ * the point a manifest is allowed to claim `complete:true`
+ * (writeResourceManifest verifies every declared part exists and is
+ * non-empty first). */
 #include "video_service_internal.h"
 
 namespace video_service_internal
 {
-void cleanupOrphanedRecordingParts()
+static void cleanupResourceKind(ResourceKind kind)
 {
-    if (!SD.exists("/recordings"))
+    const String rootPath = resourceRootPath(kind);
+    if (!SD.exists(rootPath))
         return;
-    File directory = SD.open("/recordings", FILE_READ);
-    while (directory)
+
+    // Directories are marked for removal while walking `root`, then removed
+    // only after `root` is closed -- deleting a subdirectory out from under
+    // an active FAT directory iterator is best avoided.
+    String doomedPaths[32];
+    size_t doomedCount = 0;
+
+    File root = SD.open(rootPath, FILE_READ);
+    while (root)
     {
-        File entry = directory.openNextFile();
+        File entry = root.openNextFile();
         if (!entry)
             break;
-        String path = entry.name();
-        const bool isFile = !entry.isDirectory();
+        String directoryPath = entry.name();
+        const bool isDirectory = entry.isDirectory();
         entry.close();
-        if (!isFile)
+        if (!isDirectory)
             continue;
-        if (!path.startsWith("/recordings/"))
-            path = path.startsWith("/") ? "/recordings" + path : "/recordings/" + path;
-        if (path.endsWith(".json.tmp"))
+        if (!directoryPath.startsWith(rootPath + "/"))
+            directoryPath = directoryPath.startsWith("/")
+                ? rootPath + directoryPath : rootPath + "/" + directoryPath;
+        const int slash = directoryPath.lastIndexOf('/');
+        const String requestId = directoryPath.substring(slash + 1);
+
+        bool valid = isSafeRequestId(requestId);
+        bool fullyDrained = false;
+        if (valid)
         {
-            SD.remove(path);
-            continue;
-        }
-        if (path.endsWith(".json"))
-        {
-            File manifest = SD.open(path, FILE_READ);
-            DynamicJsonDocument document(384);
-            const DeserializationError error = deserializeJson(document, manifest);
-            manifest.close();
-            framesize_t frameSize;
-            const String requestId = document["requestId"].as<String>();
-            const String resolution = document["resolution"].as<String>();
-            const bool valid = !error && (document["complete"] | false)
-                && isSafeRequestId(requestId) && parseResolution(resolution, frameSize)
-                && (document["totalParts"] | 0) > 0
-                && (document["totalFrames"] | 0) > 0;
-            if (!valid)
+            const String manifestPath = resourceManifestPath(kind, requestId);
+            ResourceManifestInfo manifest;
+            valid = SD.exists(manifestPath)
+                && readResourceManifest(manifestPath, manifest)
+                && manifest.complete
+                && manifest.kind == kind
+                && manifest.requestId == requestId;
+            if (valid)
             {
-                log_w("Removing invalid recording manifest: %s", path.c_str());
-                SD.remove(path);
+                fullyDrained = true;
+                for (uint32_t partNumber = 1; partNumber <= manifest.totalParts; ++partNumber)
+                {
+                    if (SD.exists(resourcePartPath(kind, requestId, partNumber)))
+                    {
+                        fullyDrained = false;
+                        break;
+                    }
+                }
             }
-            continue;
         }
-        if (path.endsWith(".mjpeg") && !isDeclaredRecordingPart(path))
+        if ((!valid || fullyDrained) && doomedCount < (sizeof(doomedPaths) / sizeof(doomedPaths[0])))
         {
-            log_w("Removing undeclared recording part: %s", path.c_str());
-            SD.remove(path);
+            if (!valid)
+                log_w("Removing invalid resource directory: %s", directoryPath.c_str());
+            doomedPaths[doomedCount++] = directoryPath;
         }
     }
-    directory.close();
+    root.close();
+
+    for (size_t index = 0; index < doomedCount; ++index)
+        removeDirectoryRecursive(doomedPaths[index]);
 }
 
-void cleanupOrphanedAudioFiles()
+// SD's library has no recursive-remove helper; these directories are always
+// shallow (a manifest.json/.tmp plus a handful of numbered part files), so a
+// flat single-level walk is sufficient.
+void removeDirectoryRecursive(const String& directoryPath)
 {
-    if (!SD.exists("/audio"))
+    File directory = SD.open(directoryPath, FILE_READ);
+    if (!directory)
         return;
-    File directory = SD.open("/audio", FILE_READ);
-    while (directory)
+    while (true)
     {
         File entry = directory.openNextFile();
         if (!entry)
             break;
         String path = entry.name();
-        const bool isFile = !entry.isDirectory();
+        const bool isDirectory = entry.isDirectory();
         entry.close();
-        if (!isFile)
-            continue;
-        if (!path.startsWith("/audio/"))
-            path = path.startsWith("/") ? "/audio" + path : "/audio/" + path;
-        if (path.endsWith(".json.tmp"))
-        {
+        if (!path.startsWith(directoryPath + "/"))
+            path = path.startsWith("/") ? directoryPath + path : directoryPath + "/" + path;
+        if (!isDirectory)
             SD.remove(path);
-            continue;
-        }
-        if (path.endsWith(".json"))
-        {
-            File manifest = SD.open(path, FILE_READ);
-            DynamicJsonDocument document(256);
-            const DeserializationError error = deserializeJson(document, manifest);
-            manifest.close();
-            const String requestId = document["requestId"].as<String>();
-            const uint32_t seconds = (uint32_t)(document["requestedDurationSeconds"] | 0);
-            OperationRequest declared;
-            declared.kind = OperationKind::AudioRecording;
-            declared.requestId = requestId;
-            const bool valid = !error && (document["complete"] | false)
-                && isSafeRequestId(requestId) && isValidAudioDuration(seconds)
-                && audioManifestPath(declared) == path && SD.exists(audioWavPath(declared));
-            if (!valid)
-            {
-                SD.remove(path);
-                if (isSafeRequestId(requestId))
-                    SD.remove(audioWavPath(declared));
-            }
-            continue;
-        }
-        if (path.endsWith(".wav"))
-        {
-            const String manifestPath = path.substring(0, path.length() - 4) + ".json";
-            if (!SD.exists(manifestPath))
-                SD.remove(path);
-        }
     }
     directory.close();
+    SD.rmdir(directoryPath);
+}
+
+void cleanupOrphanedResourceParts()
+{
+    cleanupResourceKind(ResourceKind::Captures);
+    cleanupResourceKind(ResourceKind::Timelapses);
+    cleanupResourceKind(ResourceKind::Recordings);
+    cleanupResourceKind(ResourceKind::Audio);
 }
 
 }  // namespace video_service_internal

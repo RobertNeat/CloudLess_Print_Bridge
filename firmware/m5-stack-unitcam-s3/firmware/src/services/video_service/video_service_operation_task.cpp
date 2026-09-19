@@ -51,7 +51,11 @@ void operationTask(void*)
         // The manifest is created while the operation is still active. Wake
         // the uploader only after exposing the idle state; otherwise it drops
         // the notification as "busy" and waits for its 30-second fallback.
-        if ((operation.kind == OperationKind::TimedRecording
+        // Every durable kind (captures/timelapses/recordings/audio) now
+        // writes a manifest on completion, so all of them qualify.
+        if ((operation.kind == OperationKind::SingleCapture
+                || operation.kind == OperationKind::PeriodicCapture
+                || operation.kind == OperationKind::TimedRecording
                 || operation.kind == OperationKind::ManualRecording
                 || operation.kind == OperationKind::AudioRecording)
             && uploadTaskHandle != nullptr)

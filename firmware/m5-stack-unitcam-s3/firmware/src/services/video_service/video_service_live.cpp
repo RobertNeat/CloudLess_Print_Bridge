@@ -20,7 +20,8 @@ void runLiveStream(const OperationRequest& operation)
     WiFiClient client;
     const String path = "/api/v1/cameras/" + cameraId() + "/live";
     bool success = openVideoServiceRequest(client, path,
-        "multipart/x-mixed-replace; boundary=unitcams3-frame", -1, operation, true);
+        "multipart/x-mixed-replace; boundary=unitcams3-frame", -1, operation,
+        UploadHeaderStyle::None, String(), true);
     if (!success)
         lastOperationError = OperationError::LiveConnectionFailed;
     const uint32_t startedAt = millis();
