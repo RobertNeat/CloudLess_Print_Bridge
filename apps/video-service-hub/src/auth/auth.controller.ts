@@ -5,12 +5,26 @@ import {
   Headers,
   Inject,
   Post,
+  Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { assertIdentifier } from '../common/validation';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
 import { AuthTokenService } from './auth-token.service';
-import type { AuthenticatedUser } from './auth.types';
+import type { AccessTokenClaims, AuthenticatedUser } from './auth.types';
+import type { MediaFileKind } from './media-token.service';
+import { MediaTokenService } from './media-token.service';
+import { StreamTokenService } from './stream-token.service';
+
+const mediaFileKinds = new Set<MediaFileKind>([
+  'capture',
+  'timelapse',
+  'recording',
+  'live',
+  'audio',
+]);
 
 const DEFAULT_PERMISSIONS = [
   'dashboard.view',
@@ -27,6 +41,8 @@ export class AuthController {
   constructor(
     @Inject(SERVICE_CONFIG) private readonly config: ServiceConfig,
     private readonly tokens: AuthTokenService,
+    private readonly streamTokens: StreamTokenService,
+    private readonly mediaTokens: MediaTokenService,
   ) {}
 
   @Get('config')
@@ -62,5 +78,47 @@ export class AuthController {
       expiresIn: this.config.auth.tokenTtlSeconds,
       user,
     };
+  }
+
+  @Post('stream-token')
+  createStreamToken(
+    @Req() request: Request & { user?: AccessTokenClaims },
+    @Body() body: { cameraId?: unknown },
+  ) {
+    const cameraId = assertIdentifier(body?.cameraId, 'cameraId');
+    const userId = request.user?.sub ?? 'local-user';
+    const { token, expiresIn } = this.streamTokens.issue(userId, cameraId);
+    return { streamToken: token, expiresIn };
+  }
+
+  @Post('media-token')
+  createMediaToken(
+    @Body()
+    body: {
+      kind?: unknown;
+      cameraId?: unknown;
+      requestId?: unknown;
+      fileName?: unknown;
+    },
+  ) {
+    if (
+      typeof body?.kind !== 'string' ||
+      !mediaFileKinds.has(body.kind as MediaFileKind)
+    ) {
+      throw new UnauthorizedException(
+        'kind must be one of: capture, timelapse, recording, live, audio.',
+      );
+    }
+    const cameraId = assertIdentifier(body?.cameraId, 'cameraId');
+    const requestId = assertIdentifier(body?.requestId, 'requestId');
+    const fileName =
+      typeof body?.fileName === 'string' ? body.fileName : undefined;
+    const { token, expiresIn } = this.mediaTokens.issue({
+      kind: body.kind as MediaFileKind,
+      cameraId,
+      requestId,
+      fileName,
+    });
+    return { mediaToken: token, expiresIn };
   }
 }

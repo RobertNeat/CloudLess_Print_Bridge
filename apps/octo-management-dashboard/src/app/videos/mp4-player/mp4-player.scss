@@ -1,0 +1,38 @@
+.mp4-player {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+}
+// video.js's fluid mode sizes itself via a padding-top aspect-ratio box on
+// .video-js, computed as a percentage of the element's own width against
+// the clip's intrinsic aspect ratio once metadata loads. That box needs an
+// explicit width to size against (the parent grid previously gave it none)
+// and — because padding-top percentages ignore max-height entirely — the
+// parent (.media-preview__player) must not clip/cap its height either, or
+// the absolutely-positioned control bar at the bottom of the box gets cut
+// off. See media-preview.scss's `--bounded` modifier, which is
+// deliberately NOT applied while this player is showing.
+.mp4-player .video-js {
+  width: 100%;
+}
+.mp4-player__buffered {
+  position: relative;
+  height: 0.35rem;
+  border-radius: 0.2rem;
+  background: var(--semantic-surface-interactive);
+  overflow: hidden;
+}
+.mp4-player__buffered-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--semantic-text-muted);
+  opacity: 0.45;
+}
+.mp4-player__played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--app-primary-color, currentColor);
+}

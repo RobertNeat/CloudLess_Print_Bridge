@@ -1,0 +1,107 @@
+<p-dialog
+  [header]="i18n.t(dialogTitleKey())"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('videos.closePreview')"
+  [visible]="!!action()"
+  [style]="{ width: 'min(24rem, calc(100vw - 2rem))' }"
+  id="media-record-dialog"
+  (visibleChange)="!$event && close()"
+>
+  @if (action(); as currentAction) {
+    <div class="media-record-dialog__form">
+      <label
+        >{{ i18n.t('videos.record.source') }}
+        <p-select
+          [options]="sources()"
+          optionLabel="name"
+          optionValue="id"
+          [ngModel]="sourceId()"
+          (ngModelChange)="sourceId.set($event)"
+          [appendTo]="'body'"
+          id="media-record-dialog-source"
+        />
+      </label>
+
+      @if (needsResolution()) {
+        <label
+          >{{ i18n.t('videos.record.resolution') }}
+          <p-select
+            [options]="availableResolutions"
+            [ngModel]="resolution()"
+            (ngModelChange)="resolution.set($event)"
+            [appendTo]="'body'"
+            id="media-record-dialog-resolution"
+          />
+        </label>
+      }
+
+      @if (currentAction === 'audio') {
+        <label
+          >{{ i18n.t('videos.record.audioDuration') }}
+          <p-inputNumber
+            [ngModel]="audioDurationSeconds()"
+            (ngModelChange)="audioDurationSeconds.set($event)"
+            [min]="minAudioDuration"
+            [max]="maxAudioDuration"
+            id="media-record-dialog-audio-duration"
+          />
+        </label>
+      }
+
+      @if (currentAction === 'recording') {
+        <label
+          >{{ i18n.t('videos.record.recordingDuration') }}
+          <p-inputNumber
+            [ngModel]="durationSeconds()"
+            (ngModelChange)="durationSeconds.set($event)"
+            [min]="1"
+            id="media-record-dialog-recording-duration"
+          />
+        </label>
+      }
+
+      @if (currentAction === 'timelapse') {
+        <label
+          >{{ i18n.t('videos.record.timelapseDuration') }}
+          <p-inputNumber
+            [ngModel]="durationSeconds()"
+            (ngModelChange)="durationSeconds.set($event)"
+            [min]="1"
+            id="media-record-dialog-timelapse-duration"
+          />
+        </label>
+        <label
+          >{{ i18n.t('videos.record.timelapseInterval') }}
+          <p-inputNumber
+            [ngModel]="intervalSeconds()"
+            (ngModelChange)="intervalSeconds.set($event)"
+            [min]="1"
+            id="media-record-dialog-timelapse-interval"
+          />
+        </label>
+      }
+
+      @if (!canSubmit()) {
+        <p class="media-record-dialog__hint" role="status" id="media-record-dialog-hint">
+          {{ i18n.t('videos.record.requiresOnlineCamera') }}
+        </p>
+      }
+
+      <div class="media-record-dialog__actions">
+        <p-button
+          size="small"
+          [text]="true"
+          [label]="i18n.t('videos.cancel')"
+          (onClick)="close()"
+        />
+        <p-button
+          size="small"
+          [label]="i18n.t('videos.record.submit')"
+          [disabled]="!canSubmit()"
+          id="media-record-dialog-submit"
+          (onClick)="submit()"
+        />
+      </div>
+    </div>
+  }
+</p-dialog>

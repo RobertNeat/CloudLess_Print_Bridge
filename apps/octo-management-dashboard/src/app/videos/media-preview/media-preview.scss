@@ -1,0 +1,104 @@
+.media-preview {
+  color: var(--semantic-text-primary);
+}
+.media-preview__player {
+  display: grid;
+  width: 100%;
+  min-height: 12rem;
+  border-radius: 0.75rem;
+  background: var(--semantic-surface-interactive);
+}
+// The video player sizes itself from the clip's own aspect ratio (video.js
+// fluid mode, see mp4-player.scss) and the dialog grows to fit it, so this
+// container must not clip or cap its height. Every other media type
+// (image/timelapse/audio/status) keeps the fixed 12rem-20rem box via this
+// modifier instead, applied only when a recording isn't rendering as video.
+.media-preview__player--bounded {
+  max-height: 20rem;
+  overflow: hidden;
+}
+// img/audio/status content wants to be centered within the (possibly
+// bounded) box; app-mp4-player stretches to its own full intrinsic size.
+.media-preview__player > :not(app-mp4-player) {
+  place-self: center;
+}
+.media-preview__player img {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+}
+.media-preview__player audio {
+  width: 100%;
+  padding: 1rem;
+}
+.media-preview__player small {
+  position: absolute;
+  margin-top: 18rem;
+  color: var(--semantic-text-muted);
+  font-size: 0.7rem;
+}
+.media-preview__status {
+  display: grid;
+  gap: 0.5rem;
+  color: var(--semantic-text-muted);
+  text-align: center;
+  place-items: center;
+}
+.media-preview__status i {
+  font-size: 1.6rem;
+}
+.media-preview__timelapse {
+  display: grid;
+  width: 100%;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  place-items: center;
+}
+.media-preview__timelapse input[type='range'] {
+  width: 100%;
+}
+.media-preview__timelapse small {
+  color: var(--semantic-text-muted);
+  font-size: 0.75rem;
+}
+.media-preview__title {
+  display: flex;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+  gap: 0.35rem;
+}
+.media-preview__title h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+.media-preview__title input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.media-preview__error {
+  margin: 0 0 0.75rem;
+  color: var(--semantic-danger, #d9534f);
+  font-size: 0.8rem;
+}
+dl {
+  display: grid;
+  margin: 0;
+  gap: 0.5rem;
+}
+dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+dt {
+  color: var(--semantic-text-muted);
+}
+dd {
+  margin: 0;
+  text-align: right;
+}

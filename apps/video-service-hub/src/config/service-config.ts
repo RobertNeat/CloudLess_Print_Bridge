@@ -6,16 +6,24 @@ export type ServiceConfig = {
   http: {
     host: string;
     port: number;
+    corsOrigins: string[] | true;
   };
   storage: {
     root: string;
     captureMaxBytes: number;
+    timelapsePartMaxBytes: number;
     recordingPartMaxBytes: number;
-    audioMaxBytes: number;
+    audioPartMaxBytes: number;
     liveMaxBytes: number;
     liveViewerBufferBytes: number;
   };
   cameraCommandTimeoutMs: number;
+  transcoding: {
+    fps: number;
+  };
+  timelapse: {
+    fps: number;
+  };
   mqtt: {
     port: number;
     externalUrl?: string;
@@ -31,7 +39,17 @@ export type ServiceConfig = {
 export function loadServiceConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): ServiceConfig {
-  loadWorkspaceEnv(environment);
+  const workspaceRoot = loadWorkspaceEnv(environment);
+  // A configured VIDEO_SERVICE_HUB_STORAGE_PATH is written relative to the
+  // pnpm workspace root (see .env), since that's the one location both a
+  // GitHub Actions/production checkout and a local `cd apps/video-service-hub
+  // && pnpm start:dev` agree on. Resolving it against process.cwd() instead
+  // silently doubles the path when the process is launched from inside the
+  // app directory (cwd already ends in apps/video-service-hub). Outside the
+  // workspace (e.g. a standalone deployed container with no
+  // pnpm-workspace.yaml), fall back to cwd, where a relative path is the
+  // only sensible base.
+  const storagePathBase = workspaceRoot ?? process.cwd();
 
   return {
     http: {
@@ -43,28 +61,37 @@ export function loadServiceConfig(
         0,
         65_535,
       ),
+      corsOrigins: parseCorsOrigins(
+        envValue(environment, 'VIDEO_SERVICE_HUB_CORS_ORIGINS'),
+      ),
     },
     storage: {
       root: resolve(
-        envValue(environment, 'VIDEO_SERVICE_HUB_STORAGE_PATH') ||
-          resolve(process.cwd(), 'storage'),
+        storagePathBase,
+        envValue(environment, 'VIDEO_SERVICE_HUB_STORAGE_PATH') || 'storage',
       ),
       captureMaxBytes: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES'),
         'VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES',
-        20 * 1024 * 1024,
+        8 * 1024 * 1024,
+        1,
+      ),
+      timelapsePartMaxBytes: readIntegerValue(
+        envValue(environment, 'VIDEO_SERVICE_HUB_TIMELAPSE_PART_MAX_BYTES'),
+        'VIDEO_SERVICE_HUB_TIMELAPSE_PART_MAX_BYTES',
+        8 * 1024 * 1024,
         1,
       ),
       recordingPartMaxBytes: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES'),
         'VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES',
-        16 * 1024 * 1024,
+        8 * 1024 * 1024,
         1,
       ),
-      audioMaxBytes: readIntegerValue(
-        envValue(environment, 'VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES'),
-        'VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES',
-        10 * 1024 * 1024,
+      audioPartMaxBytes: readIntegerValue(
+        envValue(environment, 'VIDEO_SERVICE_HUB_AUDIO_PART_MAX_BYTES'),
+        'VIDEO_SERVICE_HUB_AUDIO_PART_MAX_BYTES',
+        8 * 1024 * 1024,
         1,
       ),
       liveMaxBytes: readIntegerValue(
@@ -86,6 +113,24 @@ export function loadServiceConfig(
       10_000,
       1,
     ),
+    transcoding: {
+      fps: readIntegerValue(
+        envValue(environment, 'TRANSCODING_FPS'),
+        'TRANSCODING_FPS',
+        12,
+        1,
+        240,
+      ),
+    },
+    timelapse: {
+      fps: readIntegerValue(
+        envValue(environment, 'TIMELAPSE_FPS'),
+        'TIMELAPSE_FPS',
+        12,
+        1,
+        240,
+      ),
+    },
     mqtt: {
       port: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_MQTT_PORT'),
@@ -120,13 +165,13 @@ export function loadServiceConfig(
   };
 }
 
-function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
-  if (environment !== process.env) return;
+function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): string | undefined {
   let directory = process.cwd();
   while (true) {
     if (existsSync(resolve(directory, 'pnpm-workspace.yaml'))) {
+      if (environment !== process.env) return directory;
       const path = resolve(directory, '.env');
-      if (!existsSync(path)) return;
+      if (!existsSync(path)) return directory;
       const fileValues: Record<string, string> = {};
       for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
         const trimmed = line.trim();
@@ -144,10 +189,10 @@ function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {
           ...environment,
         });
       }
-      return;
+      return directory;
     }
     const parent = resolve(directory, '..');
-    if (parent === directory) return;
+    if (parent === directory) return undefined;
     directory = parent;
   }
 }
@@ -185,6 +230,15 @@ function envValue(
   name: string,
 ): string | undefined {
   return environment[name]?.trim() || undefined;
+}
+
+function parseCorsOrigins(input: string | undefined): string[] | true {
+  const value = input ?? 'http://localhost:10300';
+  if (value === '*') return true;
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 function readIntegerValue(

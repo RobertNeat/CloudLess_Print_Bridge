@@ -6,10 +6,11 @@
       [class.status--active]="streamActive()"
       [class.status--offline]="streamStatusKey() === 'videos.stream.offline'"
       role="status"
+      id="camera-panel-status"
       ><i aria-hidden="true"></i> {{ i18n.t(streamStatusKey()) }}</span
     >
   </header>
-  <dl>
+  <dl id="camera-panel-metrics">
     @for (metric of metrics(); track metric.code) {
       <div>
         <dt>{{ metricLabel(metric) }}</dt>
@@ -29,9 +30,16 @@
       [outlined]="true"
       size="small"
       [ariaLabel]="i18n.t('videos.addCamera')"
+      id="camera-panel-add-button"
+      (onClick)="addCamera.emit()"
     />
   </div>
-  <div class="sources" role="radiogroup" [attr.aria-label]="i18n.t('videos.sourcesAria')">
+  <div
+    class="sources"
+    role="radiogroup"
+    [attr.aria-label]="i18n.t('videos.sourcesAria')"
+    id="camera-panel-sources"
+  >
     @for (source of sources(); track source.id) {
       <button
         type="button"
@@ -40,6 +48,7 @@
         [attr.aria-checked]="source.id === selectedSourceId()"
         [attr.aria-label]="sourceAriaLabel(source)"
         [class.source--selected]="source.id === selectedSourceId()"
+        [attr.id]="'camera-source-' + source.id"
         (click)="sourceSelected.emit(source.id)"
       >
         <span class="source-icon"

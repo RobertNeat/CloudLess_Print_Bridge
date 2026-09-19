@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CameraRegistryModule } from '../camera-registry/camera-registry.module';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
 import { CameraQueryController } from './camera-query.controller';
@@ -10,6 +11,7 @@ import { MqttTelemetryStore } from './mqtt-telemetry.store';
 import { MQTT_BROKER_ENDPOINT, MQTT_MESSAGE_SOURCE } from './mqtt.ports';
 
 @Module({
+  imports: [CameraRegistryModule],
   controllers: [CameraQueryController],
   providers: [
     EmbeddedMqttBrokerService,

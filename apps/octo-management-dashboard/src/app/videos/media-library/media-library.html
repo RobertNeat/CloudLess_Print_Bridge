@@ -1,6 +1,6 @@
-<section class="library" [attr.aria-label]="i18n.t('videos.libraryAria')">
+<section class="library" [attr.aria-label]="i18n.t('videos.libraryAria')" id="media-library">
   @for (section of sections; track section.kind) {
-    <article class="media-section">
+    <article class="media-section" [attr.id]="'media-library-section-' + section.kind">
       <header>
         <span
           ><i [class]="section.icon" aria-hidden="true"></i
@@ -8,21 +8,35 @@
         >
         <small>{{ itemsFor(section.kind).length }}</small>
       </header>
+
+      <div class="media-actions">
+        <p-button
+          size="small"
+          [icon]="section.buttonIcon"
+          [label]="i18n.t(section.buttonLabelKey)"
+          [disabled]="!canRecord()"
+          [loading]="isPending(section.action)"
+          [attr.id]="section.buttonId"
+          (onClick)="requestRecord(section.action)"
+        />
+      </div>
+
       <div class="media-grid">
         @for (item of itemsFor(section.kind); track item.id) {
           <button
             type="button"
             class="media-card"
-            [attr.aria-label]="i18n.t('videos.openMedia', { name: item.name })"
+            [attr.aria-label]="i18n.t('videos.openMedia', { name: itemLabel(item) })"
+            [attr.id]="'media-item-' + item.id"
             (click)="itemOpened.emit(item)"
           >
             <span class="thumbnail" [class.thumbnail--image]="item.kind === 'image'">
-              @if (item.thumbnailUrl) {
-                <img [src]="item.thumbnailUrl" alt="" />
+              @if (thumbnailSrc(item); as src) {
+                <img [src]="src" alt="" />
               } @else {
                 <i [class]="section.icon" aria-hidden="true"></i>
               }
-              @if (item.kind === 'recording' || item.kind === 'timelapse') {
+              @if (item.kind === 'recording' || section.kind === 'timelapse') {
                 <b><i class="pi pi-play" aria-hidden="true"></i></b>
               }
               @if (item.duration) {
@@ -30,12 +44,12 @@
               }
             </span>
             <span class="media-meta"
-              ><strong>{{ item.name }}</strong
+              ><strong>{{ itemLabel(item) }}</strong
               ><small>{{ dateLabel(item.capturedAt) }}</small></span
             >
           </button>
         } @empty {
-          <div class="empty">
+          <div class="empty" [attr.id]="'media-library-empty-' + section.kind">
             <i class="pi pi-filter-slash" aria-hidden="true"></i
             ><span>{{ i18n.t('videos.noResults') }}</span>
           </div>

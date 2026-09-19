@@ -1,0 +1,130 @@
+<p-dialog
+  [header]="i18n.t('videos.mediaPreview')"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('videos.closePreview')"
+  [visible]="!!item()"
+  [style]="{ width: 'min(36rem, calc(100vw - 2rem))' }"
+  id="media-preview-dialog"
+  (visibleChange)="!$event && close()"
+>
+  @if (item(); as media) {
+    <article class="media-preview">
+      <div class="media-preview__player" [class.media-preview__player--bounded]="playerIsBounded()">
+        @if (loading()) {
+          <div class="media-preview__status" role="status">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>{{ i18n.t('videos.playbackLoading') }}</span>
+          </div>
+        } @else if (loadFailed()) {
+          <div class="media-preview__status" role="alert" id="media-preview-load-error">
+            <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+            <span>{{ i18n.t('videos.playbackFailed') }}</span>
+          </div>
+        } @else if (media.kind === 'audio') {
+          <audio controls [src]="audioSrc()" id="media-preview-audio"></audio>
+        } @else if (isMp4(media)) {
+          @if (mp4PlaybackFailed()) {
+            <div class="media-preview__status" role="alert" id="media-preview-mp4-playback-error">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              <span>{{ i18n.t('videos.mp4PlaybackFailed') }}</span>
+              <p-button
+                size="small"
+                [label]="i18n.t('videos.mp4Retry')"
+                id="media-preview-mp4-retry"
+                (onClick)="retryMp4()"
+              />
+            </div>
+          } @else if (mp4Src()) {
+            <app-mp4-player
+              [src]="mp4Src()"
+              id="media-preview-mp4-player"
+              (playbackError)="onMp4PlaybackError()"
+            />
+          }
+        } @else if (imageSrc()) {
+          <img
+            [src]="imageSrc()"
+            [alt]="i18n.t('videos.mediaPreviewAlt', { name: media.name })"
+            id="media-preview-image"
+          />
+        } @else if (media.thumbnailUrl) {
+          <img
+            [src]="media.thumbnailUrl"
+            [alt]="i18n.t('videos.mediaPreviewAlt', { name: media.name })"
+          />
+        } @else {
+          <div class="media-preview__status">
+            <i class="pi pi-file" aria-hidden="true"></i>
+            <span>{{ i18n.t('videos.previewUnavailable') }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="media-preview__title">
+        @if (renaming()) {
+          <input
+            pInputText
+            type="text"
+            [ngModel]="renameValue()"
+            (ngModelChange)="renameValue.set($event)"
+            id="media-preview-rename-input"
+            [placeholder]="i18n.t('videos.renamePlaceholder')"
+          />
+          <p-button
+            size="small"
+            [label]="i18n.t('videos.renameSave')"
+            [loading]="renameSaving()"
+            [disabled]="renameValue().trim().length === 0"
+            id="media-preview-rename-save"
+            (onClick)="saveRename()"
+          />
+          <p-button
+            size="small"
+            [text]="true"
+            [label]="i18n.t('videos.cancel')"
+            (onClick)="cancelRename()"
+          />
+        } @else {
+          <h2>{{ displayName() }}</h2>
+          @if (media.requestId) {
+            <p-button
+              size="small"
+              [text]="true"
+              icon="pi pi-pencil"
+              [ariaLabel]="i18n.t('videos.rename')"
+              id="media-preview-rename-button"
+              (onClick)="startRename()"
+            />
+            <p-button
+              size="small"
+              [text]="true"
+              severity="danger"
+              icon="pi pi-trash"
+              [loading]="deleting()"
+              [ariaLabel]="i18n.t('videos.delete')"
+              id="media-preview-delete-button"
+              (onClick)="deleteItem()"
+            />
+          }
+        }
+      </div>
+
+      @if (actionError()) {
+        <p class="media-preview__error" role="alert">{{ i18n.t('videos.actionError') }}</p>
+      }
+
+      <dl>
+        <div>
+          <dt>{{ i18n.t('videos.capturedAt') }}</dt>
+          <dd>{{ i18n.formatDateTime(media.capturedAt) }}</dd>
+        </div>
+        @if (media.duration) {
+          <div>
+            <dt>{{ i18n.t('videos.duration') }}</dt>
+            <dd>{{ media.duration }}</dd>
+          </div>
+        }
+      </dl>
+    </article>
+  }
+</p-dialog>
