@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
 import { AccessPolicy, type Permission } from '../core/auth-session.service';
 import { FilesDashboardLayoutService } from '../core/files-dashboard-layout.service';
 import { I18nService, type TranslationKey } from '../core/i18n.service';
@@ -36,6 +37,14 @@ type UploadConflict = {
   readonly file: File;
 };
 
+// A move-destination option, as shown in the directory picker. `path` is the
+// real absolute path sent to the backend; `label` is a friendlier
+// trailing-slash form matching how the user thinks about folders.
+interface DirectoryOption {
+  readonly path: string;
+  readonly label: string;
+}
+
 @Component({
   selector: 'app-files-dashboard-page',
   imports: [
@@ -46,6 +55,7 @@ type UploadConflict = {
     FileTree,
     FormsModule,
     InputTextModule,
+    SelectModule,
   ],
   templateUrl: './files-dashboard-page.html',
   styleUrl: './files-dashboard-page.scss',
@@ -64,6 +74,9 @@ export class FilesDashboardPage {
   private readonly operationNotice = signal<OperationNotice | null>(null);
   protected readonly destinationPrompt = signal<DestinationPrompt | null>(null);
   protected readonly destinationInput = signal('');
+  protected readonly moveDestinationOptions = signal<DirectoryOption[]>([]);
+  protected readonly moveDestinationPath = signal('');
+  protected readonly moveDestinationsLoading = signal(false);
   protected readonly uploadConflict = signal<UploadConflict | null>(null);
   // Paths whose contents are already present in dashboard().files -- either
   // from the initial eager load() (root + its immediate subfolders) or from
@@ -109,6 +122,13 @@ export class FilesDashboardPage {
       ? 'files.movePromptLabel'
       : 'files.renamePromptLabel',
   );
+
+  protected readonly canConfirmDestinationPrompt = computed(() => {
+    const prompt = this.destinationPrompt();
+    if (!prompt) return false;
+    if (prompt.action === 'rename') return true;
+    return !this.moveDestinationsLoading() && !!this.moveDestinationPath();
+  });
 
   protected readonly visibleFiles = computed(() => {
     const data = this.dashboard();
@@ -261,9 +281,17 @@ export class FilesDashboardPage {
       return;
     }
 
-    if (request.action === 'rename' || request.action === 'move') {
-      this.destinationInput.set(request.action === 'rename' ? request.file.name : '');
-      this.destinationPrompt.set({ action: request.action, file: request.file });
+    if (request.action === 'rename') {
+      this.destinationInput.set(request.file.name);
+      this.destinationPrompt.set({ action: 'rename', file: request.file });
+      return;
+    }
+
+    if (request.action === 'move') {
+      this.destinationPrompt.set({ action: 'move', file: request.file });
+      this.moveDestinationPath.set('');
+      this.moveDestinationOptions.set([]);
+      void this.loadMoveDestinationOptions(request.file);
       return;
     }
 
@@ -279,10 +307,34 @@ export class FilesDashboardPage {
     }
   }
 
+  // Fetches every folder on the remote filesystem so the move dialog can
+  // offer a destination the user hasn't necessarily browsed to yet (the
+  // client-side tree is only ever partially loaded, per its lazy-expand
+  // design) -- a free-text path is what let ./logger-style typos and
+  // relative-looking input reach the backend as an invalid destination.
+  private async loadMoveDestinationOptions(file: FileListItem): Promise<void> {
+    this.moveDestinationsLoading.set(true);
+    try {
+      const rootPath = this.dashboard()?.initialFolderPath ?? '/';
+      const folders = await this.repository.listAllFolders(rootPath);
+      this.moveDestinationOptions.set(
+        folders.map((path) => ({ path, label: path === '/' ? '/' : `${path}/` })),
+      );
+      const currentDirectory = this.parentPath(file.path);
+      this.moveDestinationPath.set(folders.includes(currentDirectory) ? currentDirectory : '');
+    } catch (error) {
+      console.error('[files] failed to load move destination folders:', error);
+      this.moveDestinationOptions.set([]);
+    } finally {
+      this.moveDestinationsLoading.set(false);
+    }
+  }
+
   protected async confirmDestinationPrompt(): Promise<void> {
     const prompt = this.destinationPrompt();
     if (!prompt) return;
-    const destination = this.destinationInput().trim();
+    const destination =
+      prompt.action === 'move' ? this.moveDestinationPath().trim() : this.destinationInput().trim();
     this.destinationPrompt.set(null);
     if (!destination) return;
 
@@ -339,6 +391,8 @@ export class FilesDashboardPage {
 
   protected cancelDestinationPrompt(): void {
     this.destinationPrompt.set(null);
+    this.moveDestinationOptions.set([]);
+    this.moveDestinationPath.set('');
   }
 
   protected async requestUpload(file: File): Promise<void> {
