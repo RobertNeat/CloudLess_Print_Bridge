@@ -292,15 +292,13 @@ describe('MediaStorageService', () => {
         partPath,
       );
 
-      expect(metadata.fileName).toBe('image-front_(192.168.1.205).jpg');
+      expect(metadata.fileName).toBe('image-front.jpg');
       expect(metadata.cameraName).toBe('front');
       expect(metadata.cameraIp).toBe('192.168.1.205');
       const directory = join(storageRoot, 'captures', 'camera-1', 'capture-1');
       expect(existsSync(join(directory, 'manifest.json'))).toBe(false);
       expect(existsSync(join(directory, 'metadata.json'))).toBe(true);
-      expect(
-        existsSync(join(directory, 'image-front_(192.168.1.205).jpg')),
-      ).toBe(true);
+      expect(existsSync(join(directory, 'image-front.jpg'))).toBe(true);
     });
 
     it('falls back to the cameraId when the camera is unregistered, and omits the ip suffix', async () => {
