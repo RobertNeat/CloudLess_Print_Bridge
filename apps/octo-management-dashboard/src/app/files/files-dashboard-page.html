@@ -25,6 +25,7 @@
         [selectedFileId]="selectedFile()?.id ?? null"
         (fileSelected)="selectedFile.set($event)"
         (fileAction)="executeFileAction($event)"
+        (breadcrumbSelected)="selectFolder($event)"
       />
     </div>
     <div class="panel panel--details">
