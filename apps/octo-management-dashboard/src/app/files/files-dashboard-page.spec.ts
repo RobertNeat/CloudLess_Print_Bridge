@@ -37,12 +37,18 @@ describe('FilesDashboardPage', () => {
   it('selects the file clicked in the tree, not the first file in its folder', async () => {
     TestBed.configureTestingModule({
       providers: [
-        { provide: FILES_REPOSITORY, useValue: { load: async () => data } },
+        {
+          provide: FILES_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            loadFolder: async () => ({ children: [], files: [] }),
+          },
+        },
         {
           provide: FILES_OPERATIONS,
           useValue: {
-            execute: async () => 'not-configured' as const,
-            upload: async () => 'not-configured' as const,
+            execute: async () => 'ok' as const,
+            upload: async () => 'ok' as const,
             download: async () => {},
           },
         },

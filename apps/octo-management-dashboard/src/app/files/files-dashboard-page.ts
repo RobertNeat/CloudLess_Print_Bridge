@@ -82,8 +82,8 @@ export class FilesDashboardPage {
     if (notice.type === 'denied') return this.i18n.t('files.operationDenied');
     if (notice.type === 'upload-succeeded') return this.i18n.t('files.uploadSucceeded');
     // Download success needs no message (the browser's own save UI is the
-    // feedback); delete/rename/move reload the affected list in a later task,
-    // so a short confirmation is all that's shown here in the meantime.
+    // feedback); delete/rename/move show a short confirmation while
+    // refreshFoldersAfterMutation() refreshes the affected list in the background.
     if (notice.type === 'succeeded') {
       return notice.action === 'download'
         ? ''
@@ -199,6 +199,10 @@ export class FilesDashboardPage {
     targetPath: string,
     children: FileTreeNode[],
   ): FileTreeNode[] {
+    // Root's own children ARE the top-level tree array (repository.load()
+    // never emits a node whose path equals initialFolderPath itself), so
+    // patching root means replacing the array wholesale, not finding a node.
+    if (targetPath === this.dashboard()?.initialFolderPath) return children;
     return nodes.map((node) => {
       if (node.path === targetPath) return { ...node, children };
       if (node.children) {
@@ -217,6 +221,18 @@ export class FilesDashboardPage {
       if (!byPath.has(file.path)) byPath.set(file.path, file);
     }
     return Array.from(byPath.values());
+  }
+
+  // Unlike mergeFiles' "existing wins" dedup (used for expand, where nothing
+  // was removed remotely), a post-mutation refresh must let the fresh fetch
+  // win outright -- otherwise a deleted file's stale entry would survive
+  // because mergeFiles never drops paths that are simply absent from `incoming`.
+  private replaceFolderFiles(
+    existing: FileListItem[],
+    folderPath: string,
+    incoming: FileListItem[],
+  ): FileListItem[] {
+    return [...existing.filter((file) => this.parentPath(file.path) !== folderPath), ...incoming];
   }
 
   private parentPath(path: string): string {
@@ -257,6 +273,9 @@ export class FilesDashboardPage {
         ? { type: 'unavailable', action: request.action }
         : { type: 'succeeded', action: request.action },
     );
+    if (result === 'ok') {
+      await this.refreshFoldersAfterMutation(request.file);
+    }
   }
 
   protected async confirmDestinationPrompt(): Promise<void> {
@@ -272,6 +291,49 @@ export class FilesDashboardPage {
         ? { type: 'unavailable', action: prompt.action }
         : { type: 'succeeded', action: prompt.action },
     );
+    if (result === 'ok') {
+      await this.refreshFoldersAfterMutation(
+        prompt.file,
+        prompt.action === 'move' ? destination : undefined,
+      );
+    }
+  }
+
+  // Re-fetches the folder(s) touched by a completed rename/move/delete so the
+  // list reflects reality immediately rather than only after a manual reload.
+  // Only ensureFolderLoaded-eligible folders that are already loaded are worth
+  // touching here -- the source folder always is (its file was visible to be
+  // acted on), and a move's destination is only refreshed if the user has
+  // already opened it, since pulling in data for an unopened folder has no
+  // visible effect.
+  private async refreshFoldersAfterMutation(
+    file: FileListItem,
+    destinationPath?: string,
+  ): Promise<void> {
+    const sourceFolder = this.parentPath(file.path);
+    const foldersToRefresh = new Set([sourceFolder]);
+    if (destinationPath && this.loadedFolderPaths.has(destinationPath)) {
+      foldersToRefresh.add(destinationPath);
+    }
+
+    for (const folderPath of foldersToRefresh) {
+      const contents = await this.fetchFolder(folderPath);
+      const data = this.dashboard();
+      if (!contents || !data) continue;
+
+      this.dashboard.set({
+        ...data,
+        tree: this.patchTreeChildren(data.tree, folderPath, contents.children),
+        files: this.replaceFolderFiles(data.files, folderPath, contents.files),
+      });
+    }
+
+    const refreshedData = this.dashboard();
+    if (!refreshedData) return;
+    const selected = this.selectedFile();
+    if (selected && !refreshedData.files.some((candidate) => candidate.path === selected.path)) {
+      this.selectedFile.set(this.filesForPath(this.selectedFolderPath(), refreshedData)[0] ?? null);
+    }
   }
 
   protected cancelDestinationPrompt(): void {
