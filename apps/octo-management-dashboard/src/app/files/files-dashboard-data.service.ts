@@ -7,6 +7,7 @@ import type {
   FilesDashboardData,
   PinnedLocation,
 } from './files-dashboard.models';
+import type { FolderContents } from './files-dashboard.ports';
 
 @Injectable({ providedIn: 'root' })
 export class FilesDashboardDataService {
@@ -20,6 +21,28 @@ export class FilesDashboardDataService {
       throw new Error('Mock files dashboard data has an invalid shape.');
     }
     return structuredClone(data);
+  }
+
+  // Mock-only: the static fixture is already fully eager, so there is no
+  // real lazy folder to fetch here -- just walk the existing tree to find
+  // the matching node, keeping the dev path compiling against the real
+  // FilesRepositoryPort contract.
+  async loadFolder(path: string): Promise<FolderContents> {
+    const data = await this.load();
+    const node = this.findNode(data.tree, path);
+    return {
+      children: node?.children ?? [],
+      files: data.files.filter((file) => file.path.startsWith(`${path === '/' ? '' : path}/`)),
+    };
+  }
+
+  private findNode(nodes: FileTreeNode[], path: string): FileTreeNode | undefined {
+    for (const node of nodes) {
+      if (node.path === path) return node;
+      const found = this.findNode(node.children ?? [], path);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   private isFilesDashboardData(value: unknown): value is FilesDashboardData {

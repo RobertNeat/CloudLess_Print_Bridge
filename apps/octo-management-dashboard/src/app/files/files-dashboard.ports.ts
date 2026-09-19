@@ -1,9 +1,22 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import { FilesDashboardDataService } from './files-dashboard-data.service';
-import type { FileAction, FileListItem, FilesDashboardData } from './files-dashboard.models';
+import type {
+  FileAction,
+  FileListItem,
+  FilesDashboardData,
+  FileTreeNode,
+} from './files-dashboard.models';
+
+/** Direct children of one folder, as returned by a single-directory backend listing. */
+export interface FolderContents {
+  children: FileTreeNode[];
+  files: FileListItem[];
+}
 
 export interface FilesRepositoryPort {
   load(): Promise<FilesDashboardData>;
+  /** On-demand fetch of one folder's direct children, for lazy tree expansion beyond the levels `load()` already fetched eagerly. */
+  loadFolder(path: string): Promise<FolderContents>;
 }
 
 export interface FilesOperationsPort {
