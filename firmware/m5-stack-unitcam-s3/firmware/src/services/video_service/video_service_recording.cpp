@@ -1,4 +1,5 @@
-/** MJPEG recording-to-SD operation (timed/manual), split into part files. */
+/** MJPEG recording-to-SD operation (timed/manual), split into part files
+ * under storage/recordings/{requestId}/NNN.mjpeg (1-based, 3-digit). */
 #include "video_service_internal.h"
 
 namespace video_service_internal
@@ -12,29 +13,35 @@ void runRecording(const OperationRequest& operation)
         return;
     }
     lastSdAvailable = true;
-    if (!SD.exists("/recordings") && !SD.mkdir("/recordings"))
+    const String rootPath = resourceRootPath(ResourceKind::Recordings);
+    if (!SD.exists(rootPath) && !SD.mkdir(rootPath))
     {
         lastOperationError = OperationError::SdDirectoryFailed;
         HAL::hal::GetHal()->sdCardDeinit();
         return;
     }
-    cleanupOrphanedRecordingParts();
-    const String manifestPath = recordingManifestPath(operation);
-    const String firstPartPath = recordingPartPath(operation, 0);
-    if (SD.exists(manifestPath) || SD.exists(firstPartPath))
+    cleanupOrphanedResourceParts();
+    const String directoryPath = resourceDirectoryPath(ResourceKind::Recordings, operation.requestId);
+    if (SD.exists(directoryPath))
     {
-        // requestId is the durable recording identity. Never overwrite a file
-        // that may still be awaiting a confirmed upload.
+        // requestId is the durable recording identity. Never overwrite a
+        // directory that may still be awaiting a confirmed upload.
         lastOperationError = OperationError::DuplicateRequest;
         HAL::hal::GetHal()->sdCardDeinit();
         return;
     }
-    uint32_t partNumber = 0;
+    if (!SD.mkdir(directoryPath))
+    {
+        lastOperationError = OperationError::SdDirectoryFailed;
+        HAL::hal::GetHal()->sdCardDeinit();
+        return;
+    }
+    uint32_t partNumber = 1;
     uint32_t completedParts = 0;
     uint32_t partBytes = 0;
     uint32_t framesInPart = 0;
     uint32_t persistedFrames = 0;
-    String currentPartPath = firstPartPath;
+    String currentPartPath = resourcePartPath(ResourceKind::Recordings, operation.requestId, partNumber);
     File file = SD.open(currentPartPath, FILE_WRITE);
     if (!file)
     {
@@ -75,7 +82,7 @@ void runRecording(const OperationRequest& operation)
         const size_t frameRecordLength = headerLength + frame->len + 2;
         if (framesInPart > 0
             && partBytes + frameRecordLength + closingBoundaryLength
-                > RecordingPartMaximumBytes)
+                > RecordingPartMaxBytes)
         {
             if (!closeRecordingPart(file))
             {
@@ -87,7 +94,7 @@ void runRecording(const OperationRequest& operation)
             persistedFrames += framesInPart;
             completedParts++;
             partNumber++;
-            currentPartPath = recordingPartPath(operation, partNumber);
+            currentPartPath = resourcePartPath(ResourceKind::Recordings, operation.requestId, partNumber);
             file = SD.open(currentPartPath, FILE_WRITE);
             partBytes = 0;
             framesInPart = 0;
@@ -142,16 +149,22 @@ void runRecording(const OperationRequest& operation)
             operation.kind == OperationKind::ManualRecording
             ? elapsedDurationMilliseconds
             : operation.durationMilliseconds;
-        if (!writeRecordingManifest(
-                operation,
-                completedParts,
-                persistedFrames,
-                manifestDurationMilliseconds))
+        ResourceManifestInfo manifest;
+        manifest.kind = ResourceKind::Recordings;
+        manifest.requestId = operation.requestId;
+        manifest.totalParts = completedParts;
+        manifest.resolution = operation.resolution;
+        manifest.requestedDurationSeconds = manifestDurationMilliseconds / 1000.0;
+        manifest.totalFrames = persistedFrames;
+        manifest.complete = true;
+        if (!writeResourceManifest(manifest))
             lastOperationError = OperationError::ManifestWriteFailed;
     }
     else
     {
-        cleanupOrphanedRecordingParts();
+        cleanupOrphanedResourceParts();
+        if (completedParts == 0)
+            SD.rmdir(directoryPath);
     }
     HAL::hal::GetHal()->sdCardDeinit();
 }

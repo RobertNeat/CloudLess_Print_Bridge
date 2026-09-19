@@ -1,10 +1,18 @@
-/** Durable single/periodic capture-to-SD operation. */
+/** Durable single-capture and periodic-capture (timelapse) operations.
+ * SingleCapture writes exactly one part to storage/captures/{id}/001.jpg;
+ * PeriodicCapture writes one part per frame to
+ * storage/timelapses/{id}/NNN.jpg. Both write a manifest.json once all
+ * frames are on disk. */
 #include "video_service_internal.h"
 
 namespace video_service_internal
 {
 void runDurableCapture(const OperationRequest& operation)
 {
+    const bool singleCapture = operation.kind == OperationKind::SingleCapture;
+    const ResourceKind resourceKind = singleCapture
+        ? ResourceKind::Captures : ResourceKind::Timelapses;
+
     if (!HAL::hal::GetHal()->sdCardInit(true))
     {
         lastSdAvailable = false;
@@ -12,8 +20,9 @@ void runDurableCapture(const OperationRequest& operation)
         return;
     }
     lastSdAvailable = true;
-    const String directoryPath = captureDirectoryPath(operation);
-    if ((!SD.exists("/captures") && !SD.mkdir("/captures"))
+    const String rootPath = resourceRootPath(resourceKind);
+    const String directoryPath = resourceDirectoryPath(resourceKind, operation.requestId);
+    if ((!SD.exists(rootPath) && !SD.mkdir(rootPath))
         || SD.exists(directoryPath) || !SD.mkdir(directoryPath))
     {
         lastOperationError = SD.exists(directoryPath)
@@ -39,7 +48,7 @@ void runDurableCapture(const OperationRequest& operation)
 
     const uint32_t startedAt = millis();
     uint32_t nextCaptureAt = startedAt;
-    const bool singleCapture = operation.kind == OperationKind::SingleCapture;
+    bool writeFailed = false;
     while (!stopRequested && (singleCapture
         ? operationFramesCaptured == 0
         : millis() - startedAt < operation.durationMilliseconds))
@@ -53,10 +62,15 @@ void runDurableCapture(const OperationRequest& operation)
         camera_fb_t* frame = captureFrameAtSize(operation.frameSize);
         if (frame != nullptr)
         {
-            char fileName[24];
-            snprintf(fileName, sizeof(fileName), "/%06u.jpg",
-                (unsigned)operationFramesCaptured);
-            const String filePath = directoryPath + fileName;
+            if (frame->len > (singleCapture ? CaptureMaxBytes : TimelapsePartMaxBytes))
+            {
+                lastOperationError = OperationError::SdWriteFailed;
+                esp_camera_fb_return(frame);
+                writeFailed = true;
+                break;
+            }
+            const String filePath = resourcePartPath(
+                resourceKind, operation.requestId, operationFramesCaptured + 1);
             File file = SD.open(filePath, FILE_WRITE);
             if (!file || !persistCapture(file, frame))
             {
@@ -64,6 +78,7 @@ void runDurableCapture(const OperationRequest& operation)
                 lastOperationError = file ? OperationError::SdWriteFailed
                     : OperationError::SdOpenFailed;
                 esp_camera_fb_return(frame);
+                writeFailed = true;
                 break;
             }
             operationFramesCaptured++;
@@ -76,8 +91,23 @@ void runDurableCapture(const OperationRequest& operation)
             nextCaptureAt = millis() + operation.intervalMilliseconds;
     }
     releaseVideoServiceCamera();
-    if (operationFramesCaptured == 0)
+
+    if (writeFailed || operationFramesCaptured == 0)
+    {
         SD.rmdir(directoryPath);
+    }
+    else
+    {
+        ResourceManifestInfo manifest;
+        manifest.kind = resourceKind;
+        manifest.requestId = operation.requestId;
+        manifest.totalParts = operationFramesCaptured;
+        manifest.resolution = operation.resolution;
+        manifest.totalFrames = operationFramesCaptured;
+        manifest.complete = true;
+        if (!writeResourceManifest(manifest))
+            lastOperationError = OperationError::ManifestWriteFailed;
+    }
     HAL::hal::GetHal()->sdCardDeinit();
 }
 
