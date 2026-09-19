@@ -68,6 +68,12 @@
   font-size: 0.85rem;
   color: var(--semantic-text-muted);
 }
+.destination-prompt-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
 .destination-prompt-actions {
   display: flex;
   justify-content: flex-end;

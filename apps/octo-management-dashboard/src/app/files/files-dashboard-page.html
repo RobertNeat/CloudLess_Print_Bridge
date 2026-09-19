@@ -57,18 +57,41 @@
   (visibleChange)="!$event && cancelDestinationPrompt()"
 >
   <form class="destination-prompt-form" (ngSubmit)="confirmDestinationPrompt()">
-    <label>
-      <span>{{ i18n.t(destinationPromptLabelKey()) }}</span>
-      <input
-        pInputText
-        type="text"
-        [ngModel]="destinationInput()"
-        (ngModelChange)="destinationInput.set($event)"
-        name="destination"
-        id="destination-prompt-input"
-        required
-      />
-    </label>
+    @if (destinationPrompt()?.action === 'move') {
+      <label>
+        <span>{{ i18n.t(destinationPromptLabelKey()) }}</span>
+        @if (moveDestinationsLoading()) {
+          <p class="destination-prompt-loading" id="destination-prompt-loading">
+            <i class="pi pi-spin pi-spinner"></i>{{ i18n.t('files.movePromptLoading') }}
+          </p>
+        } @else {
+          <p-select
+            [options]="moveDestinationOptions()"
+            optionLabel="label"
+            optionValue="path"
+            [placeholder]="i18n.t('files.movePromptPlaceholder')"
+            [ngModel]="moveDestinationPath()"
+            (ngModelChange)="moveDestinationPath.set($event)"
+            [appendTo]="'body'"
+            name="destination"
+            id="destination-prompt-select"
+          />
+        }
+      </label>
+    } @else {
+      <label>
+        <span>{{ i18n.t(destinationPromptLabelKey()) }}</span>
+        <input
+          pInputText
+          type="text"
+          [ngModel]="destinationInput()"
+          (ngModelChange)="destinationInput.set($event)"
+          name="destination"
+          id="destination-prompt-input"
+          required
+        />
+      </label>
+    }
     <div class="destination-prompt-actions">
       <p-button
         type="button"
@@ -81,6 +104,7 @@
         type="submit"
         size="small"
         [label]="i18n.t('files.confirm')"
+        [disabled]="!canConfirmDestinationPrompt()"
         id="destination-prompt-confirm"
       />
     </div>

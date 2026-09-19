@@ -22,6 +22,13 @@ describe('HttpFilesDataService', () => {
     return httpMock.expectOne(`http://localhost:10321/files?path=${path}`);
   }
 
+  // listAllFolders awaits each fetchDirectory() before issuing the next, so
+  // the following request in the queue is only sent after several
+  // microtasks (firstValueFrom's promise chain) have drained.
+  async function flushMicrotasks(): Promise<void> {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  }
+
   it('loads only the root listing, mapping types/ids/kinds and leaving every folder unexpanded', async () => {
     const promise = service.load();
 
@@ -99,5 +106,30 @@ describe('HttpFilesDataService', () => {
       expect.objectContaining({ id: '/cache/b.gcode', type: 'file' }),
     ]);
     expect(result.files).toEqual([expect.objectContaining({ id: '/cache/b.gcode' })]);
+  });
+
+  it('listAllFolders recursively walks every directory, ignoring files', async () => {
+    const promise = service.listAllFolders('/');
+
+    expectList('/').flush([
+      { name: 'cache', path: '/cache', type: 'directory', size: 0 },
+      { name: 'readme.txt', path: '/readme.txt', type: 'file', size: 1 },
+    ]);
+    await flushMicrotasks();
+    expectList('/cache').flush([
+      { name: 'nested', path: '/cache/nested', type: 'directory', size: 0 },
+    ]);
+    await flushMicrotasks();
+    expectList('/cache/nested').flush([]);
+
+    expect(await promise).toEqual(['/', '/cache', '/cache/nested']);
+  });
+
+  it('listAllFolders does not loop forever on a self-referencing listing', async () => {
+    const promise = service.listAllFolders('/');
+
+    expectList('/').flush([{ name: '.', path: '/', type: 'directory', size: 0 }]);
+
+    expect(await promise).toEqual(['/']);
   });
 });

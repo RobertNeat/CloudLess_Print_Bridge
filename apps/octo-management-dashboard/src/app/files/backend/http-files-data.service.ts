@@ -50,6 +50,33 @@ export class HttpFilesDataService implements FilesRepositoryPort {
     };
   }
 
+  // Walks the whole remote tree on demand for the move dialog's destination
+  // picker -- the lazily-loaded client-side tree may not have every folder
+  // fetched yet, and the user must be able to pick any directory that
+  // actually exists, not just ones already browsed to. A visited set guards
+  // against a server listing that includes self/parent entries.
+  async listAllFolders(rootPath: string): Promise<string[]> {
+    const visited = new Set<string>();
+    const queue = [rootPath];
+    const folders: string[] = [];
+
+    while (queue.length > 0) {
+      const path = queue.shift()!;
+      if (visited.has(path)) continue;
+      visited.add(path);
+      folders.push(path);
+
+      const entries = await this.fetchDirectory(path);
+      for (const entry of entries) {
+        if (entry.type === 'directory' && !visited.has(entry.path)) {
+          queue.push(entry.path);
+        }
+      }
+    }
+
+    return folders;
+  }
+
   private async fetchRoot(): Promise<{ tree: FileTreeNode[]; files: FileListItem[] }> {
     const rootEntries = await this.fetchDirectory(ROOT_PATH);
 

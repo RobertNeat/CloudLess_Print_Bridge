@@ -36,6 +36,25 @@ export class FilesDashboardDataService {
     };
   }
 
+  // Mock-only: the fixture tree is already fully eager, so this is a plain
+  // walk rather than the real adapter's recursive loadFolder() fetches.
+  async listAllFolders(rootPath: string): Promise<string[]> {
+    const data = await this.load();
+    const root = rootPath === '/' ? undefined : this.findNode(data.tree, rootPath);
+    const nodes = root ? (root.children ?? []) : data.tree;
+    const paths = [rootPath];
+    this.collectFolderPaths(nodes, paths);
+    return paths;
+  }
+
+  private collectFolderPaths(nodes: FileTreeNode[], paths: string[]): void {
+    for (const node of nodes) {
+      if (node.type !== 'folder') continue;
+      paths.push(node.path);
+      this.collectFolderPaths(node.children ?? [], paths);
+    }
+  }
+
   private findNode(nodes: FileTreeNode[], path: string): FileTreeNode | undefined {
     for (const node of nodes) {
       if (node.path === path) return node;

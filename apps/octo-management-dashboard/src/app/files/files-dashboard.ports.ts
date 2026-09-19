@@ -17,6 +17,8 @@ export interface FilesRepositoryPort {
   load(): Promise<FilesDashboardData>;
   /** On-demand fetch of one folder's direct children, for lazy tree expansion -- `load()` only fetches the root listing. */
   loadFolder(path: string): Promise<FolderContents>;
+  /** Recursively walks every folder from `rootPath` down, for the move dialog's destination picker -- the lazily-loaded tree may not have every folder fetched yet. */
+  listAllFolders(rootPath: string): Promise<string[]>;
 }
 
 export interface FilesOperationsPort {
