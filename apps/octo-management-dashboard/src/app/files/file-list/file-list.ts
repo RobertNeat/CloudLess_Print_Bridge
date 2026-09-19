@@ -4,6 +4,7 @@ import type { MenuItem } from 'primeng/api';
 import { InputTextModule } from 'primeng/inputtext';
 import { MenuModule } from 'primeng/menu';
 import { I18nService, type TranslationKey } from '../../core/i18n.service';
+import { fileKindIcon } from '../file-kind.util';
 import type { FileAction, FileListItem } from '../files-dashboard.models';
 
 @Component({
@@ -51,9 +52,7 @@ export class FileList {
   }
 
   protected fileIcon(file: FileListItem): string {
-    if (file.kind === 'image') return 'pi pi-image';
-    if (file.kind === 'archive') return 'pi pi-box';
-    return 'pi pi-file';
+    return fileKindIcon(file.kind);
   }
 
   protected fileCount(count: number): string {

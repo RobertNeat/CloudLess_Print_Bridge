@@ -7,8 +7,8 @@ export interface FilesRepositoryPort {
 }
 
 export interface FilesOperationsPort {
-  execute(action: FileAction, file: FileListItem): Promise<'not-configured'>;
-  upload(path: string): Promise<'not-configured'>;
+  execute(action: FileAction, file: FileListItem): Promise<'ok' | 'error'>;
+  upload(path: string, file: File): Promise<'ok' | 'conflict' | 'error'>;
 }
 
 export const FILES_REPOSITORY = new InjectionToken<FilesRepositoryPort>('FILES_REPOSITORY', {
@@ -18,12 +18,14 @@ export const FILES_REPOSITORY = new InjectionToken<FilesRepositoryPort>('FILES_R
 
 @Injectable({ providedIn: 'root' })
 export class DevelopmentFilesOperationsAdapter implements FilesOperationsPort {
-  async execute(_action: FileAction, _file: FileListItem): Promise<'not-configured'> {
-    return 'not-configured';
+  // No backend is wired for this dev stub, so every call is honestly reported
+  // as a failure rather than a fabricated success.
+  async execute(_action: FileAction, _file: FileListItem): Promise<'ok' | 'error'> {
+    return 'error';
   }
 
-  async upload(_path: string): Promise<'not-configured'> {
-    return 'not-configured';
+  async upload(_path: string, _file: File): Promise<'ok' | 'conflict' | 'error'> {
+    return 'error';
   }
 }
 
