@@ -76,13 +76,13 @@ Status odpowiedzi firmware jest przekazywany klientowi.
 
 ### Ingest z firmware
 
-| Metoda | Trasa | Typ |
-| --- | --- | --- |
-| `POST` | `/api/v1/cameras/:cameraId/captures` | `image/jpeg` |
-| `POST` | `/api/v1/cameras/:cameraId/recordings/:requestId/parts/:partNumber` | `multipart/x-mixed-replace` |
-| `POST` | `/api/v1/cameras/:cameraId/audio` | `audio/wav` |
-| `POST` | `/api/v1/cameras/:cameraId/live` | strumień `multipart/x-mixed-replace` |
-| `GET` | `/api/v1/cameras/:cameraId/live?requestId=...` | aktywny live MJPEG |
+| Metoda | Trasa                                                               | Typ                                  |
+| ------ | ------------------------------------------------------------------- | ------------------------------------ |
+| `POST` | `/api/v1/cameras/:cameraId/captures`                                | `image/jpeg`                         |
+| `POST` | `/api/v1/cameras/:cameraId/recordings/:requestId/parts/:partNumber` | `multipart/x-mixed-replace`          |
+| `POST` | `/api/v1/cameras/:cameraId/audio`                                   | `audio/wav`                          |
+| `POST` | `/api/v1/cameras/:cameraId/live`                                    | strumień `multipart/x-mixed-replace` |
+| `GET`  | `/api/v1/cameras/:cameraId/live?requestId=...`                      | aktywny live MJPEG                   |
 
 Nagłówki wymagane przez te trasy są zgodne z aktualnym firmware. Capture
 akceptuje dodatkowo opcjonalny `X-Capture-Sequence`. Gdy urządzenie go wysyła,
@@ -93,11 +93,11 @@ obecnego protokołu urządzenia, nie storage.
 
 ### Odczyt stanu
 
-| Metoda | Trasa | Zastosowanie |
-| --- | --- | --- |
-| `GET` | `/health` | gotowość storage i połączenia MQTT |
-| `GET` | `/api/v1/cameras` | kamery wykryte przez telemetrię |
-| `GET` | `/api/v1/cameras/:cameraId/telemetry` | ostatnia wiadomość każdego kanału |
+| Metoda | Trasa                                 | Zastosowanie                       |
+| ------ | ------------------------------------- | ---------------------------------- |
+| `GET`  | `/health`                             | gotowość storage i połączenia MQTT |
+| `GET`  | `/api/v1/cameras`                     | kamery wykryte przez telemetrię    |
+| `GET`  | `/api/v1/cameras/:cameraId/telemetry` | ostatnia wiadomość każdego kanału  |
 
 ## Storage
 
@@ -120,23 +120,23 @@ otrzymaniu wszystkich kolejnych części.
 
 ## Konfiguracja
 
-| Zmienna | Domyślnie | Znaczenie |
-| --- | ---: | --- |
-| `VIDEO_SERVICE_HUB_HOST` | `0.0.0.0` | adres nasłuchu HTTP |
-| `VIDEO_SERVICE_HUB_PORT` | `10322` | port HTTP |
-| `VIDEO_SERVICE_HUB_STORAGE_PATH` | `./storage` | katalog danych |
-| `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS` | `10000` | timeout proxy do kamery |
-| `VIDEO_SERVICE_HUB_MQTT_PORT` | `1883` | port brokera embedded (`0` w testach) |
-| `VIDEO_SERVICE_HUB_MQTT_URL` | — | broker zewnętrzny; wyłącza embedded |
-| `VIDEO_SERVICE_HUB_MQTT_USERNAME`, `VIDEO_SERVICE_HUB_MQTT_PASSWORD` | — | dane brokera zewnętrznego |
-| `VIDEO_SERVICE_HUB_MQTT_CONNECT_TIMEOUT_MS` | `10000` | timeout pierwszego połączenia |
-| `VIDEO_SERVICE_HUB_MQTT_RECONNECT_PERIOD_MS` | `1000` | odstęp reconnect |
-| `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS` | `60000` | czas uznania kamery za online |
-| `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES` | `20971520` | limit JPEG |
-| `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES` | `16777216` | limit części MJPEG |
-| `VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES` | `10485760` | limit WAV |
-| `VIDEO_SERVICE_HUB_LIVE_MAX_BYTES` | `1073741824` | limit pojedynczego live |
-| `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES` | `2097152` | bufor wolnego odbiorcy live |
+| Zmienna                                                              |    Domyślnie | Znaczenie                             |
+| -------------------------------------------------------------------- | -----------: | ------------------------------------- |
+| `VIDEO_SERVICE_HUB_HOST`                                             |    `0.0.0.0` | adres nasłuchu HTTP                   |
+| `VIDEO_SERVICE_HUB_PORT`                                             |      `10322` | port HTTP                             |
+| `VIDEO_SERVICE_HUB_STORAGE_PATH`                                     |  `./storage` | katalog danych                        |
+| `VIDEO_SERVICE_HUB_CAMERA_COMMAND_TIMEOUT_MS`                        |      `10000` | timeout proxy do kamery               |
+| `VIDEO_SERVICE_HUB_MQTT_PORT`                                        |       `1883` | port brokera embedded (`0` w testach) |
+| `VIDEO_SERVICE_HUB_MQTT_URL`                                         |            — | broker zewnętrzny; wyłącza embedded   |
+| `VIDEO_SERVICE_HUB_MQTT_USERNAME`, `VIDEO_SERVICE_HUB_MQTT_PASSWORD` |            — | dane brokera zewnętrznego             |
+| `VIDEO_SERVICE_HUB_MQTT_CONNECT_TIMEOUT_MS`                          |      `10000` | timeout pierwszego połączenia         |
+| `VIDEO_SERVICE_HUB_MQTT_RECONNECT_PERIOD_MS`                         |       `1000` | odstęp reconnect                      |
+| `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS`                        |      `60000` | czas uznania kamery za online         |
+| `VIDEO_SERVICE_HUB_CAPTURE_MAX_BYTES`                                |   `20971520` | limit JPEG                            |
+| `VIDEO_SERVICE_HUB_RECORDING_PART_MAX_BYTES`                         |   `16777216` | limit części MJPEG                    |
+| `VIDEO_SERVICE_HUB_AUDIO_MAX_BYTES`                                  |   `10485760` | limit WAV                             |
+| `VIDEO_SERVICE_HUB_LIVE_MAX_BYTES`                                   | `1073741824` | limit pojedynczego live               |
+| `VIDEO_SERVICE_HUB_LIVE_VIEWER_BUFFER_BYTES`                         |    `2097152` | bufor wolnego odbiorcy live           |
 
 Serwis jest przeznaczony do zaufanej sieci lokalnej. Komendy przyjmują adres
 kamery od klienta, więc przed wystawieniem API poza LAN trzeba dodać
@@ -151,3 +151,7 @@ pnpm --filter @cloudless/video-service-hub build
 pnpm --filter @cloudless/video-service-hub test --runInBand
 pnpm --filter @cloudless/video-service-hub test:e2e --runInBand
 ```
+
+Ustawienia nazw kamer:
+apps\video-service-hub\storage\camera-registry\3030f96f4980.json
+apps\video-service-hub\storage\camera-registry\dcda0c74d028.json

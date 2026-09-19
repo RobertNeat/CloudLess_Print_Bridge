@@ -78,7 +78,7 @@ describe('TranscodingService.finalize', () => {
       'capture-1',
     );
 
-    expect(metadata.fileName).toBe('image-front_(192.168.1.205).jpg');
+    expect(metadata.fileName).toBe('image-front.jpg');
     expect(
       storage.getManifest('captures', 'camera-1', 'capture-1'),
     ).toBeUndefined();
@@ -115,7 +115,7 @@ describe('TranscodingService.finalize', () => {
       'timelapse-1',
     );
 
-    expect(metadata.fileName).toBe('timelapse-front_(192.168.1.205).mp4');
+    expect(metadata.fileName).toBe('timelapse-front.mp4');
     expect(metadata.size).toBeGreaterThan(0);
   }, 30_000);
 
@@ -140,7 +140,7 @@ describe('TranscodingService.finalize', () => {
       'recording-1',
     );
 
-    expect(metadata.fileName).toBe('recording-front_(192.168.1.205).mp4');
+    expect(metadata.fileName).toBe('recording-front.mp4');
   }, 30_000);
 
   it('is idempotent: calling finalize twice reuses the already-finalized metadata', async () => {

@@ -75,7 +75,7 @@ describe('MediaLibraryService', () => {
       kind: 'image',
       cameraId: 'camera-1',
       requestId: 'capture-1',
-      fileName: 'image-front_(192.168.1.205)_001.jpg',
+      fileName: 'image-front_001.jpg',
       downloadUrl: '/api/v1/captures/camera-1/capture-1/file',
     });
   }, 30_000);
@@ -117,10 +117,10 @@ describe('MediaLibraryService', () => {
     // capturedAt) is the 25th of the day and must read _025, not restart at
     // _001 just because it landed on the second page.
     expect(secondPage.items.at(-1)?.fileName).toBe(
-      'image-front_(192.168.1.205)_001.jpg',
+      'image-front_001.jpg',
     );
     expect(secondPage.items[0]?.fileName).toBe(
-      'image-front_(192.168.1.205)_005.jpg',
+      'image-front_005.jpg',
     );
   }, 60_000);
 
