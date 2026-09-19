@@ -13,11 +13,12 @@ const ROOT_PATH = '/';
  * Real FilesRepositoryPort implementation backed by ftps-remote-manager.
  *
  * The backend only lists one directory at a time (`GET /files?path=`), so
- * `load()` eagerly fetches the root and, for every folder found there, that
- * folder's own contents too (one level deep) -- see fetchRootAndChildren().
- * Anything deeper is left with `children: undefined` so file-tree.ts (Task
- * 4) can tell "not loaded yet" apart from "loaded and empty" and fetch it
- * on demand via loadFolder().
+ * `load()` fetches ONLY the root listing -- root-level folders are not
+ * special-cased and get `children: undefined` just like any deeper folder,
+ * so file-tree.ts's lazy expand fetches every folder's contents on demand
+ * via loadFolder(), including root-level ones. A real printer's root can
+ * have folders with 100+ files each, so eagerly fetching them in parallel
+ * on every page load doesn't scale.
  *
  * The backend has no concept of pinned locations (that's a pure dashboard
  * UI notion), so pinnedLocations is always empty here rather than fabricated.
@@ -28,7 +29,7 @@ export class HttpFilesDataService implements FilesRepositoryPort {
   private readonly config = inject(FtpsRemoteManagerConfig);
 
   async load(): Promise<FilesDashboardData> {
-    const { tree, files } = await this.fetchRootAndChildren();
+    const { tree, files } = await this.fetchRoot();
 
     return {
       pinnedLocations: [],
@@ -49,43 +50,13 @@ export class HttpFilesDataService implements FilesRepositoryPort {
     };
   }
 
-  private async fetchRootAndChildren(): Promise<{ tree: FileTreeNode[]; files: FileListItem[] }> {
+  private async fetchRoot(): Promise<{ tree: FileTreeNode[]; files: FileListItem[] }> {
     const rootEntries = await this.fetchDirectory(ROOT_PATH);
-    const rootFolders = rootEntries.filter((entry) => entry.type === 'directory');
 
-    // A subfolder that fails here (permissions, transient error) just stays
-    // unexpanded -- children: undefined already means "not loaded", so
-    // Task 4's lazy expand can simply retry it later. Only the root listing
-    // itself is allowed to fail the whole load, same as HttpVideosDataService.
-    const childListings = await Promise.all(
-      rootFolders.map(async (folder) => {
-        try {
-          return { path: folder.path, entries: await this.fetchDirectory(folder.path) };
-        } catch {
-          return { path: folder.path, entries: undefined };
-        }
-      }),
-    );
-    const childrenByPath = new Map(childListings.map((listing) => [listing.path, listing.entries]));
-
-    const tree = rootEntries.map((entry) => {
-      const children = entry.type === 'directory' ? childrenByPath.get(entry.path) : undefined;
-      return this.mapNode(
-        entry,
-        children?.map((child) => this.mapNode(child, undefined)),
-      );
-    });
-
-    const files = [
-      ...rootEntries
-        .filter((entry) => entry.type !== 'directory')
-        .map((entry) => this.mapFile(entry)),
-      ...childListings.flatMap((listing) =>
-        (listing.entries ?? [])
-          .filter((entry) => entry.type !== 'directory')
-          .map((entry) => this.mapFile(entry)),
-      ),
-    ];
+    const tree = rootEntries.map((entry) => this.mapNode(entry, undefined));
+    const files = rootEntries
+      .filter((entry) => entry.type !== 'directory')
+      .map((entry) => this.mapFile(entry));
 
     return { tree, files };
   }

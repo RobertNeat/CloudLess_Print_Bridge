@@ -22,13 +22,7 @@ describe('HttpFilesDataService', () => {
     return httpMock.expectOne(`http://localhost:10321/files?path=${path}`);
   }
 
-  // Lets the root response's .then() chain (firstValueFrom -> Promise.all
-  // fan-out for the child directory requests) run before asserting on them.
-  function flushMicrotasks(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
-  }
-
-  it('eagerly loads the root and one level deep, mapping types/ids/kinds', async () => {
+  it('loads only the root listing, mapping types/ids/kinds and leaving every folder unexpanded', async () => {
     const promise = service.load();
 
     const rootEntries: RemoteEntryDto[] = [
@@ -43,12 +37,6 @@ describe('HttpFilesDataService', () => {
       { name: 'link', path: '/link', type: 'symbolic-link', size: 0 },
     ];
     expectList('/').flush(rootEntries);
-    await flushMicrotasks();
-
-    const cacheEntries: RemoteEntryDto[] = [
-      { name: 'a.gcode', path: '/cache/a.gcode', type: 'file', size: 10 },
-    ];
-    expectList('/cache').flush(cacheEntries);
 
     const data = await promise;
 
@@ -56,14 +44,12 @@ describe('HttpFilesDataService', () => {
     expect(data.initialFolderPath).toBe('/');
     expect(data.uploadPath).toBe('/');
 
+    // Root-level folders are no longer special-cased: they stay unloaded
+    // ("not loaded yet") until the user expands them via loadFolder().
     const cacheNode = data.tree.find((node) => node.path === '/cache');
     expect(cacheNode?.type).toBe('folder');
     expect(cacheNode?.id).toBe('/cache');
-    expect(cacheNode?.children).toEqual([
-      expect.objectContaining({ id: '/cache/a.gcode', path: '/cache/a.gcode', type: 'file' }),
-    ]);
-    // Grandchildren-and-below stay undefined ("not loaded"), never [].
-    expect(cacheNode?.children?.[0].children).toBeUndefined();
+    expect(cacheNode?.children).toBeUndefined();
 
     const readmeNode = data.tree.find((node) => node.path === '/readme.txt');
     expect(readmeNode?.type).toBe('file');
@@ -85,8 +71,9 @@ describe('HttpFilesDataService', () => {
     });
     expect(readmeFile?.thumbnailUrl).toBeUndefined();
 
-    expect(data.files.some((file) => file.path === '/cache/a.gcode')).toBe(true);
-    expect(data.files.length).toBe(3);
+    // Only root-level FILE entries (readme.txt, link) -- no subfolder is
+    // fetched during load(), so /cache contributes no files at all.
+    expect(data.files.length).toBe(2);
   });
 
   it('falls back to empty entries when modifiedAt is absent, never fabricating a timestamp', async () => {
@@ -96,33 +83,6 @@ describe('HttpFilesDataService', () => {
 
     const data = await promise;
     expect(data.files[0].modifiedAt).toBe('');
-  });
-
-  it('leaves a root folder unexpanded (children: undefined) when its listing fails, without failing the whole load', async () => {
-    const promise = service.load();
-
-    expectList('/').flush([{ name: 'broken', path: '/broken', type: 'directory', size: 0 }]);
-    await flushMicrotasks();
-    expectList('/broken').flush(
-      { statusCode: 503, message: 'unreachable' },
-      { status: 503, statusText: 'x' },
-    );
-
-    const data = await promise;
-    const broken = data.tree.find((node) => node.path === '/broken');
-    expect(broken?.children).toBeUndefined();
-  });
-
-  it('marks an empty root folder as loaded-and-empty (children: [])', async () => {
-    const promise = service.load();
-
-    expectList('/').flush([{ name: 'empty', path: '/empty', type: 'directory', size: 0 }]);
-    await flushMicrotasks();
-    expectList('/empty').flush([]);
-
-    const data = await promise;
-    const empty = data.tree.find((node) => node.path === '/empty');
-    expect(empty?.children).toEqual([]);
   });
 
   it('loadFolder fetches one directory and maps its direct children/files', async () => {
