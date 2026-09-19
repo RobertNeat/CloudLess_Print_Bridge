@@ -15,7 +15,7 @@ export class FileDetails {
   readonly file = input<FileListItem | null>(null);
   readonly uploadPath = input.required<string>();
   readonly statusMessage = input('');
-  readonly uploadRequested = output<void>();
+  readonly uploadRequested = output<File>();
 
   protected formatUnit(value: number | undefined, unit: string): string {
     return value === undefined ? '—' : `${this.i18n.formatNumber(value)} ${unit}`;

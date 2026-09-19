@@ -32,7 +32,7 @@
         [file]="selectedFile()"
         [uploadPath]="selectedFolderPath() || data.uploadPath"
         [statusMessage]="operationMessage()"
-        (uploadRequested)="requestUpload()"
+        (uploadRequested)="requestUpload($event)"
       />
     </div>
   } @else if (loadingError()) {
@@ -45,3 +45,73 @@
     </div>
   }
 </section>
+
+<p-dialog
+  [header]="i18n.t(destinationPromptTitleKey())"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('files.cancel')"
+  [visible]="!!destinationPrompt()"
+  [style]="{ width: 'min(26rem, calc(100vw - 2rem))' }"
+  id="destination-prompt-dialog"
+  (visibleChange)="!$event && cancelDestinationPrompt()"
+>
+  <form class="destination-prompt-form" (ngSubmit)="confirmDestinationPrompt()">
+    <label>
+      <span>{{ i18n.t(destinationPromptLabelKey()) }}</span>
+      <input
+        pInputText
+        type="text"
+        [ngModel]="destinationInput()"
+        (ngModelChange)="destinationInput.set($event)"
+        name="destination"
+        id="destination-prompt-input"
+        required
+      />
+    </label>
+    <div class="destination-prompt-actions">
+      <p-button
+        type="button"
+        size="small"
+        [text]="true"
+        [label]="i18n.t('files.cancel')"
+        (onClick)="cancelDestinationPrompt()"
+      />
+      <p-button
+        type="submit"
+        size="small"
+        [label]="i18n.t('files.confirm')"
+        id="destination-prompt-confirm"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<p-dialog
+  [header]="i18n.t('files.uploadConflictTitle')"
+  [modal]="true"
+  [closeAriaLabel]="i18n.t('files.cancel')"
+  [visible]="!!uploadConflict()"
+  [style]="{ width: 'min(26rem, calc(100vw - 2rem))' }"
+  id="upload-conflict-dialog"
+  (visibleChange)="!$event && cancelUploadOverwrite()"
+>
+  @if (uploadConflict(); as conflict) {
+    <p>{{ i18n.t('files.uploadConflictMessage', { name: conflict.file.name }) }}</p>
+  }
+  <div class="destination-prompt-actions">
+    <p-button
+      type="button"
+      size="small"
+      [text]="true"
+      [label]="i18n.t('files.cancel')"
+      (onClick)="cancelUploadOverwrite()"
+    />
+    <p-button
+      type="button"
+      size="small"
+      [label]="i18n.t('files.overwrite')"
+      id="upload-conflict-confirm"
+      (onClick)="confirmUploadOverwrite()"
+    />
+  </div>
+</p-dialog>

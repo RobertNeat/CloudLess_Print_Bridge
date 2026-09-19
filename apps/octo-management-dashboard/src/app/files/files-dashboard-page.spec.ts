@@ -43,6 +43,7 @@ describe('FilesDashboardPage', () => {
           useValue: {
             execute: async () => 'not-configured' as const,
             upload: async () => 'not-configured' as const,
+            download: async () => {},
           },
         },
       ],

@@ -1,4 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { AccessPolicy, type Permission } from '../core/auth-session.service';
 import { FilesDashboardLayoutService } from '../core/files-dashboard-layout.service';
 import { I18nService, type TranslationKey } from '../core/i18n.service';
@@ -14,11 +18,35 @@ import type {
 } from './files-dashboard.models';
 
 type OperationNotice =
-  { readonly type: 'denied' } | { readonly type: 'unavailable'; readonly action?: FileAction };
+  | { readonly type: 'denied' }
+  | { readonly type: 'unavailable'; readonly action?: FileAction }
+  | { readonly type: 'succeeded'; readonly action: FileAction }
+  | { readonly type: 'upload-succeeded' };
+
+// Drives the inline rename/move prompt (single p-dialog, mode decides the
+// title/label/target and how the confirm handler resolves it).
+type DestinationPrompt = {
+  readonly action: 'rename' | 'move';
+  readonly file: FileListItem;
+};
+
+// Drives the inline upload-overwrite confirmation once upload() returns 'conflict'.
+type UploadConflict = {
+  readonly path: string;
+  readonly file: File;
+};
 
 @Component({
   selector: 'app-files-dashboard-page',
-  imports: [FileDetails, FileList, FileTree],
+  imports: [
+    ButtonModule,
+    DialogModule,
+    FileDetails,
+    FileList,
+    FileTree,
+    FormsModule,
+    InputTextModule,
+  ],
   templateUrl: './files-dashboard-page.html',
   styleUrl: './files-dashboard-page.scss',
 })
@@ -34,6 +62,9 @@ export class FilesDashboardPage {
   protected readonly loadingError = signal(false);
   protected readonly failedPaths = signal<ReadonlySet<string>>(new Set());
   private readonly operationNotice = signal<OperationNotice | null>(null);
+  protected readonly destinationPrompt = signal<DestinationPrompt | null>(null);
+  protected readonly destinationInput = signal('');
+  protected readonly uploadConflict = signal<UploadConflict | null>(null);
   // Paths whose contents are already present in dashboard().files -- either
   // from the initial eager load() (root + its immediate subfolders) or from
   // a completed loadFolder() call. Lets filesForPath/selectFolder tell
@@ -49,11 +80,35 @@ export class FilesDashboardPage {
     const notice = this.operationNotice();
     if (!notice) return '';
     if (notice.type === 'denied') return this.i18n.t('files.operationDenied');
+    if (notice.type === 'upload-succeeded') return this.i18n.t('files.uploadSucceeded');
+    // Download success needs no message (the browser's own save UI is the
+    // feedback); delete/rename/move reload the affected list in a later task,
+    // so a short confirmation is all that's shown here in the meantime.
+    if (notice.type === 'succeeded') {
+      return notice.action === 'download'
+        ? ''
+        : this.i18n.t('files.operationSucceeded', {
+            action: this.i18n.t(this.actionLabelKey(notice.action)),
+          });
+    }
     if (!notice.action) return this.i18n.t('files.uploadUnavailable');
+    if (notice.action === 'download') return this.i18n.t('files.downloadFailed');
     return this.i18n.t('files.operationUnavailable', {
       action: this.i18n.t(this.actionLabelKey(notice.action)),
     });
   });
+
+  protected readonly destinationPromptTitleKey = computed<TranslationKey>(() =>
+    this.destinationPrompt()?.action === 'move'
+      ? 'files.movePromptTitle'
+      : 'files.renamePromptTitle',
+  );
+
+  protected readonly destinationPromptLabelKey = computed<TranslationKey>(() =>
+    this.destinationPrompt()?.action === 'move'
+      ? 'files.movePromptLabel'
+      : 'files.renamePromptLabel',
+  );
 
   protected readonly visibleFiles = computed(() => {
     const data = this.dashboard();
@@ -179,25 +234,80 @@ export class FilesDashboardPage {
       return;
     }
 
-    const result = await this.operations.execute(request.action, request.file);
-    // Reloading/patching the file list after a successful mutation is deferred
-    // to a later task; only surface a notice for the failure path for now.
-    if (result === 'error') {
-      this.operationNotice.set({ type: 'unavailable', action: request.action });
+    if (request.action === 'download') {
+      try {
+        await this.operations.download(request.file);
+        this.operationNotice.set({ type: 'succeeded', action: 'download' });
+      } catch {
+        this.operationNotice.set({ type: 'unavailable', action: 'download' });
+      }
+      return;
     }
+
+    if (request.action === 'rename' || request.action === 'move') {
+      this.destinationInput.set(request.action === 'rename' ? request.file.name : '');
+      this.destinationPrompt.set({ action: request.action, file: request.file });
+      return;
+    }
+
+    // 'delete' needs no extra input, so it runs immediately.
+    const result = await this.operations.execute(request.action, request.file);
+    this.operationNotice.set(
+      result === 'error'
+        ? { type: 'unavailable', action: request.action }
+        : { type: 'succeeded', action: request.action },
+    );
   }
 
-  protected async requestUpload(): Promise<void> {
+  protected async confirmDestinationPrompt(): Promise<void> {
+    const prompt = this.destinationPrompt();
+    if (!prompt) return;
+    const destination = this.destinationInput().trim();
+    this.destinationPrompt.set(null);
+    if (!destination) return;
+
+    const result = await this.operations.execute(prompt.action, prompt.file, destination);
+    this.operationNotice.set(
+      result === 'error'
+        ? { type: 'unavailable', action: prompt.action }
+        : { type: 'succeeded', action: prompt.action },
+    );
+  }
+
+  protected cancelDestinationPrompt(): void {
+    this.destinationPrompt.set(null);
+  }
+
+  protected async requestUpload(file: File): Promise<void> {
     if (!this.access.can('files.upload')) {
       this.operationNotice.set({ type: 'denied' });
       return;
     }
 
-    // UploadZone's `uploadRequested` output carries no File payload yet — the
-    // file-picker/drop wiring that produces a real File lands in a later task.
-    // Until then there is nothing to upload, so this stays a stub notice
-    // rather than calling `operations.upload` with a fabricated File.
-    this.operationNotice.set({ type: 'unavailable' });
+    const path = this.selectedFolderPath() || this.dashboard()?.uploadPath || '/';
+    await this.performUpload(path, file, false);
+  }
+
+  protected async confirmUploadOverwrite(): Promise<void> {
+    const conflict = this.uploadConflict();
+    this.uploadConflict.set(null);
+    if (!conflict) return;
+    await this.performUpload(conflict.path, conflict.file, true);
+  }
+
+  protected cancelUploadOverwrite(): void {
+    this.uploadConflict.set(null);
+  }
+
+  private async performUpload(path: string, file: File, force: boolean): Promise<void> {
+    const result = await this.operations.upload(path, file, force);
+    if (result === 'conflict') {
+      this.uploadConflict.set({ path, file });
+      return;
+    }
+    this.operationNotice.set(
+      result === 'error' ? { type: 'unavailable' } : { type: 'upload-succeeded' },
+    );
   }
 
   private async loadData(): Promise<void> {
