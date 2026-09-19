@@ -7,6 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { MenubarModule } from 'primeng/menubar';
 import { SelectModule } from 'primeng/select';
 import { TieredMenuModule } from 'primeng/tieredmenu';
+import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { filter, map, startWith } from 'rxjs';
 
@@ -30,6 +31,7 @@ import { VideoSearch } from './videos/video-search/video-search';
     RouterOutlet,
     SelectModule,
     TieredMenuModule,
+    ToastModule,
     TooltipModule,
     VideoSearch,
   ],

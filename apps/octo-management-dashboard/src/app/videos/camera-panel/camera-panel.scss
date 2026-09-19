@@ -147,10 +147,14 @@ dd {
   width: 2.1rem;
   height: 2.1rem;
   flex: 0 0 auto;
+  border: 1px solid var(--semantic-border-default);
   border-radius: 0.55rem;
   background: var(--semantic-surface-raised);
   color: var(--semantic-accent-primary);
   place-items: center;
+}
+.source--selected .source-icon {
+  border-color: var(--semantic-accent-primary);
 }
 .source-icon b {
   position: absolute;

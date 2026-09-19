@@ -8,19 +8,34 @@
         [ngModel]="player().resolution"
         (ngModelChange)="resolutionChanged.emit($event)"
         [ariaLabel]="i18n.t('videos.resolutionAria')"
+        id="video-player-resolution-select"
       />
       <p-button
         [icon]="player().active ? 'pi pi-stop' : 'pi pi-play'"
         [label]="i18n.t(player().active ? 'videos.stop' : 'videos.start')"
         [severity]="player().active ? 'danger' : 'primary'"
-        [disabled]="!player().active && !canStart()"
+        [disabled]="(!player().active && !canStart()) || starting()"
+        [loading]="starting()"
+        id="video-player-toggle-button"
         (onClick)="activeChanged.emit(!player().active)"
       />
     </div>
-    @if (player().active) {
-      <img [src]="previewUrl()" [alt]="i18n.t('videos.previewAlt', { name: sourceName() })" />
+    @if (player().active && !previewFailed()) {
+      <img
+        [src]="imageSrc()"
+        [alt]="i18n.t('videos.previewAlt', { name: sourceName() })"
+        id="video-player-preview-image"
+        (error)="onPreviewError()"
+        (load)="onPreviewLoad()"
+      />
+    } @else if (player().active && previewFailed()) {
+      <div class="stream-ended" role="status" id="video-player-placeholder">
+        <span><i class="pi pi-exclamation-triangle" aria-hidden="true"></i></span
+        ><strong>{{ i18n.t('videos.previewFailed') }}</strong
+        ><small>{{ i18n.t('videos.previewFailedHint') }}</small>
+      </div>
     } @else {
-      <div class="stream-ended" role="status">
+      <div class="stream-ended" role="status" id="video-player-placeholder">
         <span><i class="pi pi-video" aria-hidden="true"></i></span
         ><strong>{{ i18n.t(canStart() ? 'videos.streamStopped' : 'videos.streamOffline') }}</strong
         ><small>{{ i18n.t(canStart() ? 'videos.streamHint' : 'videos.streamOfflineHint') }}</small>

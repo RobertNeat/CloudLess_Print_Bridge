@@ -1,5 +1,6 @@
 import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
+import { MessageService } from 'primeng/api';
 import { App } from './app';
 
 describe('App', () => {
@@ -22,7 +23,7 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), MessageService],
     }).compileComponents();
   });
 

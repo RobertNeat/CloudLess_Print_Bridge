@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { VideosDashboardData } from './videos-dashboard.models';
+import type { CameraSource, MediaItem, VideosDashboardData } from './videos-dashboard.models';
 
 const metricCodes = [
   'status',
@@ -14,7 +14,7 @@ const metricCodes = [
   'serviceIp',
 ] as const;
 const metricValueCodes = ['stream', 'enabled', 'ready'] as const;
-const mediaKinds = ['audio', 'recording', 'timelapse', 'image'] as const;
+const mediaKinds = ['audio', 'recording', 'live', 'timelapse', 'image'] as const;
 const locationCodes = ['printerChamber', 'buildPlate', 'workshop'] as const;
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +27,16 @@ export class VideosDashboardDataService {
       throw new Error('Mock videos dashboard data has an invalid shape.');
     }
     return structuredClone(source);
+  }
+
+  async refreshSources(): Promise<readonly CameraSource[]> {
+    const data = await this.load();
+    return data.sources;
+  }
+
+  async refreshMedia(): Promise<readonly MediaItem[]> {
+    const data = await this.load();
+    return data.media;
   }
 }
 
@@ -80,7 +90,11 @@ function isMediaItem(value: unknown): boolean {
     mediaKinds.includes(value['kind'] as never) &&
     !Number.isNaN(Date.parse(value['capturedAt'] as string)) &&
     (value['duration'] === undefined || typeof value['duration'] === 'string') &&
-    (value['thumbnailUrl'] === undefined || typeof value['thumbnailUrl'] === 'string')
+    (value['thumbnailUrl'] === undefined || typeof value['thumbnailUrl'] === 'string') &&
+    (value['displayName'] === undefined || typeof value['displayName'] === 'string') &&
+    (value['requestId'] === undefined || typeof value['requestId'] === 'string') &&
+    (value['downloadUrl'] === undefined || typeof value['downloadUrl'] === 'string') &&
+    (value['frameCount'] === undefined || isFiniteNumber(value['frameCount']))
   );
 }
 

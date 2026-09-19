@@ -1,78 +1,165 @@
-<section id="videos-dashboard" class="videos-dashboard" data-testid="videos-dashboard">
+<section id="videos-dashboard" class="videos-dashboard">
   @if (dashboard(); as data) {
-    <div class="live-area">
-      <app-camera-panel
-        [metrics]="data.metrics"
-        [sources]="data.sources"
-        [selectedSourceId]="data.player.selectedSourceId"
-        [streamActive]="data.player.active"
-        (sourceSelected)="selectSource($event)"
-      />
-      <app-video-player
-        [player]="data.player"
-        [canStart]="canStartStream()"
-        [sourceName]="selectedSource()?.name ?? ''"
-        [previewUrl]="selectedSource()?.previewUrl ?? ''"
-        (activeChanged)="setStreamActive($event)"
-        (resolutionChanged)="setResolution($event)"
-      />
-    </div>
-    <div class="media-area">
-      <app-media-library [items]="filteredMedia()" (itemOpened)="openMedia($event)" />
-    </div>
+    @if (loadingError()) {
+      <div class="dashboard-state" role="alert" id="videos-refresh-error">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
+        ><span>{{ i18n.t('videos.refreshError') }}</span
+        ><p-button
+          size="small"
+          icon="pi pi-refresh"
+          [label]="i18n.t('videos.retry')"
+          id="videos-refresh-retry-button"
+          (onClick)="retryLoad()"
+        />
+      </div>
+    }
+    <p-splitter
+      id="videos-splitter"
+      layout="vertical"
+      styleClass="videos-splitter"
+      [panelSizes]="[45, 55]"
+      [minSizes]="[20, 15]"
+      gutterSize="6"
+    >
+      <ng-template #panel>
+        <div class="live-area">
+          <app-camera-panel
+            [metrics]="data.metrics"
+            [sources]="data.sources"
+            [selectedSourceId]="data.player.selectedSourceId"
+            [streamActive]="data.player.active"
+            (sourceSelected)="selectSource($event)"
+            (addCamera)="openAddCamera()"
+          />
+          <app-video-player
+            [player]="data.player"
+            [canStart]="canStartStream()"
+            [starting]="streamStarting()"
+            [sourceName]="selectedSource()?.name ?? ''"
+            [previewUrl]="liveStreamUrl() || (selectedSource()?.previewUrl ?? '')"
+            (activeChanged)="setStreamActive($event)"
+            (resolutionChanged)="setResolution($event)"
+          />
+          @if (streamCommandError()) {
+            <div class="dashboard-state" role="alert" id="stream-command-error">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
+              ><span>{{ i18n.t('videos.streamCommandError') }}</span>
+            </div>
+          }
+        </div>
+      </ng-template>
+      <ng-template #panel>
+        <div class="media-area">
+          <app-media-library
+            [items]="filteredMedia()"
+            [canRecord]="hasCommandableSource()"
+            [pendingActions]="pendingActions()"
+            (itemOpened)="openMedia($event)"
+            (recordRequested)="openRecordDialog($event)"
+          />
+        </div>
+      </ng-template>
+    </p-splitter>
   } @else if (loadingError()) {
-    <div class="dashboard-state" role="alert">
+    <div class="dashboard-state" role="alert" id="videos-load-error">
       <i class="pi pi-exclamation-triangle" aria-hidden="true"></i
       ><strong>{{ i18n.t('videos.loadError') }}</strong
       ><p-button
         size="small"
         icon="pi pi-refresh"
         [label]="i18n.t('videos.retry')"
+        id="videos-retry-button"
         (onClick)="retryLoad()"
       />
     </div>
   } @else {
-    <div class="dashboard-state" role="status" aria-live="polite">
+    <div class="dashboard-state" role="status" aria-live="polite" id="videos-loading">
       <i class="pi pi-spin pi-spinner" aria-hidden="true"></i
       ><span>{{ i18n.t('videos.loading') }}</span>
     </div>
   }
 </section>
 
+<app-media-preview
+  [item]="selectedMedia()"
+  [sourceName]="selectedSource()?.name ?? ''"
+  (closed)="closeMedia()"
+  (changed)="onMediaChanged()"
+/>
+
+<app-media-record-dialog
+  [action]="recordDialogAction()"
+  [sources]="recordDialogSources()"
+  [defaultSourceId]="selectedSource()?.id ?? ''"
+  (closed)="closeRecordDialog()"
+  (submitted)="submitRecordDialog($event)"
+/>
+
 <p-dialog
-  [header]="i18n.t('videos.mediaPreview')"
+  [header]="i18n.t('videos.addCamera')"
   [modal]="true"
   [closeAriaLabel]="i18n.t('videos.closePreview')"
-  [visible]="!!selectedMedia()"
-  [style]="{ width: 'min(32rem, calc(100vw - 2rem))' }"
-  (visibleChange)="!$event && selectedMedia.set(null)"
+  [visible]="addCameraOpen()"
+  [style]="{ width: 'min(28rem, calc(100vw - 2rem))' }"
+  (visibleChange)="!$event && closeAddCamera()"
+  id="add-camera-dialog"
 >
-  @if (selectedMedia(); as item) {
-    <article class="media-preview">
-      @if (item.thumbnailUrl) {
-        <img
-          [src]="item.thumbnailUrl"
-          [alt]="i18n.t('videos.mediaPreviewAlt', { name: item.name })"
-        />
-      } @else {
-        <div class="media-preview__placeholder">
-          <i class="pi pi-file" aria-hidden="true"></i
-          ><span>{{ i18n.t('videos.previewUnavailable') }}</span>
-        </div>
-      }
-      <h2>{{ item.name }}</h2>
-      <dl>
-        <div>
-          <dt>{{ i18n.t('videos.capturedAt') }}</dt>
-          <dd>{{ i18n.formatDateTime(item.capturedAt) }}</dd>
-        </div>
-        @if (item.duration) {
-          <div>
-            <dt>{{ i18n.t('videos.duration') }}</dt>
-            <dd>{{ item.duration }}</dd>
-          </div>
-        }
-      </dl>
-    </article>
-  }
+  <form class="add-camera-form" (ngSubmit)="submitAddCamera()">
+    <label>
+      <span>{{ i18n.t('videos.addCamera.id') }}</span>
+      <input
+        pInputText
+        type="text"
+        [ngModel]="newCameraId()"
+        (ngModelChange)="newCameraId.set($event)"
+        name="cameraId"
+        id="add-camera-id-input"
+        required
+      />
+    </label>
+    <label>
+      <span>{{ i18n.t('videos.addCamera.baseUrl') }}</span>
+      <input
+        pInputText
+        type="text"
+        placeholder="http://192.168.1.205"
+        [ngModel]="newCameraBaseUrl()"
+        (ngModelChange)="newCameraBaseUrl.set($event)"
+        name="cameraBaseUrl"
+        id="add-camera-baseurl-input"
+        required
+      />
+    </label>
+    <label>
+      <span>{{ i18n.t('videos.addCamera.displayName') }}</span>
+      <input
+        pInputText
+        type="text"
+        [ngModel]="newCameraDisplayName()"
+        (ngModelChange)="newCameraDisplayName.set($event)"
+        name="cameraDisplayName"
+        id="add-camera-displayname-input"
+      />
+    </label>
+    @if (addCameraError()) {
+      <p class="add-camera-form__error" role="alert" id="add-camera-error">
+        {{ i18n.t('videos.addCamera.error') }}
+      </p>
+    }
+    <div class="add-camera-form__actions">
+      <p-button
+        type="button"
+        [label]="i18n.t('videos.cancel')"
+        [text]="true"
+        (onClick)="closeAddCamera()"
+      />
+      <p-button
+        type="submit"
+        [label]="i18n.t('videos.addCamera.submit')"
+        [disabled]="!canSubmitAddCamera() || addCameraSubmitting()"
+        [loading]="addCameraSubmitting()"
+        id="add-camera-submit-button"
+      />
+    </div>
+  </form>
 </p-dialog>

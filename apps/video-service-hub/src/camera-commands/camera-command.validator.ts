@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import {
+  assertCameraBaseUrl,
   assertIdentifier,
   assertInteger,
   assertResolution,
@@ -17,26 +18,11 @@ export function parseCameraCommand(value: string): CameraCommand {
 }
 
 export function parseCameraBaseUrl(value: unknown): string {
-  if (typeof value !== 'string') {
-    throw new BadRequestException('cameraBaseUrl is required');
-  }
-  let url: URL;
   try {
-    url = new URL(value);
+    return assertCameraBaseUrl(value);
   } catch {
-    throw new BadRequestException('cameraBaseUrl is invalid');
-  }
-  if (
-    url.protocol !== 'http:' ||
-    url.username !== '' ||
-    url.password !== '' ||
-    (url.pathname !== '' && url.pathname !== '/') ||
-    url.search !== '' ||
-    url.hash !== ''
-  ) {
     throw new BadRequestException('cameraBaseUrl must be an HTTP origin');
   }
-  return url.origin;
 }
 
 export function validateCommandPayload(
