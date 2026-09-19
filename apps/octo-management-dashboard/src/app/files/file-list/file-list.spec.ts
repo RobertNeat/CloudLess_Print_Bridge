@@ -16,6 +16,20 @@ const files: FileListItem[] = [
   },
 ];
 
+const filesWithMissingModifiedAt: FileListItem[] = [
+  ...files,
+  {
+    id: 'two',
+    name: 'two.gcode',
+    path: '/home/two.gcode',
+    kind: 'gcode',
+    extension: 'gcode',
+    sizeBytes: 2048,
+    modifiedAt: '',
+    metadata: {},
+  },
+];
+
 describe('FileList', () => {
   it('reacts to language changes and exposes a separate action menu button', () => {
     const fixture = TestBed.createComponent(FileList);
@@ -35,5 +49,16 @@ describe('FileList', () => {
     element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('1 plik');
     expect(element.querySelector('input')?.placeholder).toBe('Szukaj w folderze');
+  });
+
+  it('renders a row with an empty modifiedAt instead of throwing', () => {
+    const fixture = TestBed.createComponent(FileList);
+    fixture.componentRef.setInput('files', filesWithMissingModifiedAt);
+    fixture.componentRef.setInput('path', '/home');
+
+    expect(() => fixture.detectChanges()).not.toThrow();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('two.gcode');
+    expect(element.textContent).toContain('—');
   });
 });

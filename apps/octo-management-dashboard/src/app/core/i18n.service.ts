@@ -627,10 +627,15 @@ export class I18nService {
   }
 
   formatDateTime(value: string): string {
+    const date = new Date(value);
+    // An empty/unparseable value is a legitimate "unknown" reading from the
+    // backend (e.g. an FTPS entry with no reported modification time), not a
+    // bug to defend against -- Intl.DateTimeFormat#format() throws on it.
+    if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat(this.locale(), {
       dateStyle: 'medium',
       timeStyle: 'short',
-    }).format(new Date(value));
+    }).format(date);
   }
 
   formatShortDate(value: string): string {
