@@ -37,6 +37,13 @@ type UploadConflict = {
   readonly file: File;
 };
 
+// Drives the upload-destination prompt shown before an upload actually
+// happens, so the target folder is an explicit choice from the same real
+// directory list the move dialog uses, not just "whatever folder is open".
+type UploadPrompt = {
+  readonly file: File;
+};
+
 // A move-destination option, as shown in the directory picker. `path` is the
 // real absolute path sent to the backend; `label` is a friendlier
 // trailing-slash form matching how the user thinks about folders.
@@ -74,10 +81,15 @@ export class FilesDashboardPage {
   private readonly operationNotice = signal<OperationNotice | null>(null);
   protected readonly destinationPrompt = signal<DestinationPrompt | null>(null);
   protected readonly destinationInput = signal('');
-  protected readonly moveDestinationOptions = signal<DirectoryOption[]>([]);
+  // Shared between the move and upload destination pickers: both are backed
+  // by the same cached repository.listAllFolders() list, so one options/
+  // loading pair is enough -- only the currently-selected path differs.
+  protected readonly destinationOptions = signal<DirectoryOption[]>([]);
+  protected readonly destinationsLoading = signal(false);
   protected readonly moveDestinationPath = signal('');
-  protected readonly moveDestinationsLoading = signal(false);
   protected readonly uploadConflict = signal<UploadConflict | null>(null);
+  protected readonly uploadPrompt = signal<UploadPrompt | null>(null);
+  protected readonly uploadDestinationPath = signal('');
   // Paths whose contents are already present in dashboard().files -- either
   // from the initial eager load() (root + its immediate subfolders) or from
   // a completed loadFolder() call. Lets filesForPath/selectFolder tell
@@ -127,8 +139,12 @@ export class FilesDashboardPage {
     const prompt = this.destinationPrompt();
     if (!prompt) return false;
     if (prompt.action === 'rename') return true;
-    return !this.moveDestinationsLoading() && !!this.moveDestinationPath();
+    return !this.destinationsLoading() && !!this.moveDestinationPath();
   });
+
+  protected readonly canConfirmUploadPrompt = computed(
+    () => !this.destinationsLoading() && !!this.uploadDestinationPath(),
+  );
 
   protected readonly visibleFiles = computed(() => {
     const data = this.dashboard();
@@ -290,8 +306,8 @@ export class FilesDashboardPage {
     if (request.action === 'move') {
       this.destinationPrompt.set({ action: 'move', file: request.file });
       this.moveDestinationPath.set('');
-      this.moveDestinationOptions.set([]);
-      void this.loadMoveDestinationOptions(request.file);
+      this.destinationOptions.set([]);
+      void this.loadDestinationOptions(this.parentPath(request.file.path), this.moveDestinationPath);
       return;
     }
 
@@ -307,26 +323,31 @@ export class FilesDashboardPage {
     }
   }
 
-  // Fetches every folder on the remote filesystem so the move dialog can
-  // offer a destination the user hasn't necessarily browsed to yet (the
+  // Fetches every folder on the remote filesystem so the move/upload dialogs
+  // can offer a destination the user hasn't necessarily browsed to yet (the
   // client-side tree is only ever partially loaded, per its lazy-expand
   // design) -- a free-text path is what let ./logger-style typos and
   // relative-looking input reach the backend as an invalid destination.
-  private async loadMoveDestinationOptions(file: FileListItem): Promise<void> {
-    this.moveDestinationsLoading.set(true);
+  // Shared by both dialogs: repository.listAllFolders() is cached by the
+  // adapter itself, so calling it from either picker never re-triggers a
+  // slow walk once either one has fetched it this session.
+  private async loadDestinationOptions(
+    preferredPath: string,
+    selection: { set(path: string): void },
+  ): Promise<void> {
+    this.destinationsLoading.set(true);
     try {
       const rootPath = this.dashboard()?.initialFolderPath ?? '/';
       const folders = await this.repository.listAllFolders(rootPath);
-      this.moveDestinationOptions.set(
+      this.destinationOptions.set(
         folders.map((path) => ({ path, label: path === '/' ? '/' : `${path}/` })),
       );
-      const currentDirectory = this.parentPath(file.path);
-      this.moveDestinationPath.set(folders.includes(currentDirectory) ? currentDirectory : '');
+      selection.set(folders.includes(preferredPath) ? preferredPath : '');
     } catch (error) {
-      console.error('[files] failed to load move destination folders:', error);
-      this.moveDestinationOptions.set([]);
+      console.error('[files] failed to load destination folders:', error);
+      this.destinationOptions.set([]);
     } finally {
-      this.moveDestinationsLoading.set(false);
+      this.destinationsLoading.set(false);
     }
   }
 
@@ -391,18 +412,36 @@ export class FilesDashboardPage {
 
   protected cancelDestinationPrompt(): void {
     this.destinationPrompt.set(null);
-    this.moveDestinationOptions.set([]);
+    this.destinationOptions.set([]);
     this.moveDestinationPath.set('');
   }
 
-  protected async requestUpload(file: File): Promise<void> {
+  protected requestUpload(file: File): void {
     if (!this.access.can('files.upload')) {
       this.operationNotice.set({ type: 'denied' });
       return;
     }
 
-    const path = this.selectedFolderPath() || this.dashboard()?.uploadPath || '/';
-    await this.performUpload(path, file, false);
+    this.uploadPrompt.set({ file });
+    this.uploadDestinationPath.set('');
+    this.destinationOptions.set([]);
+    const preferredPath = this.selectedFolderPath() || this.dashboard()?.uploadPath || '/';
+    void this.loadDestinationOptions(preferredPath, this.uploadDestinationPath);
+  }
+
+  protected async confirmUploadPrompt(): Promise<void> {
+    const prompt = this.uploadPrompt();
+    if (!prompt) return;
+    const path = this.uploadDestinationPath().trim();
+    this.uploadPrompt.set(null);
+    if (!path) return;
+    await this.performUpload(path, prompt.file, false);
+  }
+
+  protected cancelUploadPrompt(): void {
+    this.uploadPrompt.set(null);
+    this.destinationOptions.set([]);
+    this.uploadDestinationPath.set('');
   }
 
   protected async confirmUploadOverwrite(): Promise<void> {

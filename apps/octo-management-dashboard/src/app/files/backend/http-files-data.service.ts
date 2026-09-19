@@ -28,6 +28,15 @@ export class HttpFilesDataService implements FilesRepositoryPort {
   private readonly http = inject(HttpClient);
   private readonly config = inject(FtpsRemoteManagerConfig);
 
+  // Session-lifetime cache for listAllFolders(), keyed by rootPath: this
+  // service is providedIn:'root' so it lives as long as the app does, which
+  // is exactly the cache lifetime the BFS walk's real network cost calls for.
+  // No invalidation: this app currently has no create/delete-directory action
+  // (FileAction is only download/rename/move/delete, and move only ever
+  // targets a FileListItem, never a folder), so nothing reachable in the UI
+  // changes directory STRUCTURE -- a stale cache entry isn't possible today.
+  private readonly folderListCache = new Map<string, Promise<string[]>>();
+
   async load(): Promise<FilesDashboardData> {
     const { tree, files } = await this.fetchRoot();
 
@@ -50,12 +59,29 @@ export class HttpFilesDataService implements FilesRepositoryPort {
     };
   }
 
-  // Walks the whole remote tree on demand for the move dialog's destination
-  // picker -- the lazily-loaded client-side tree may not have every folder
-  // fetched yet, and the user must be able to pick any directory that
-  // actually exists, not just ones already browsed to. A visited set guards
-  // against a server listing that includes self/parent entries.
+  // Walks the whole remote tree on demand for the move/upload dialogs'
+  // destination pickers -- the lazily-loaded client-side tree may not have
+  // every folder fetched yet, and the user must be able to pick any
+  // directory that actually exists, not just ones already browsed to.
+  // Memoized by the in-flight PROMISE (not just the resolved value) so two
+  // callers racing before the first walk resolves share one BFS walk instead
+  // of firing a redundant one; a rejected walk clears its own cache entry so
+  // a later call can retry rather than permanently caching a failure.
   async listAllFolders(rootPath: string): Promise<string[]> {
+    const cached = this.folderListCache.get(rootPath);
+    if (cached) return cached;
+
+    const pending = this.walkFolders(rootPath).catch((error: unknown) => {
+      this.folderListCache.delete(rootPath);
+      throw error;
+    });
+    this.folderListCache.set(rootPath, pending);
+    return pending;
+  }
+
+  // A visited set guards against a server listing that includes self/parent
+  // entries.
+  private async walkFolders(rootPath: string): Promise<string[]> {
     const visited = new Set<string>();
     const queue = [rootPath];
     const folders: string[] = [];
