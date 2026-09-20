@@ -14,7 +14,11 @@ import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { SplitButtonModule } from 'primeng/splitbutton';
-import { adjustCoordinates, clampCoordinates, validateAxisRanges } from './coordinate-utils';
+import {
+  adjustCoordinates,
+  clampCoordinatesUpperBound,
+  validateAxisRanges,
+} from './coordinate-utils';
 import {
   DEFAULT_AXIS_RANGES,
   DEFAULT_COORDINATES,
@@ -273,10 +277,19 @@ export class PrinterNavigation {
       });
     });
 
+    // Only sanitizes an over-range value (e.g. malformed backend/config
+    // data); deliberately does NOT enforce the lower bound here. The
+    // backend-reported position (this component's only non-jog writer of
+    // `coordinates`) can legitimately sit below an axis' configured
+    // minimum right after a home — the Bambu Lab A1's real post-G28 Z is
+    // below the machine envelope's Z minimum, which bounds commanded
+    // moves, not the physical home position. Jog targets are unaffected:
+    // they're independently floor-clamped by adjustCoordinates below, so
+    // "once above the minimum, a jog can't go below it again" still holds.
     effect(() => {
       const ranges = this.resolvedRanges();
       const current = this.coordinates();
-      const clamped = clampCoordinates(current, ranges);
+      const clamped = clampCoordinatesUpperBound(current, ranges);
       if (PRINTER_AXES.some((axis) => clamped[axis] !== current[axis])) {
         untracked(() => this.coordinates.set(clamped));
       }

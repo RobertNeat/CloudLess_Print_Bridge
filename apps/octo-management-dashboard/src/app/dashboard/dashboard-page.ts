@@ -1,8 +1,26 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  type OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { Gridster, GridsterItem, type GridsterConfig } from 'angular-gridster2';
 import { DashboardLayoutService } from '../core/dashboard-layout.service';
 import { I18nService } from '../core/i18n.service';
 import { PrinterNavigationCalibrationService } from '../core/printer-navigation-calibration.service';
+import {
+  CameraCommandApiService,
+  UNBOUNDED_VIEWER_MAX_DURATION_MS,
+} from '../videos/backend/camera-command-api.service';
+import {
+  CameraRegistryApiService,
+  type CameraRegistryEntry,
+} from '../videos/backend/camera-registry-api.service';
+import { LiveStreamApiService } from '../videos/backend/live-stream-api.service';
+import { PRINTER_CAMERA_DISPLAY_NAME } from './backend/dashboard-static-defaults';
 import {
   DashboardPollingService,
   PollSuppressionWindow,
@@ -45,7 +63,7 @@ import { TelemetryChart } from './telemetry-chart/telemetry-chart';
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })
-export class DashboardPage {
+export class DashboardPage implements OnDestroy {
   private readonly dataSource = inject(MANAGEMENT_DASHBOARD_DATA_SOURCE);
   private readonly commands = inject(PrinterCommandFacade);
   private readonly polling = inject(DashboardPollingService);
@@ -54,8 +72,49 @@ export class DashboardPage {
   protected readonly i18n = inject(I18nService);
   protected readonly layout = inject(DashboardLayoutService);
   private readonly navigationCalibration = inject(PrinterNavigationCalibrationService);
+  private readonly cameraRegistry = inject(CameraRegistryApiService);
+  private readonly cameraCommands = inject(CameraCommandApiService);
+  private readonly liveStream = inject(LiveStreamApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly dashboard = signal<ManagementDashboardData | null>(null);
+  /**
+   * The full camera-registry listing, refreshed by resolveCameras(). Null
+   * means the registry has never been successfully fetched (hub unreachable
+   * at load time) — distinct from an empty array (hub reachable, zero
+   * cameras registered), though the widget treats both as "unavailable".
+   */
+  private readonly cameras = signal<readonly CameraRegistryEntry[] | null>(null);
+  protected readonly livePreviewCameraOptions = computed(() =>
+    (this.cameras() ?? []).map((entry) => ({
+      cameraId: entry.cameraId,
+      displayName: entry.displayName?.trim() || entry.cameraId,
+    })),
+  );
+  /**
+   * The registry entry matching the widget's currently selected cameraId
+   * (dashboard.livePreview.cameraId) — derived, not stored separately, so
+   * it can never drift from the selection the user actually sees in the
+   * source `<p-select>`.
+   */
+  private readonly selectedCamera = computed(() => {
+    const cameraId = this.dashboard()?.livePreview.cameraId;
+    if (!cameraId) return null;
+    return this.cameras()?.find((entry) => entry.cameraId === cameraId) ?? null;
+  });
+  protected readonly livePreviewHubAvailable = computed(
+    () => (this.cameras()?.length ?? 0) > 0,
+  );
+  protected readonly livePreviewStreamUrl = signal('');
+  protected readonly livePreviewStreaming = signal(false);
+  private activeLiveRequestId: string | null = null;
+  private activeLiveCameraId: string | null = null;
+  /**
+   * Captured alongside activeLiveCameraId (not re-derived from `cameras()`)
+   * so ngOnDestroy's teardown stop-live never depends on the registry list
+   * still being populated/unchanged at destroy time.
+   */
+  private activeLiveCameraBaseUrl: string | null = null;
   protected readonly widgets = signal<DashboardWidget[]>([]);
   protected readonly widgetRenderVersion = signal(0);
   protected readonly loadingError = signal(false);
@@ -204,9 +263,28 @@ export class DashboardPage {
         };
       });
     });
-    void this.loadData();
+    void this.loadData().then(() => this.resolveCameras());
     this.polling.start();
     this.telemetryPolling.start();
+  }
+
+  /**
+   * A live-preview session started with maxDurationMs: null (see
+   * applyStreamActive) never auto-stops on the camera side — unlike the
+   * Videos page's 10-minute-capped sessions, nothing reaps an orphaned
+   * stream if the user just navigates away mid-stream. Fire-and-forget
+   * stop-live here is the only thing that ends it in that case; ngOnDestroy
+   * cannot be async, so this intentionally does not await the request.
+   */
+  ngOnDestroy(): void {
+    if (!this.activeLiveRequestId || !this.activeLiveCameraId || !this.activeLiveCameraBaseUrl) {
+      return;
+    }
+    void this.cameraCommands
+      .stopLive(this.activeLiveCameraId, this.activeLiveCameraBaseUrl, this.activeLiveRequestId)
+      .catch((error: unknown) =>
+        console.error('[dashboard] failed to stop live-preview stream on destroy:', error),
+      );
   }
 
   protected chart(widget: DashboardWidget) {
@@ -385,24 +463,169 @@ export class DashboardPage {
     );
   }
 
-  protected async updateTemperature(change: TemperatureChange): Promise<void> {
-    await this.runCommand({ type: 'set-temperature', change }, () => {
-      // Suppress the next poll tick(s) for this field like every other
-      // optimistically-patched control: the backend won't reach the new
-      // target instantly, so an immediate poll would otherwise snap the
-      // just-submitted value back to the stale current reading. Keyed per
-      // sensor so setting one target doesn't also freeze the other two
-      // sensors' current readings.
-      this.controlsSuppression.suppress(`temperatures.${change.sensor}`);
+  /**
+   * Starting/stopping the widget's live view. Only ever calls
+   * CameraCommandApiService.startLive/stopLive — never startRecording /
+   * startTimedRecording / any recording command — so opening this preview
+   * never creates a "live recording" on the hub.
+   *
+   * start-live/buildStreamUrl must both be awaited before `active` flips:
+   * the <img> only enters the DOM once preview().active is true and never
+   * retries a failed request on its own (mirrors
+   * VideosDashboardPage.applyStreamActive).
+   */
+  protected async setPreviewActive(active: boolean): Promise<void> {
+    const camera = this.selectedCamera();
+    if (active && !camera) return;
+    await this.runCommand({ type: 'set-preview', change: { active } }, () => {
+      // Permission gate only; the actual hub round trip happens below,
+      // outside runCommand's synchronous `apply`, so it can be awaited.
+    });
+    if (this.commandError()) return;
+    if (!camera) {
       this.dashboard.update((data) =>
-        data
-          ? {
-              ...data,
-              temperatures: { ...data.temperatures, [change.sensor]: change.value },
-            }
-          : data,
+        data ? { ...data, livePreview: { ...data.livePreview, active } } : data,
+      );
+      return;
+    }
+    await this.applyStreamActive(camera, active);
+  }
+
+  /**
+   * Switching the selected camera source. The select is disabled while a
+   * stream is active (see live-preview.html) so this never needs to stop
+   * one mid-flight in normal use, but it still guards against it: an
+   * in-flight stream against the OLD camera must be stopped before the
+   * selection changes, otherwise the old camera keeps streaming on the hub
+   * until maxDurationMs (600s) elapses, orphaned and invisible to the UI.
+   */
+  protected async setPreviewCamera(cameraId: string): Promise<void> {
+    const wasActive = this.dashboard()?.livePreview.active ?? false;
+    if (wasActive) {
+      const previousCamera = this.selectedCamera();
+      if (previousCamera) await this.applyStreamActive(previousCamera, false);
+    }
+    await this.runCommand({ type: 'set-preview', change: { cameraId } }, () => {
+      this.dashboard.update((data) =>
+        data ? { ...data, livePreview: { ...data.livePreview, cameraId } } : data,
       );
     });
+  }
+
+  private async applyStreamActive(
+    camera: CameraRegistryEntry,
+    active: boolean,
+  ): Promise<void> {
+    this.livePreviewStreaming.set(true);
+    try {
+      if (active) {
+        const requestId = `live-preview-${camera.cameraId}-${Date.now()}`;
+        this.activeLiveRequestId = requestId;
+        this.activeLiveCameraId = camera.cameraId;
+        this.activeLiveCameraBaseUrl = camera.baseUrl;
+        // persist:false — this widget is a live view of the printer's own
+        // camera, not a recording tool (point 5 of the original spec): the
+        // hub must never keep a saved 'live' media-library item from a
+        // session started here. See CameraCommandApiService.startLive's doc
+        // comment and video-service-hub's MediaStorageService.storeLive.
+        //
+        // maxDurationMs: 24h (UNBOUNDED_VIEWER_MAX_DURATION_MS) — this
+        // widget is meant to stay open for an entire print, far longer than
+        // the Videos page's 10-minute default, but still bounded: the hub
+        // has no timer of its own for a live session (see
+        // camera-command.validator.ts), so an explicit ceiling is what
+        // guarantees the camera eventually self-stops even if this client
+        // never calls stopLive (tab closed, crash, network drop — none of
+        // which ngOnDestroy below can catch).
+        await this.cameraCommands.startLive(
+          camera.cameraId,
+          camera.baseUrl,
+          this.dashboard()?.livePreview.resolution ?? 'VGA',
+          requestId,
+          false,
+          UNBOUNDED_VIEWER_MAX_DURATION_MS,
+        );
+        const streamUrl = await this.liveStream.buildStreamUrl(camera.cameraId, requestId);
+        if (this.destroyRef.destroyed) return;
+        this.livePreviewStreamUrl.set(streamUrl);
+      } else if (this.activeLiveRequestId && this.activeLiveCameraId) {
+        await this.cameraCommands.stopLive(
+          this.activeLiveCameraId,
+          camera.baseUrl,
+          this.activeLiveRequestId,
+        );
+        this.activeLiveRequestId = null;
+        this.activeLiveCameraId = null;
+        this.activeLiveCameraBaseUrl = null;
+        this.livePreviewStreamUrl.set('');
+      }
+      if (this.destroyRef.destroyed) return;
+      this.dashboard.update((data) =>
+        data ? { ...data, livePreview: { ...data.livePreview, active } } : data,
+      );
+    } catch (error) {
+      console.error('[dashboard] live-preview start/stop-live failed:', error);
+      // Do NOT latch hub-unavailable state here: a transient failure (one
+      // dropped request, hub mid-restart) must not permanently disable the
+      // start button on a widget the user leaves open for the whole print.
+      // Re-probe the registry instead — if the hub is genuinely down this
+      // resolves to an empty list anyway (blurred placeholder), and if it
+      // was transient the widget recovers on its own.
+      if (!this.destroyRef.destroyed) {
+        this.livePreviewStreamUrl.set('');
+        this.activeLiveRequestId = null;
+        this.activeLiveCameraId = null;
+        this.activeLiveCameraBaseUrl = null;
+        // Whether this was a failed start or a failed stop, there is no
+        // live stream after this point — leaving `active: true` would show
+        // a "Stop" button over a dead/stale image with nothing left to
+        // stop, and the first click to recover wouldn't visibly do anything.
+        this.dashboard.update((data) =>
+          data ? { ...data, livePreview: { ...data.livePreview, active: false } } : data,
+        );
+        void this.resolveCameras();
+      }
+    } finally {
+      if (!this.destroyRef.destroyed) this.livePreviewStreaming.set(false);
+    }
+  }
+
+  /**
+   * Fetches every registered camera (for the source selector), then, only
+   * if the widget has no selection yet, preselects the entry whose
+   * displayName matches PRINTER_CAMERA_DISPLAY_NAME — falling back to the
+   * first registered camera if no name match exists. A missing/unreachable
+   * registry resolves `cameras` to null, which the widget renders as the
+   * blurred "unavailable" placeholder rather than crashing.
+   */
+  private async resolveCameras(): Promise<void> {
+    try {
+      const entries = await this.cameraRegistry.list();
+      if (this.destroyRef.destroyed) return;
+      this.cameras.set(entries);
+      const currentCameraId = this.dashboard()?.livePreview.cameraId;
+      if (currentCameraId) return;
+      const expected = PRINTER_CAMERA_DISPLAY_NAME.trim().toLowerCase();
+      const preselected =
+        entries.find((entry) => entry.displayName?.trim().toLowerCase() === expected) ??
+        entries[0];
+      if (preselected) {
+        this.dashboard.update((data) =>
+          data
+            ? { ...data, livePreview: { ...data.livePreview, cameraId: preselected.cameraId } }
+            : data,
+        );
+      }
+    } catch (error) {
+      console.error('[dashboard] failed to load camera registry:', error);
+      if (!this.destroyRef.destroyed) this.cameras.set(null);
+    }
+  }
+
+  protected async updateTemperature(change: TemperatureChange): Promise<void> {
+    // Target temperature is client-side UI state owned by
+    // app-printer-temperatures; this only forwards the command.
+    await this.runCommand({ type: 'set-temperature', change }, () => {});
   }
 
   private async loadData(): Promise<void> {

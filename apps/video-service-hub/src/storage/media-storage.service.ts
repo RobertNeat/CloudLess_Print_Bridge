@@ -24,7 +24,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Request } from 'express';
 import { CameraRegistryService } from '../camera-registry/camera-registry.service';
@@ -91,6 +91,16 @@ export class MediaStorageService implements OnModuleInit {
   private readonly manifests = new Map<string, ResourceManifest>();
   private readonly metadata = new Map<string, ResourceMetadata>();
   private readonly activeLive = new Map<string, ActiveLive>();
+  /**
+   * Keyed by `${cameraId}:${requestId}`. Set by CameraCommandService when
+   * dispatching start-live/start-dynamic-live (persist defaults to true,
+   * preserving existing behavior for every caller that doesn't opt out —
+   * e.g. the Videos page). storeLive() consults this when the camera later
+   * POSTs its MJPEG frames back, to decide whether to persist to disk at
+   * all. Cleared on stop-live and once the live session completes, so a
+   * stale entry can never leak into an unrelated later requestId.
+   */
+  private readonly livePersistIntent = new Map<string, boolean>();
   private ready = false;
 
   constructor(
@@ -268,9 +278,16 @@ export class MediaStorageService implements OnModuleInit {
     if (this.activeLive.has(key)) {
       throw new ConflictException('live stream is already active');
     }
+    // Defaults to true (unset intent = every caller that predates this
+    // opt-out, and every caller that never sets `persist: false` on
+    // start-live) so existing behavior — e.g. the Videos page's recordings
+    // library — is unaffected.
+    const persist = this.livePersistIntent.get(this.persistIntentKey(cameraId, requestId)) ?? true;
 
     const directory = this.resourceDirectory('live', cameraId, requestId);
-    await mkdir(directory, { recursive: true });
+    if (persist) {
+      await mkdir(directory, { recursive: true });
+    }
     const active: ActiveLive = {
       key,
       cameraId,
@@ -290,9 +307,16 @@ export class MediaStorageService implements OnModuleInit {
     let duplicate = false;
 
     try {
+      // maxBytesForKind('live') (1 GiB by default) exists to bound how much
+      // a single session writes to disk. When persist is false nothing
+      // reaches disk at all (see the sink swap below), so that bound has
+      // nothing left to protect — capping it here would just make an
+      // unrelated resource (RAM/network on a long-running in-memory-only
+      // broadcast) fail at an arbitrary, content-dependent byte count
+      // instead of running for as long as the viewer wants it to.
       const counter = new MjpegCountingTransform(
         active.boundary,
-        this.maxBytesForKind('live'),
+        persist ? this.maxBytesForKind('live') : Number.POSITIVE_INFINITY,
         (bytes, frames) => {
           active.bytes = bytes;
           active.frames = frames;
@@ -301,62 +325,77 @@ export class MediaStorageService implements OnModuleInit {
       counter.on('data', (chunk: Buffer) =>
         this.broadcastLiveChunk(active, chunk),
       );
-      await pipeline(
-        request,
-        counter,
-        createWriteStream(active.temporaryPath, { flags: 'wx' }),
-      );
+      // Viewers are served from the in-memory broadcast (broadcastLiveChunk),
+      // not from this sink — when persist is false, nothing needs to reach
+      // disk at all, so pipeline's destination is a no-op Writable instead
+      // of a temp file. This makes persist:false genuinely stream-only, not
+      // write-then-discard: no bytes ever touch storage.
+      const sink = persist
+        ? createWriteStream(active.temporaryPath, { flags: 'wx' })
+        : new Writable({
+            write(_chunk, _encoding, callback) {
+              callback();
+            },
+          });
+      await pipeline(request, counter, sink);
       if (active.bytes === 0 || active.frames === 0) {
         throw new BadRequestException('live stream contains no MJPEG frames');
       }
-      const temporary = await this.describeFile(active.temporaryPath);
-      const fileName = buildPartFileName('live', 0);
-      const published = await this.lock.run(key, () =>
-        this.publishTemporary(temporary, join(directory, fileName)),
-      );
-      duplicate = published.duplicate;
-      completed = true;
+      if (persist) {
+        const temporary = await this.describeFile(active.temporaryPath);
+        const fileName = buildPartFileName('live', 0);
+        const published = await this.lock.run(key, () =>
+          this.publishTemporary(temporary, join(directory, fileName)),
+        );
+        duplicate = published.duplicate;
+        completed = true;
 
-      const now = new Date().toISOString();
-      const manifest: ResourceManifest = {
-        schemaVersion: 1,
-        kind: 'live',
-        cameraId,
-        requestId,
-        totalParts: 1,
-        receivedParts: [0],
-        complete: true,
-        parts: {
-          '0': {
-            partNumber: 0,
-            size: published.size,
-            sha256: published.sha256,
-            fileName,
-            storedAt: now,
+        const now = new Date().toISOString();
+        const manifest: ResourceManifest = {
+          schemaVersion: 1,
+          kind: 'live',
+          cameraId,
+          requestId,
+          totalParts: 1,
+          receivedParts: [0],
+          complete: true,
+          parts: {
+            '0': {
+              partNumber: 0,
+              size: published.size,
+              sha256: published.sha256,
+              fileName,
+              storedAt: now,
+            },
           },
-        },
-        resolution,
-        totalFrames: active.frames,
-        createdAt: active.startedAt,
-        updatedAt: now,
-      };
-      await this.writeJsonAtomically(
-        join(directory, 'manifest.json'),
-        manifest,
-      );
-      this.manifests.set(key, manifest);
+          resolution,
+          totalFrames: active.frames,
+          createdAt: active.startedAt,
+          updatedAt: now,
+        };
+        await this.writeJsonAtomically(
+          join(directory, 'manifest.json'),
+          manifest,
+        );
+        this.manifests.set(key, manifest);
+      }
     } finally {
       this.activeLive.delete(key);
+      this.livePersistIntent.delete(this.persistIntentKey(cameraId, requestId));
       for (const viewer of active.viewers) {
         viewer.stream.end();
       }
       active.viewers.clear();
-      await rm(active.temporaryPath, { force: true });
+      // Only persist:true ever created a temporary file to clean up.
+      if (persist) {
+        await rm(active.temporaryPath, { force: true });
+      }
     }
 
     return {
       stored: completed,
       duplicate,
+      persist,
       cameraId,
       requestId,
       resolution,
@@ -364,6 +403,22 @@ export class MediaStorageService implements OnModuleInit {
       frames: active.frames,
       complete: completed,
     };
+  }
+
+  /** Called by CameraCommandService when dispatching start-live/start-dynamic-live. See livePersistIntent's doc comment. */
+  setLivePersistIntent(cameraId: string, requestId: string, persist: boolean): void {
+    assertIdentifier(cameraId, 'cameraId');
+    assertIdentifier(requestId, 'requestId');
+    this.livePersistIntent.set(this.persistIntentKey(cameraId, requestId), persist);
+  }
+
+  /** Called by CameraCommandService when dispatching stop-live, so an intent never outlives the session it was set for if the camera never POSTs back (e.g. it failed to start). */
+  clearLivePersistIntent(cameraId: string, requestId: string): void {
+    this.livePersistIntent.delete(this.persistIntentKey(cameraId, requestId));
+  }
+
+  private persistIntentKey(cameraId: string, requestId: string): string {
+    return `${cameraId}:${requestId}`;
   }
 
   openLiveViewer(cameraId: string, requestId?: string): LiveViewer {

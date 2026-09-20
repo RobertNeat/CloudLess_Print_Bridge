@@ -73,5 +73,5 @@ export const DEFAULT_LABELS: PrinterNavigationLabels = {
     `Inny krok hotendu w kierunku ${direction === 'up' ? 'góra' : 'dół'}`,
   jogDisabledHint: 'Pozycja drukarki jest nieznana. Wybazuj drukarkę, aby odblokować sterowanie.',
   homeButtonLabel: 'Bazuj drukarkę',
-  homeButtonAriaLabel: 'Bazuj drukarkę, aby odblokować sterowanie',
+  homeButtonAriaLabel: 'Bazuj drukarkę',
 };

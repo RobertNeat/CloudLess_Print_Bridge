@@ -25,6 +25,8 @@ interface TemperatureReading {
   readonly sensor: TemperatureSensor;
   readonly label: string;
   readonly value: number | null;
+  /** User-set target temperature for this sensor; null when not yet set. */
+  readonly target: number | null;
   readonly icon: string;
   readonly color: 'info' | 'warning' | 'danger';
 }
@@ -53,38 +55,55 @@ export class PrinterTemperatures {
   readonly temperatureChange = output<TemperatureChange>();
   protected readonly selected = signal<TemperatureReading | null>(null);
   protected readonly draftValue = signal<number | null>(null);
-  protected readonly readings = computed<TemperatureReading[]>(() => [
-    {
-      sensor: 'chamber',
-      label: this.i18n.t('temperatures.chamber'),
-      value: this.temperatures().chamber,
-      icon: 'pi pi-box',
-      color: 'info',
-    },
-    {
-      sensor: 'bed',
-      label: this.i18n.t('temperatures.bed'),
-      value: this.temperatures().bed,
-      icon: 'pi pi-stop',
-      color: 'warning',
-    },
-    {
-      sensor: 'nozzle',
-      label: this.i18n.t('temperatures.nozzle'),
-      value: this.temperatures().nozzle,
-      icon: 'pi pi-map-marker',
-      color: 'danger',
-    },
-  ]);
+  /** User-set target temperatures, keyed by sensor; local UI state only. */
+  protected readonly targets = signal<Record<TemperatureSensor, number | null>>({
+    chamber: null,
+    bed: null,
+    nozzle: null,
+  });
+  protected readonly readings = computed<TemperatureReading[]>(() => {
+    const targets = this.targets();
+    return [
+      {
+        sensor: 'chamber',
+        label: this.i18n.t('temperatures.chamber'),
+        value: this.temperatures().chamber,
+        target: targets.chamber,
+        icon: 'pi pi-box',
+        color: 'info',
+      },
+      {
+        sensor: 'bed',
+        label: this.i18n.t('temperatures.bed'),
+        value: this.temperatures().bed,
+        target: targets.bed,
+        icon: 'pi pi-stop',
+        color: 'warning',
+      },
+      {
+        sensor: 'nozzle',
+        label: this.i18n.t('temperatures.nozzle'),
+        value: this.temperatures().nozzle,
+        target: targets.nozzle,
+        icon: 'pi pi-map-marker',
+        color: 'danger',
+      },
+    ];
+  });
 
   protected isSettable(sensor: TemperatureSensor): boolean {
     return this.settableSensors().includes(sensor);
   }
 
+  /** Formats a temperature to 2 decimal places, or '—' when null. */
+  protected formatTemperature(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(2)}°C`;
+  }
+
   protected openEditor(event: Event, reading: TemperatureReading, popover: Popover): void {
     if (reading.value === null || !this.isSettable(reading.sensor)) return;
     this.selected.set(reading);
-    this.draftValue.set(reading.value);
+    this.draftValue.set(reading.target ?? reading.value);
     popover.toggle(event);
   }
 
@@ -92,9 +111,11 @@ export class PrinterTemperatures {
     const selected = this.selected();
     const value = this.draftValue();
     if (!selected || selected.value === null || value === null || !Number.isFinite(value)) return;
+    const clamped = Math.round(Math.min(400, Math.max(0, value)));
+    this.targets.update((targets) => ({ ...targets, [selected.sensor]: clamped }));
     this.temperatureChange.emit({
       sensor: selected.sensor,
-      value: Math.round(Math.min(400, Math.max(0, value))),
+      value: clamped,
     });
     popover.hide();
   }

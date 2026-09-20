@@ -44,10 +44,28 @@ export const STATIC_NAVIGATION_DEFAULTS: PrinterNavigationData = {
   },
 };
 
+/**
+ * The video-service-hub camera-registry displayName the live-preview widget
+ * looks up its camera by (see http-management-dashboard-data.source.ts /
+ * dashboard-page.ts) — matched case-insensitively, trimmed. Kept as a
+ * constant here rather than a hardcoded cameraId so re-registering the
+ * printer's camera under a new cameraId/baseUrl needs no frontend change.
+ */
+export const PRINTER_CAMERA_DISPLAY_NAME = 'Kamera drukarki';
+
+/**
+ * Mirrors the hub's supported resolution codes exactly (assertResolution in
+ * video-service-hub/src/common/validation.ts), same list/order the Videos
+ * page's media-record-dialog already offers — kept in sync manually since
+ * there is no shared package between the two apps.
+ */
+export const LIVE_PREVIEW_AVAILABLE_RESOLUTIONS = ['QVGA', 'VGA', 'SVGA', 'XGA', 'UXGA'];
+
 export const STATIC_LIVE_PREVIEW_DEFAULTS: LivePreviewData = {
-  cameraName: 'Kamera drukarki',
-  resolution: '1280 × 720',
-  availableResolutions: ['640 × 360', '1280 × 720', '1920 × 1080'],
+  cameraName: PRINTER_CAMERA_DISPLAY_NAME,
+  cameraId: '',
+  resolution: 'VGA',
+  availableResolutions: LIVE_PREVIEW_AVAILABLE_RESOLUTIONS,
   active: false,
   latencyMs: 0,
 };
@@ -58,7 +76,7 @@ export const STATIC_WIDGET_LAYOUT: DashboardWidget[] = [
     type: 'print-job',
     x: 0,
     y: 0,
-    cols: 6,
+    cols: 4,
     rows: 2,
     minItemCols: 4,
     minItemRows: 2,
@@ -66,22 +84,22 @@ export const STATIC_WIDGET_LAYOUT: DashboardWidget[] = [
   {
     id: 'live-preview',
     type: 'live-preview',
-    x: 6,
+    x: 8,
     y: 0,
-    cols: 6,
-    rows: 7,
+    cols: 4,
+    rows: 4,
     minItemCols: 4,
     minItemRows: 3,
   },
-  { id: 'quick-controls', type: 'quick-controls', x: 0, y: 2, cols: 6, rows: 1, minItemCols: 4 },
-  { id: 'temperatures', type: 'temperatures', x: 0, y: 3, cols: 6, rows: 1, minItemCols: 4 },
+  { id: 'quick-controls', type: 'quick-controls', x: 0, y: 2, cols: 4, rows: 1, minItemCols: 4 },
+  { id: 'temperatures', type: 'temperatures', x: 0, y: 3, cols: 4, rows: 1, minItemCols: 4 },
   {
     id: 'navigation',
     type: 'printer-navigation',
-    x: 0,
-    y: 4,
-    cols: 6,
-    rows: 6,
+    x: 4,
+    y: 0,
+    cols: 4,
+    rows: 4,
     minItemCols: 3,
     minItemRows: 3,
   },
@@ -89,7 +107,7 @@ export const STATIC_WIDGET_LAYOUT: DashboardWidget[] = [
     id: 'progress',
     type: 'progress-chart',
     x: 0,
-    y: 10,
+    y: 4,
     cols: 4,
     rows: 3,
     minItemCols: 3,
@@ -99,13 +117,13 @@ export const STATIC_WIDGET_LAYOUT: DashboardWidget[] = [
     id: 'temperature',
     type: 'temperature-chart',
     x: 4,
-    y: 10,
+    y: 4,
     cols: 4,
     rows: 3,
     minItemCols: 3,
     minItemRows: 2,
   },
-  { id: 'fan', type: 'fan-chart', x: 8, y: 10, cols: 4, rows: 3, minItemCols: 3, minItemRows: 2 },
+  { id: 'fan', type: 'fan-chart', x: 8, y: 4, cols: 4, rows: 3, minItemCols: 3, minItemRows: 2 },
 ];
 
 type ChartMetadata = Omit<TelemetryChartData, 'labels' | 'datasets'>;

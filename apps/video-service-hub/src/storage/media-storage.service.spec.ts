@@ -268,6 +268,85 @@ describe('MediaStorageService', () => {
     });
   });
 
+  it('broadcasts to viewers but never persists a manifest when the persist intent is false', async () => {
+    service.setLivePersistIntent('camera-1', 'live-stream-only', false);
+    const upload = new PassThrough();
+    const contentType = 'multipart/x-mixed-replace; boundary=unitcams3-frame';
+    const frame = Buffer.from(
+      '--unitcams3-frame\r\nContent-Type: image/jpeg\r\n\r\nFRAME\r\n',
+    );
+    const finished = service.storeLive(
+      upload as unknown as Request,
+      'camera-1',
+      'live-stream-only',
+      'VGA',
+      contentType,
+    );
+    await waitForLive(service);
+    upload.write(frame);
+    const viewer = service.openLiveViewer('camera-1', 'live-stream-only');
+    const received = once(viewer.stream, 'data');
+    upload.write(frame);
+    await received;
+    upload.end();
+
+    await expect(finished).resolves.toMatchObject({
+      stored: false,
+      persist: false,
+      complete: false,
+    });
+    expect(
+      service.getManifest('live', 'camera-1', 'live-stream-only'),
+    ).toBeUndefined();
+    expect(
+      existsSync(join(storageRoot, 'live', 'camera-1', 'live-stream-only')),
+    ).toBe(false);
+  });
+
+  it('ignores the live byte cap when the persist intent is false, since nothing reaches disk', async () => {
+    const tinyRoot = await mkdtemp(join(tmpdir(), 'video-service-hub-'));
+    const tinyCapService = new MediaStorageService(
+      loadServiceConfig({
+        VIDEO_SERVICE_HUB_STORAGE_PATH: tinyRoot,
+        VIDEO_SERVICE_HUB_MQTT_PORT: '0',
+        VIDEO_SERVICE_HUB_LIVE_MAX_BYTES: '10',
+      }),
+      fakeRegistry({ 'camera-1': { baseUrl: 'http://192.168.1.205' } }),
+    );
+    await tinyCapService.initialize();
+    try {
+      tinyCapService.setLivePersistIntent('camera-1', 'live-uncapped', false);
+      const upload = new PassThrough();
+      const contentType = 'multipart/x-mixed-replace; boundary=unitcams3-frame';
+      // Well over the 10-byte cap configured above — would reject a
+      // persist:true session with a PayloadTooLargeException.
+      const frame = Buffer.from(
+        '--unitcams3-frame\r\nContent-Type: image/jpeg\r\n\r\n' +
+          'X'.repeat(200) +
+          '\r\n',
+      );
+      const finished = tinyCapService.storeLive(
+        upload as unknown as Request,
+        'camera-1',
+        'live-uncapped',
+        'VGA',
+        contentType,
+      );
+      await waitForLive(tinyCapService);
+      upload.write(frame);
+      upload.write(frame);
+      upload.end();
+
+      await expect(finished).resolves.toMatchObject({
+        stored: false,
+        persist: false,
+        complete: false,
+      });
+    } finally {
+      await rm(tinyRoot, { recursive: true, force: true });
+    }
+  });
+
   describe('finalizeResource', () => {
     it('resolves the registered camera name/ip, renames the file, and writes metadata.json in place of manifest.json', async () => {
       const jpeg = Buffer.from([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);

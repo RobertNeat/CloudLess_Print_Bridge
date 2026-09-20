@@ -85,8 +85,13 @@
               @case ('live-preview') {
                 <app-live-preview
                   [preview]="data.livePreview"
+                  [streamUrl]="livePreviewStreamUrl()"
+                  [streaming]="livePreviewStreaming()"
+                  [hubAvailable]="livePreviewHubAvailable()"
+                  [cameraOptions]="livePreviewCameraOptions()"
                   (resolutionChanged)="updatePreview({ resolution: $event })"
-                  (activeChanged)="updatePreview({ active: $event })"
+                  (activeChanged)="setPreviewActive($event)"
+                  (cameraChanged)="setPreviewCamera($event)"
                 />
               }
               @default {

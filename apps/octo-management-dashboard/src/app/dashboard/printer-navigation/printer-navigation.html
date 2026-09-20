@@ -141,17 +141,6 @@
       >
         {{ labels().jogDisabledHint }}
       </div>
-      <button
-        id="printer-navigation-home-button"
-        pButton
-        type="button"
-        class="home-button"
-        data-testid="printer-navigation-home-button"
-        icon="pi pi-home"
-        [label]="labels().homeButtonLabel"
-        [attr.aria-label]="labels().homeButtonAriaLabel"
-        (click)="requestHome(); $event.stopPropagation()"
-      ></button>
     }
 
     <button
@@ -169,6 +158,18 @@
       (click)="toggleConfiguration(); $event.stopPropagation()"
     >
       <i class="pi pi-cog" aria-hidden="true"></i>
+    </button>
+
+    <button
+      id="printer-navigation-home-button"
+      pButton
+      type="button"
+      class="home-button"
+      data-testid="printer-navigation-home-button"
+      [attr.aria-label]="labels().homeButtonAriaLabel"
+      (click)="requestHome(); $event.stopPropagation()"
+    >
+      <i class="pi pi-home" aria-hidden="true"></i>
     </button>
 
     @if (!configurationOpen()) {
