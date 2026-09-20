@@ -1,27 +1,36 @@
 :host {
   display: block;
   height: 100%;
+  container-type: size;
+  container-name: printer-temperatures;
 }
 .temperatures {
-  display: grid;
+  display: flex;
   height: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .temperature {
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
-  padding: 0.55rem;
+  padding: clamp(0.55rem, 5cqh, 1.25rem) clamp(0.4rem, 4cqw, 1rem);
+  position: relative;
   border: 0;
-  border-right: 1px solid var(--semantic-border-default);
+  border-radius: 0.6rem;
   background: transparent;
   color: var(--semantic-text-primary);
   cursor: pointer;
-  gap: 0.55rem;
+  gap: clamp(0.4rem, 3cqw, 1rem);
 }
-.temperature:last-child {
-  border-right: 0;
+.temperature:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--semantic-border-default);
+  content: '';
 }
 .temperature:not(:disabled):hover {
   background: var(--semantic-surface-hover);
@@ -33,27 +42,46 @@
 }
 .temperature__icon {
   display: grid;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 2rem;
+  width: clamp(2rem, 12cqw, 3.75rem);
+  height: clamp(2rem, 12cqw, 3.75rem);
+  flex: 0 0 clamp(2rem, 12cqw, 3.75rem);
+  padding: 0.2em;
   border-radius: 0.5rem;
   background: color-mix(in srgb, var(--temperature-color) 14%, transparent);
   color: var(--temperature-color);
+  container-type: size;
   place-items: center;
 }
-.temperature > span:last-child {
+.temperature__icon i {
+  font-size: 65cqmin;
+}
+.temperature__text {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: clamp(0.05rem, 0.6cqh, 0.25rem);
 }
 small {
+  overflow: hidden;
   color: var(--semantic-text-muted);
   font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 strong {
+  overflow: hidden;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.temperature__target {
+  overflow: hidden;
+  color: var(--semantic-text-muted);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .temperature--info {
   --temperature-color: var(--semantic-status-info);
@@ -72,6 +100,13 @@ strong {
   .temperature {
     flex-direction: column;
     gap: 0.25rem;
+    text-align: center;
+  }
+}
+@container printer-temperatures (max-width: 420px) {
+  .temperature {
+    flex-direction: column;
+    gap: 0.3rem;
     text-align: center;
   }
 }
