@@ -1,9 +1,20 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  type OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { Gridster, GridsterItem, type GridsterConfig } from 'angular-gridster2';
 import { DashboardLayoutService } from '../core/dashboard-layout.service';
 import { I18nService } from '../core/i18n.service';
 import { PrinterNavigationCalibrationService } from '../core/printer-navigation-calibration.service';
-import { CameraCommandApiService } from '../videos/backend/camera-command-api.service';
+import {
+  CameraCommandApiService,
+  UNBOUNDED_VIEWER_MAX_DURATION_MS,
+} from '../videos/backend/camera-command-api.service';
 import {
   CameraRegistryApiService,
   type CameraRegistryEntry,
@@ -52,7 +63,7 @@ import { TelemetryChart } from './telemetry-chart/telemetry-chart';
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })
-export class DashboardPage {
+export class DashboardPage implements OnDestroy {
   private readonly dataSource = inject(MANAGEMENT_DASHBOARD_DATA_SOURCE);
   private readonly commands = inject(PrinterCommandFacade);
   private readonly polling = inject(DashboardPollingService);
@@ -98,6 +109,12 @@ export class DashboardPage {
   protected readonly livePreviewStreaming = signal(false);
   private activeLiveRequestId: string | null = null;
   private activeLiveCameraId: string | null = null;
+  /**
+   * Captured alongside activeLiveCameraId (not re-derived from `cameras()`)
+   * so ngOnDestroy's teardown stop-live never depends on the registry list
+   * still being populated/unchanged at destroy time.
+   */
+  private activeLiveCameraBaseUrl: string | null = null;
   protected readonly widgets = signal<DashboardWidget[]>([]);
   protected readonly widgetRenderVersion = signal(0);
   protected readonly loadingError = signal(false);
@@ -249,6 +266,25 @@ export class DashboardPage {
     void this.loadData().then(() => this.resolveCameras());
     this.polling.start();
     this.telemetryPolling.start();
+  }
+
+  /**
+   * A live-preview session started with maxDurationMs: null (see
+   * applyStreamActive) never auto-stops on the camera side — unlike the
+   * Videos page's 10-minute-capped sessions, nothing reaps an orphaned
+   * stream if the user just navigates away mid-stream. Fire-and-forget
+   * stop-live here is the only thing that ends it in that case; ngOnDestroy
+   * cannot be async, so this intentionally does not await the request.
+   */
+  ngOnDestroy(): void {
+    if (!this.activeLiveRequestId || !this.activeLiveCameraId || !this.activeLiveCameraBaseUrl) {
+      return;
+    }
+    void this.cameraCommands
+      .stopLive(this.activeLiveCameraId, this.activeLiveCameraBaseUrl, this.activeLiveRequestId)
+      .catch((error: unknown) =>
+        console.error('[dashboard] failed to stop live-preview stream on destroy:', error),
+      );
   }
 
   protected chart(widget: DashboardWidget) {
@@ -486,11 +522,28 @@ export class DashboardPage {
         const requestId = `live-preview-${camera.cameraId}-${Date.now()}`;
         this.activeLiveRequestId = requestId;
         this.activeLiveCameraId = camera.cameraId;
+        this.activeLiveCameraBaseUrl = camera.baseUrl;
+        // persist:false — this widget is a live view of the printer's own
+        // camera, not a recording tool (point 5 of the original spec): the
+        // hub must never keep a saved 'live' media-library item from a
+        // session started here. See CameraCommandApiService.startLive's doc
+        // comment and video-service-hub's MediaStorageService.storeLive.
+        //
+        // maxDurationMs: 24h (UNBOUNDED_VIEWER_MAX_DURATION_MS) — this
+        // widget is meant to stay open for an entire print, far longer than
+        // the Videos page's 10-minute default, but still bounded: the hub
+        // has no timer of its own for a live session (see
+        // camera-command.validator.ts), so an explicit ceiling is what
+        // guarantees the camera eventually self-stops even if this client
+        // never calls stopLive (tab closed, crash, network drop — none of
+        // which ngOnDestroy below can catch).
         await this.cameraCommands.startLive(
           camera.cameraId,
           camera.baseUrl,
           this.dashboard()?.livePreview.resolution ?? 'VGA',
           requestId,
+          false,
+          UNBOUNDED_VIEWER_MAX_DURATION_MS,
         );
         const streamUrl = await this.liveStream.buildStreamUrl(camera.cameraId, requestId);
         if (this.destroyRef.destroyed) return;
@@ -503,6 +556,7 @@ export class DashboardPage {
         );
         this.activeLiveRequestId = null;
         this.activeLiveCameraId = null;
+        this.activeLiveCameraBaseUrl = null;
         this.livePreviewStreamUrl.set('');
       }
       if (this.destroyRef.destroyed) return;
@@ -521,6 +575,7 @@ export class DashboardPage {
         this.livePreviewStreamUrl.set('');
         this.activeLiveRequestId = null;
         this.activeLiveCameraId = null;
+        this.activeLiveCameraBaseUrl = null;
         // Whether this was a failed start or a failed stop, there is no
         // live stream after this point — leaving `active: true` would show
         // a "Stop" button over a dead/stale image with nothing left to

@@ -107,6 +107,14 @@ export function assertDisplayName(value: unknown): string {
   return trimmed;
 }
 
+export function assertOptionalBoolean(value: unknown, field: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'boolean') {
+    throw new BadRequestException(`${field} must be a boolean`);
+  }
+  return value;
+}
+
 export function assertCameraBaseUrl(value: unknown): string {
   if (typeof value !== 'string') {
     throw new BadRequestException('baseUrl is required');

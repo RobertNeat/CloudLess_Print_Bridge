@@ -5,8 +5,9 @@ Dokument opisuje pełny, aktualny kontrakt HTTP aplikacji
 `CloudLess_Print_Bridge`.
 
 Serwis pośredniczy w wysyłaniu komend do firmware kamer UnitCam S3, odbiera
-materiały JPEG/MJPEG/WAV, zapisuje transmisje live i udostępnia stan kamer
-obserwowany przez MQTT.
+materiały JPEG/MJPEG/WAV, domyślnie zapisuje transmisje live (chyba że
+komenda `start-live`/`start-dynamic-live` jawnie ustawi `persist: false` —
+patrz niżej) i udostępnia stan kamer obserwowany przez MQTT.
 
 ## Adres bazowy
 
@@ -217,12 +218,25 @@ pusty obiekt.
   "cameraBaseUrl": "http://192.168.1.231",
   "requestId": "live-001",
   "resolution": "VGA",
-  "maxDurationMs": 600000
+  "maxDurationMs": 600000,
+  "persist": true
 }
 ```
 
 Wymaga `requestId` i `resolution`. Opcjonalne `maxDurationMs` musi być liczbą
-całkowitą od `1` do `600000`.
+całkowitą od `1` do `86400000` (24h). Pole celowo nie ma sensownej wartości
+domyślnej po stronie huba (poza górnym ograniczeniem) — hub nie utrzymuje
+własnego licznika czasu transmisji, więc to kamera musi sama zakończyć
+przesyłanie po tym czasie; każdy wywołujący powinien zawsze przekazywać
+jawną wartość, dopasowaną do przewidywanego czasu oglądania (np. krótki
+podgląd vs. podgląd trwający cały wydruk), żeby porzucona sesja (zerwane
+połączenie, zamknięta karta) zawsze kiedyś sama się zakończy.
+Opcjonalne `persist` (domyślnie `true`) jest polem wyłącznie po stronie
+huba — nigdy nie trafia do firmware kamery — i steruje tym, czy
+`POST /api/v1/cameras/{cameraId}/live` (patrz niżej) zapisze ukończoną
+transmisję jako pozycję biblioteki mediów rodzaju `live`. Ustawienie
+`persist: false` daje podgląd wyłącznie na żywo, bez pozostawiania nagrania
+na dysku.
 
 #### `start-dynamic-live`
 
@@ -230,13 +244,16 @@ całkowitą od `1` do `600000`.
 {
   "cameraBaseUrl": "http://192.168.1.231",
   "requestId": "dynamic-live-001",
-  "maxDurationMs": 600000
+  "maxDurationMs": 600000,
+  "persist": true
 }
 ```
 
 Wymaga `requestId`. Pola `resolution` i `maxDurationMs` są opcjonalne.
 Jeśli występują, `resolution` musi być obsługiwaną wartością, a
-`maxDurationMs` liczbą całkowitą od `1` do `600000`.
+`maxDurationMs` liczbą całkowitą od `1` do `86400000` (24h; patrz uwaga w
+`start-live` wyżej). Opcjonalne `persist` działa identycznie jak w
+`start-live` (patrz wyżej).
 
 #### `stop-live`
 
@@ -472,8 +489,18 @@ samej pary kamera–request zwraca `409 Conflict`.
 
 ### `POST /api/v1/cameras/{cameraId}/live`
 
-Odbiera chunked MJPEG, zapisuje go na dysk i równolegle przekazuje aktywnym
-odbiorcom endpointu `GET`.
+Odbiera chunked MJPEG i równolegle przekazuje aktywnym odbiorcom endpointu
+`GET`. Czy strumień trafia też na dysk, zależy od intencji `persist`
+zapisanej przy dopasowanej komendzie `start-live`/`start-dynamic-live`
+(patrz wyżej) dla tej samej pary `cameraId`/`requestId`:
+
+- `persist` nieustawione lub `true` (domyślne, zgodne z dotychczasowym
+  zachowaniem): transmisja jest zapisywana na dysk i po zakończeniu staje
+  się pozycją biblioteki mediów rodzaju `live`.
+- `persist: false`: żaden bajt nie trafia na dysk — transmisja jest
+  wyłącznie przekazywana aktywnym odbiorcom `GET` i znika bez śladu po
+  zakończeniu. Odpowiedź nadal zwraca `200 OK`, ale `"stored": false` i
+  `"complete": false`.
 
 Wymagane nagłówki:
 
@@ -485,7 +512,8 @@ Wymagane nagłówki:
 
 Parametr `boundary` jest obowiązkowy i może mieć maksymalnie 70 znaków.
 Strumień musi zawierać co najmniej jedną granicę ramki. Domyślny limit całej
-transmisji wynosi 1 GiB (`VIDEO_SERVICE_HUB_LIVE_MAX_BYTES`).
+transmisji (liczony zawsze, niezależnie od `persist`) wynosi 1 GiB
+(`VIDEO_SERVICE_HUB_LIVE_MAX_BYTES`).
 
 Sukces po zakończeniu uploadu: `200 OK`.
 
@@ -493,15 +521,17 @@ Sukces po zakończeniu uploadu: `200 OK`.
 {
   "stored": true,
   "duplicate": false,
+  "persist": true,
   "cameraId": "a1b2c3",
   "requestId": "live-001",
   "resolution": "VGA",
   "bytes": 1000000,
-  "frames": 300
+  "frames": 300,
+  "complete": true
 }
 ```
 
-Plik:
+Plik (tylko gdy `persist` było `true`):
 
 ```text
 storage/live/{cameraId}/{requestId}.mjpeg

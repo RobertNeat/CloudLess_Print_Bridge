@@ -12,6 +12,16 @@ const BASE_PREVIEW: LivePreviewData = {
 };
 
 describe('LivePreview', () => {
+  it('shows the translated widget title, not the raw (untranslated) cameraName data', () => {
+    const fixture = TestBed.createComponent(LivePreview);
+    fixture.componentRef.setInput('preview', { ...BASE_PREVIEW, cameraName: 'some-other-name' });
+    fixture.detectChanges();
+
+    const title = fixture.nativeElement.querySelector('[data-testid="live-preview-title"]');
+    expect(title?.textContent?.trim()).toBe('Kamera drukarki');
+    expect(title?.textContent?.trim()).not.toBe('some-other-name');
+  });
+
   it('shows the blurred offline placeholder image when inactive', () => {
     const fixture = TestBed.createComponent(LivePreview);
     fixture.componentRef.setInput('preview', BASE_PREVIEW);
