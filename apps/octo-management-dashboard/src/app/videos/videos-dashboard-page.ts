@@ -72,11 +72,9 @@ export class VideosDashboardPage implements OnDestroy {
   /**
    * The tokened live-stream URL for the currently-active preview, resolved
    * once start-live has actually been dispatched (see applyStreamActive) —
-   * unlike the old cameraId-only preview endpoint, the hub's
-   * `/api/v1/live/{cameraId}/{requestId}/stream` route needs a requestId
-   * that doesn't exist before then, so this can't be precomputed per source
-   * the way CameraSource.previewUrl (still populated by the mock data
-   * service) used to be.
+   * the hub's `/api/v1/live/{cameraId}/{requestId}/stream` route needs a
+   * requestId that doesn't exist before then, so this can't be precomputed
+   * per source.
    */
   protected readonly liveStreamUrl = signal('');
   private activeLiveRequestId: string | null = null;

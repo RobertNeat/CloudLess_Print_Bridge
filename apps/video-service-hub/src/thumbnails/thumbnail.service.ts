@@ -37,8 +37,7 @@ const WAVEFORM_DURATION_SECONDS = 5;
  * floor (verified against real recordings from this project's cameras: a
  * "silent" and a "quiet music" clip measured within ~2dB of each other in
  * both peak and mean amplitude, before and after DC removal and even after
- * band-limiting to the speech range -- see git history on this file for the
- * amplitude-waveform attempt this replaced). A time-domain waveform cannot
+ * band-limiting to the speech range). A time-domain waveform cannot
  * separate real low-level content from that noise floor because both are
  * dominated by the same broadband energy. A spectrogram can: real recorded
  * sound concentrates energy in specific frequency bands over time (visible
@@ -276,9 +275,9 @@ export class ThumbnailService {
    * to soften single-bin FFT speckle so real structure stands out), then use
    * that grayscale image's luma as an alpha mask over a vertical gradient
    * (alphamerge) so the spectrogram is gradient-colored on a transparent
-   * background -- same compositing technique this used for the amplitude
-   * waveform it replaced, see SPECTROGRAM_GAIN doc for why the underlying
-   * visualization changed.
+   * background -- see the spectrogram design notes near
+   * WAVEFORM_DURATION_SECONDS for why audio thumbnails use this
+   * visualization.
    */
   private renderWaveform(
     sourcePath: string,

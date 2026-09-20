@@ -22,8 +22,8 @@ import { VIDEOS_REPOSITORY } from './videos/videos-dashboard.ports';
 // Aura's default toast severities use a translucent color-mix() background
 // (near-invisible tint in light mode, ~16% opaque in dark mode). The app
 // wants a solid, fully opaque background per severity in both themes, so
-// override those tokens at the preset level rather than fighting PrimeNG's
-// runtime-injected :root rules in plain CSS (same specificity, last-wins).
+// these tokens are overridden at the preset level: PrimeNG's runtime-injected
+// :root rules carry the same specificity as a plain CSS override, and last-wins.
 const OctoAura = definePreset(Aura, {
   components: {
     toast: {
@@ -65,18 +65,10 @@ export const appConfig: ApplicationConfig = {
       },
       ripple: true,
     }),
-    // Cutover point: the dashboard now reads/writes real mqtt-puppeteer
-    // state instead of the mock JSON fixture and no-op command adapter.
-    // Command types not yet migrated still no-op silently inside
-    // HttpPrinterCommandAdapter until their own integration phase lands.
     { provide: MANAGEMENT_DASHBOARD_DATA_SOURCE, useExisting: HttpManagementDashboardDataSource },
     { provide: PRINTER_COMMAND_PORT, useExisting: HttpPrinterCommandAdapter },
-    // Cutover point: the files dashboard now reads/writes real ftps-remote-manager
-    // state instead of the mock JSON fixture and no-op operations adapter.
     { provide: FILES_REPOSITORY, useExisting: HttpFilesDataService },
     { provide: FILES_OPERATIONS, useExisting: HttpFilesOperationsAdapter },
-    // Cutover point: the videos dashboard now reads real camera/media state
-    // from video-service-hub instead of the static mock JSON fixture.
     { provide: VIDEOS_REPOSITORY, useExisting: HttpVideosDataService },
   ],
 };
