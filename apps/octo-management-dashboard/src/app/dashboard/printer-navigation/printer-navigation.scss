@@ -131,20 +131,11 @@
   transform: translateX(-50%);
 }
 
+.settings-button,
 .home-button {
-  position: absolute;
-  z-index: 4;
-  top: calc(0.75rem + 2.4rem);
-  left: 50%;
-  pointer-events: auto;
-  transform: translateX(-50%);
-}
-
-.settings-button {
   position: absolute;
   z-index: 5;
   top: 0.75rem;
-  left: 0.75rem;
   display: grid;
   width: 2.4rem;
   height: 2.4rem;
@@ -153,16 +144,29 @@
   background: var(--semantic-surface-raised);
   color: var(--semantic-text-secondary);
   place-items: center;
+  pointer-events: auto;
 
   i {
     color: currentColor;
   }
 
-  &:hover,
+  &:hover {
+    border-color: var(--semantic-focus-ring);
+    background: var(--semantic-surface-hover);
+  }
+}
+
+.settings-button {
+  left: 0.75rem;
+
   &--active {
     border-color: var(--semantic-focus-ring);
     background: var(--semantic-surface-hover);
   }
+}
+
+.home-button {
+  left: calc(0.75rem + 2.4rem + 0.5rem);
 }
 
 .position-panel {
@@ -442,6 +446,11 @@
   .settings-button {
     top: 0.5rem;
     left: 0.5rem;
+  }
+
+  .home-button {
+    top: 0.5rem;
+    left: calc(0.5rem + 2.4rem + 0.5rem);
   }
 
   .configuration-panel {

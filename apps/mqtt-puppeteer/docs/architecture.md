@@ -350,8 +350,9 @@ które wymagają dostosowania, zarówno w backendzie, jak i frontendzie.
 zawiera aktualnej pozycji XYZ. Subskrybuje `mqttPublications$` (status
 `published`) i:
 
-- dla komendy `home` ustawia pozycję na minima osi z `machineEnvelope`
-  profilu (`homed: true`);
+- dla komendy `home` ustawia pozycję na stałe współrzędne (128, 128, 10) —
+  rzeczywistą pozycję głowicy po zakończeniu sekwencji `G28` na drukarce
+  Bambu Lab A1, niezależną od `machineEnvelope` profilu (`homed: true`);
 - dla każdej innej publikacji przekazuje jej payload przez
   `PrinterCommandProfile.inspectPayload()` i, jeśli zwróci `targetPosition`,
   aktualizuje odpowiednie osie (`commanded: true`);

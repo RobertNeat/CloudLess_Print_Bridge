@@ -67,9 +67,9 @@ describe('PrinterPositionService', () => {
     });
 
     expect(service.getPosition()).toEqual({
-      x: 0,
-      y: 0,
-      z: 20,
+      x: 128,
+      y: 128,
+      z: 10,
       homed: true,
       source: 'homed',
       updatedAt: '2026-09-12T10:00:00.000Z',

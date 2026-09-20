@@ -279,7 +279,7 @@ const messages = {
     'navigation.jogDisabledHint':
       'Pozycja drukarki jest nieznana. Wybazuj drukarkę, aby odblokować sterowanie.',
     'navigation.homeButton': 'Bazuj drukarkę',
-    'navigation.homeButtonAria': 'Bazuj drukarkę, aby odblokować sterowanie',
+    'navigation.homeButtonAria': 'Bazuj drukarkę',
     'chart.timeTooltip': 'Czas: {{value}} min',
     'chart.progress.title': 'Postęp wydruku',
     'chart.progress.subtitle': 'Postęp zadania w czasie',
@@ -574,7 +574,7 @@ const messages = {
     'navigation.jogDisabledHint':
       'Printer position is unknown. Home the printer to enable movement controls.',
     'navigation.homeButton': 'Home printer',
-    'navigation.homeButtonAria': 'Home the printer to unlock movement controls',
+    'navigation.homeButtonAria': 'Home printer',
     'chart.timeTooltip': 'Time: {{value}} min',
     'chart.progress.title': 'Print progress',
     'chart.progress.subtitle': 'Job progress over time',

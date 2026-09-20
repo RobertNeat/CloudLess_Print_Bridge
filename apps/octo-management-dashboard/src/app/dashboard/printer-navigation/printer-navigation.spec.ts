@@ -343,7 +343,7 @@ describe('PrinterNavigation', () => {
     expect(document.title).toBe(initialTitle);
   });
 
-  it('shows a home button only while jogDisabled is true and emits homeRequested on click', () => {
+  it('shows the home button while jogDisabled is true and emits homeRequested on click', () => {
     fixture.componentRef.setInput('jogDisabled', true);
     fixture.detectChanges();
     let homeRequests = 0;
@@ -359,11 +359,39 @@ describe('PrinterNavigation', () => {
     expect(homeRequests).toBe(1);
   });
 
-  it('does not show the home button when jogging is enabled (position is known)', () => {
+  it('still shows the home button and emits homeRequested when jogging is enabled (position is known)', () => {
     fixture.componentRef.setInput('jogDisabled', false);
     fixture.detectChanges();
+    let homeRequests = 0;
+    component.homeRequested.subscribe(() => homeRequests++);
 
-    expect(fixture.nativeElement.querySelector('#printer-navigation-home-button')).toBeNull();
+    const homeButton = fixture.nativeElement.querySelector(
+      '#printer-navigation-home-button',
+    ) as HTMLButtonElement | null;
+    expect(homeButton).not.toBeNull();
+    expect(homeButton!.disabled).toBe(false);
+
+    homeButton!.click();
+
+    expect(homeRequests).toBe(1);
+  });
+
+  it('keeps the home button visible and enabled while the configuration panel is open', () => {
+    fixture.detectChanges();
+    testable.toggleConfiguration();
+    fixture.detectChanges();
+    let homeRequests = 0;
+    component.homeRequested.subscribe(() => homeRequests++);
+
+    const homeButton = fixture.nativeElement.querySelector(
+      '#printer-navigation-home-button',
+    ) as HTMLButtonElement | null;
+    expect(homeButton).not.toBeNull();
+    expect(homeButton!.disabled).toBe(false);
+
+    homeButton!.click();
+
+    expect(homeRequests).toBe(1);
   });
 
   it('does not touch axis-point calibration state when home is requested', () => {
