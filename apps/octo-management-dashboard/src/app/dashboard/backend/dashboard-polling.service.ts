@@ -6,16 +6,6 @@ import type { PrinterDomainModelDto } from './mqtt-puppeteer-api.types';
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
-/**
- * Polls GET /device_config/state/domain on a fixed interval. This is the
- * chosen live-data strategy over Socket.IO for the first integration pass:
- * ManagementDashboardDataSource.load() is a pull Promise interface and
- * socket.io-client isn't installed anywhere in this app yet, so polling
- * needs zero new dependencies. Switching to a push transport later is a
- * moderate refactor (this service would need to expose an Observable
- * instead of a signal), not a config flip — noted here deliberately so it
- * isn't mistaken for a drop-in swap.
- */
 @Injectable({ providedIn: 'root' })
 export class DashboardPollingService {
   private readonly http = inject(HttpClient);

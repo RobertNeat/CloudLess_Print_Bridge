@@ -20,12 +20,12 @@ export class PrinterQuickControls {
    * One-way input(), not model(): the parent (dashboard-page.html) still
    * binds [fansEnabled]="data.controls.fansEnabled" to keep this in sync
    * with real backend state, but this component never writes it back —
-   * doing so used to emit a redundant fansEnabledChange alongside
-   * fanSpeedChange on every interaction, causing two racing
-   * /printer-controls/fan POSTs per click. All fan on/off UI logic below
-   * reads this input directly; toggleFans()/setFanSpeed() only ever emit
-   * fanSpeedChange, and the parent derives the next fansEnabled from the
-   * new speed itself (see DashboardPage.updateControl()).
+   * doing so emits a redundant fansEnabledChange alongside fanSpeedChange
+   * on every interaction, causing two racing /printer-controls/fan POSTs
+   * per click. All fan on/off UI logic below reads this input directly;
+   * toggleFans()/setFanSpeed() only ever emit fanSpeedChange, and the
+   * parent derives the next fansEnabled from the new speed itself (see
+   * DashboardPage.updateControl()).
    */
   readonly fansEnabled = input(false);
   readonly printSpeed = model<PrintSpeedMode>('standard');
