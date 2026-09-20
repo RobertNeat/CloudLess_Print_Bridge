@@ -17,12 +17,40 @@ import type { PrinterCommandProfile } from '../printer-profiles/printer-command-
  * commands the bridge has *successfully published* (home / move-absolute) —
  * never a live sensor value, and callers must treat `source` accordingly.
  *
- * This is the backend half of double verification for axis bounds: the
- * active printer profile already rejects (via inspectPayload, invoked from
- * MqttTransportService.publish) any payload that would move outside its
- * machine envelope before it reaches MQTT, so every position recorded here
- * is guaranteed to already have passed that check.
+ * This is the backend half of double verification for axis bounds for
+ * `move-absolute` targets specifically: the active printer profile already
+ * rejects (via inspectPayload, invoked from MqttTransportService.publish)
+ * any such payload that would move outside its machine envelope before it
+ * reaches MQTT, so every *commanded* position recorded here is guaranteed to
+ * already have passed that check. The `home` case is different: it never
+ * goes through inspectPayload, and the fixed HOME_POSITION below is recorded
+ * unconditionally as a physical constant of this printer model — it is not
+ * validated against the envelope and may legitimately fall outside it (as of
+ * writing, HOME_POSITION.z = 10 is below this model's configured
+ * machineEnvelope.z.minimum = 20; see HOME_POSITION's own doc comment).
  */
+
+/**
+ * Where the Bambu Lab A1's tool-head physically ends up once its G28 homing
+ * sequence completes. This is a fixed characteristic of this printer model
+ * (not the origin corner of the machine envelope), so it is intentionally
+ * independent of the configurable `machineEnvelope` bounds used elsewhere in
+ * this file for jog clamping — it is applied as an unconditional literal,
+ * not validated or clamped against the envelope.
+ *
+ * Note this currently sits below the Bambu Lab A1 profile's configured
+ * `machineEnvelope.z.minimum` (20mm, see bambu-lab-a1-command.profile.ts).
+ * That means a subsequent `move-absolute` command targeting Z<20 will still
+ * be rejected by inspectPayload, so the tracked position can never be
+ * *commanded* back down to where homing actually leaves it — and it also
+ * means downstream consumers that clamp a displayed position to the
+ * configured envelope (e.g. the dashboard's axis-range clamping) will not
+ * render this value faithfully. If Z=10 is confirmed correct against the
+ * real printer, machineEnvelope.z.minimum likely needs to become 10 too;
+ * that change is out of scope here and was intentionally not made.
+ */
+const HOME_POSITION = { x: 128, y: 128, z: 10 } as const;
+
 @Injectable()
 export class PrinterPositionService implements OnModuleInit, OnModuleDestroy {
   private readonly subscription = new Subscription();
@@ -108,11 +136,10 @@ export class PrinterPositionService implements OnModuleInit, OnModuleDestroy {
   }
 
   private applyHome(occurredAt: string): void {
-    const envelope = this.profile.getMachineEnvelope();
     this.position = {
-      x: envelope.x.minimum,
-      y: envelope.y.minimum,
-      z: envelope.z.minimum,
+      x: HOME_POSITION.x,
+      y: HOME_POSITION.y,
+      z: HOME_POSITION.z,
       homed: true,
       source: 'homed',
       updatedAt: occurredAt,
