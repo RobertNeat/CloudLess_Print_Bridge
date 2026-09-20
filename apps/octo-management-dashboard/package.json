@@ -15,12 +15,12 @@
   "packageManager": "pnpm@11.17.0",
   "dependencies": {
     "@angular/cdk": "21.2.14",
-    "@angular/common": "21.2.19",
-    "@angular/compiler": "21.2.19",
-    "@angular/core": "21.2.19",
-    "@angular/forms": "21.2.19",
-    "@angular/platform-browser": "21.2.19",
-    "@angular/router": "21.2.19",
+    "@angular/common": "21.2.23",
+    "@angular/compiler": "21.2.23",
+    "@angular/core": "21.2.23",
+    "@angular/forms": "21.2.23",
+    "@angular/platform-browser": "21.2.23",
+    "@angular/router": "21.2.23",
     "@cloudless/printer-contracts": "workspace:*",
     "@primeuix/themes": "3.0.0",
     "angular-gridster2": "21.0.1",
@@ -33,12 +33,12 @@
     "video.js": "^8.24.0"
   },
   "devDependencies": {
-    "@angular/build": "21.2.19",
-    "@angular/cli": "21.2.19",
-    "@angular/compiler-cli": "21.2.19",
+    "@angular/build": "21.2.24",
+    "@angular/cli": "21.2.24",
+    "@angular/compiler-cli": "21.2.23",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "5.9.3",
-    "vitest": "^4.0.8"
+    "vitest": "^4.1.11"
   }
 }
