@@ -4,6 +4,7 @@ import type { MenuItem } from 'primeng/api';
 import { InputTextModule } from 'primeng/inputtext';
 import { MenuModule } from 'primeng/menu';
 import { I18nService, type TranslationKey } from '../../core/i18n.service';
+import { fileKindIcon } from '../file-kind.util';
 import type { FileAction, FileListItem } from '../files-dashboard.models';
 
 @Component({
@@ -19,6 +20,7 @@ export class FileList {
   readonly path = input.required<string>();
   readonly fileSelected = output<FileListItem>();
   readonly fileAction = output<{ readonly action: FileAction; readonly file: FileListItem }>();
+  readonly breadcrumbSelected = output<string>();
   protected readonly query = signal('');
   protected readonly sortAscending = signal(true);
   protected readonly menuFile = signal<FileListItem | null>(null);
@@ -46,14 +48,17 @@ export class FileList {
     this.actionItem('delete', 'pi pi-trash'),
   ]);
 
-  protected breadcrumbs(): string[] {
-    return this.path().split('/').filter(Boolean);
+  protected breadcrumbs(): { label: string; path: string }[] {
+    const segments = this.path().split('/').filter(Boolean);
+    let cumulativePath = '';
+    return segments.map((label) => {
+      cumulativePath += `/${label}`;
+      return { label, path: cumulativePath };
+    });
   }
 
   protected fileIcon(file: FileListItem): string {
-    if (file.kind === 'image') return 'pi pi-image';
-    if (file.kind === 'archive') return 'pi pi-box';
-    return 'pi pi-file';
+    return fileKindIcon(file.kind);
   }
 
   protected fileCount(count: number): string {

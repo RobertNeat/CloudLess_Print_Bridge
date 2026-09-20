@@ -55,7 +55,30 @@ describe('service configuration', () => {
       certificateFingerprint256: 'AA'.repeat(32),
     });
     expect(config.http.host).toBe('127.0.0.1');
+    expect(config.http.corsOrigins).toEqual(['http://localhost:10300']);
     expect(config.upload.maximumBytes).toBe(250 * 1024 * 1024);
+  });
+
+  it('parses a comma-separated CORS origins list', () => {
+    const config = loadServiceConfig({
+      ...validEnvironment,
+      FTPS_REMOTE_MANAGER_CORS_ORIGINS:
+        'http://localhost:4200, http://localhost:4201',
+    });
+
+    expect(config.http.corsOrigins).toEqual([
+      'http://localhost:4200',
+      'http://localhost:4201',
+    ]);
+  });
+
+  it('allows all CORS origins with a wildcard', () => {
+    const config = loadServiceConfig({
+      ...validEnvironment,
+      FTPS_REMOTE_MANAGER_CORS_ORIGINS: '*',
+    });
+
+    expect(config.http.corsOrigins).toBe(true);
   });
 
   it('rejects an invalid certificate fingerprint', () => {

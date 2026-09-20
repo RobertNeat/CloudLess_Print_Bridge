@@ -70,10 +70,25 @@ const messages = {
     'files.actions.rename': 'Zmień nazwę',
     'files.actions.move': 'Przenieś',
     'files.actions.delete': 'Usuń',
-    'files.operationUnavailable':
-      'Operacja „{{action}}” będzie dostępna po podłączeniu usługi FTPS.',
+    'files.operationUnavailable': 'Nie udało się wykonać operacji „{{action}}”.',
+    'files.operationSucceeded': 'Operacja „{{action}}” zakończona powodzeniem.',
     'files.operationDenied': 'Nie masz uprawnień do wykonania tej operacji.',
-    'files.uploadUnavailable': 'Wybór pliku będzie dostępny po podłączeniu usługi FTPS.',
+    'files.uploadUnavailable': 'Nie udało się przesłać pliku.',
+    'files.uploadSucceeded': 'Plik został przesłany.',
+    'files.downloadFailed': 'Nie udało się pobrać pliku.',
+    'files.uploadConflictTitle': 'Plik już istnieje',
+    'files.uploadConflictMessage': 'Plik „{{name}}” już istnieje w tej lokalizacji. Zastąpić go?',
+    'files.overwrite': 'Zastąp',
+    'files.cancel': 'Anuluj',
+    'files.confirm': 'Potwierdź',
+    'files.renamePromptTitle': 'Zmień nazwę pliku',
+    'files.renamePromptLabel': 'Nowa nazwa',
+    'files.movePromptTitle': 'Przenieś plik',
+    'files.movePromptLabel': 'Ścieżka docelowa',
+    'files.movePromptLoading': 'Wczytywanie dostępnych folderów…',
+    'files.movePromptPlaceholder': 'Wybierz folder docelowy',
+    'files.uploadPromptTitle': 'Wybierz lokalizację przesyłania',
+    'files.uploadPromptLabel': 'Folder docelowy',
     'videos.cameraPanelAria': 'Kamera i źródła transmisji',
     'videos.liveCamera': 'Kamera na żywo',
     'videos.stream.active': 'Stream aktywny',
@@ -143,7 +158,8 @@ const messages = {
     'videos.searchPlaceholder': 'Szukaj pliku',
     'videos.searchInputAria': 'Szukaj pliku multimedialnego',
     'videos.loadError': 'Nie udało się wczytać danych dashboardu wideo.',
-    'videos.refreshError': 'Nie udało się odświeżyć biblioteki multimediów. Lista może być nieaktualna.',
+    'videos.refreshError':
+      'Nie udało się odświeżyć biblioteki multimediów. Lista może być nieaktualna.',
     'videos.loading': 'Ładowanie dashboardu…',
     'videos.retry': 'Spróbuj ponownie',
     'videos.streamCommandError':
@@ -176,7 +192,8 @@ const messages = {
     'videos.record.audioStarted': 'Nagranie dźwięku zostało zapisane w bibliotece multimediów.',
     'videos.record.requiresOnlineCamera': 'Wybierz kamerę online, aby rozpocząć nagrywanie.',
     'videos.record.commandError': 'Nie udało się wysłać polecenia do kamery.',
-    'videos.record.timedOut': 'Operacja trwa dłużej niż oczekiwano. Sprawdź bibliotekę multimediów później.',
+    'videos.record.timedOut':
+      'Operacja trwa dłużej niż oczekiwano. Sprawdź bibliotekę multimediów później.',
     'videos.record.source': 'Źródło',
     'videos.record.resolution': 'Rozdzielczość',
     'videos.record.submit': 'Uruchom',
@@ -350,11 +367,26 @@ const messages = {
     'files.actions.rename': 'Rename',
     'files.actions.move': 'Move',
     'files.actions.delete': 'Delete',
-    'files.operationUnavailable':
-      '“{{action}}” will be available after the FTPS service is connected.',
+    'files.operationUnavailable': '“{{action}}” could not be completed.',
+    'files.operationSucceeded': '“{{action}}” completed successfully.',
     'files.operationDenied': 'You do not have permission to perform this operation.',
-    'files.uploadUnavailable':
-      'File selection will be available after the FTPS service is connected.',
+    'files.uploadUnavailable': 'The file could not be uploaded.',
+    'files.uploadSucceeded': 'File uploaded successfully.',
+    'files.downloadFailed': 'The file could not be downloaded.',
+    'files.uploadConflictTitle': 'File already exists',
+    'files.uploadConflictMessage':
+      'A file named "{{name}}" already exists at this location. Overwrite it?',
+    'files.overwrite': 'Overwrite',
+    'files.cancel': 'Cancel',
+    'files.confirm': 'Confirm',
+    'files.renamePromptTitle': 'Rename file',
+    'files.renamePromptLabel': 'New name',
+    'files.movePromptTitle': 'Move file',
+    'files.movePromptLabel': 'Destination path',
+    'files.movePromptLoading': 'Loading available folders…',
+    'files.movePromptPlaceholder': 'Select a destination folder',
+    'files.uploadPromptTitle': 'Choose upload location',
+    'files.uploadPromptLabel': 'Destination folder',
     'videos.cameraPanelAria': 'Camera and stream sources',
     'videos.liveCamera': 'Live camera',
     'videos.stream.active': 'Stream active',
@@ -603,10 +635,15 @@ export class I18nService {
   }
 
   formatDateTime(value: string): string {
+    const date = new Date(value);
+    // An empty/unparseable value is a legitimate "unknown" reading from the
+    // backend (e.g. an FTPS entry with no reported modification time), not a
+    // bug to defend against -- Intl.DateTimeFormat#format() throws on it.
+    if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat(this.locale(), {
       dateStyle: 'medium',
       timeStyle: 'short',
-    }).format(new Date(value));
+    }).format(date);
   }
 
   formatShortDate(value: string): string {

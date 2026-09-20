@@ -13,6 +13,9 @@ import { HttpManagementDashboardDataSource } from './dashboard/backend/http-mana
 import { HttpPrinterCommandAdapter } from './dashboard/backend/http-printer-command.adapter';
 import { MANAGEMENT_DASHBOARD_DATA_SOURCE } from './dashboard/dashboard-data.service';
 import { PRINTER_COMMAND_PORT } from './dashboard/printer-command.port';
+import { HttpFilesDataService } from './files/backend/http-files-data.service';
+import { HttpFilesOperationsAdapter } from './files/backend/http-files-operations.adapter';
+import { FILES_OPERATIONS, FILES_REPOSITORY } from './files/files-dashboard.ports';
 import { HttpVideosDataService } from './videos/backend/http-videos-data.service';
 import { VIDEOS_REPOSITORY } from './videos/videos-dashboard.ports';
 
@@ -68,6 +71,10 @@ export const appConfig: ApplicationConfig = {
     // HttpPrinterCommandAdapter until their own integration phase lands.
     { provide: MANAGEMENT_DASHBOARD_DATA_SOURCE, useExisting: HttpManagementDashboardDataSource },
     { provide: PRINTER_COMMAND_PORT, useExisting: HttpPrinterCommandAdapter },
+    // Cutover point: the files dashboard now reads/writes real ftps-remote-manager
+    // state instead of the mock JSON fixture and no-op operations adapter.
+    { provide: FILES_REPOSITORY, useExisting: HttpFilesDataService },
+    { provide: FILES_OPERATIONS, useExisting: HttpFilesOperationsAdapter },
     // Cutover point: the videos dashboard now reads real camera/media state
     // from video-service-hub instead of the static mock JSON fixture.
     { provide: VIDEOS_REPOSITORY, useExisting: HttpVideosDataService },

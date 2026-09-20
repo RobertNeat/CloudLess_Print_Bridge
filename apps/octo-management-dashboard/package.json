@@ -21,6 +21,7 @@
     "@angular/forms": "21.2.19",
     "@angular/platform-browser": "21.2.19",
     "@angular/router": "21.2.19",
+    "@cloudless/printer-contracts": "workspace:*",
     "@primeuix/themes": "3.0.0",
     "angular-gridster2": "21.0.1",
     "chart.js": "4.5.1",

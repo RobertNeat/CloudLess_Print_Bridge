@@ -10,10 +10,10 @@
     type="button"
     class="drop-zone"
     [class.drop-zone--dragging]="dragging"
-    (click)="uploadRequested.emit()"
+    (click)="openFilePicker()"
     (dragenter)="dragging = true"
     (dragleave)="dragging = false"
-    (drop)="dragging = false; uploadRequested.emit(); $event.preventDefault()"
+    (drop)="onDrop($event)"
     (dragover)="$event.preventDefault()"
   >
     <span class="upload-icon"><i class="pi pi-cloud-upload"></i></span
@@ -21,4 +21,11 @@
     ><span>{{ i18n.t('files.browse') }}</span
     ><small>{{ i18n.t('files.maxSize') }}</small>
   </button>
+  <input
+    #fileInput
+    type="file"
+    class="visually-hidden-input"
+    [attr.aria-label]="i18n.t('files.browse')"
+    (change)="onFilePicked($event)"
+  />
 </section>

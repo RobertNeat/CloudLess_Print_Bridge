@@ -29,25 +29,38 @@
   font-size: 0.8rem;
   gap: 0.5rem;
 }
-.breadcrumbs > span {
-  overflow: hidden;
-  flex: 0 1 auto;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .breadcrumbs > i {
   flex: 0 0 auto;
   font-size: 0.54rem;
 }
-.home-crumb {
+.home-crumb,
+.crumb {
+  overflow: hidden;
   display: inline-flex;
+  flex: 0 1 auto;
   align-items: center;
-  color: var(--semantic-text-primary);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
   gap: 0.4rem;
+}
+.home-crumb {
+  color: var(--semantic-text-primary);
+}
+.home-crumb:hover,
+.crumb:hover {
+  text-decoration: underline;
 }
 .current-crumb {
   color: var(--semantic-text-primary);
   font-weight: 700;
+  cursor: default;
+  pointer-events: none;
 }
 .search-box {
   position: relative;
