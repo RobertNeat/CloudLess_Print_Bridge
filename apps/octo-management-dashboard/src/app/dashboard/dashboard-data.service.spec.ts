@@ -72,6 +72,7 @@ describe('management dashboard data decoder', () => {
         },
         livePreview: {
           cameraName: '',
+          cameraId: '',
           resolution: '',
           availableResolutions: [],
           active: false,

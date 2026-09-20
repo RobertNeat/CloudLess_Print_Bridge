@@ -125,6 +125,7 @@ function isLivePreview(value: unknown): boolean {
   return (
     isRecord(value) &&
     isString(value['cameraName']) &&
+    isString(value['cameraId']) &&
     isString(value['resolution']) &&
     Array.isArray(value['availableResolutions']) &&
     value['availableResolutions'].every(isString) &&

@@ -9,11 +9,19 @@ export type CameraRegistryInput = {
   readonly displayName?: string;
 };
 
+export type CameraRegistryEntry = {
+  readonly cameraId: string;
+  readonly baseUrl: string;
+  readonly displayName?: string;
+  readonly locationCode?: string;
+};
+
 /**
- * Minimal write-side client for video-service-hub's camera registry. This is
- * the simple entry point the frontend exposes for adding a camera address —
- * kept out of VideosRepositoryPort so the mock data service (the fallback
- * port implementation) is unaffected.
+ * Client for video-service-hub's camera registry. Write side (register) is
+ * the simple entry point the frontend exposes for adding a camera address;
+ * read side (list) lets callers resolve a camera entry by displayName rather
+ * than requiring a hardcoded cameraId. Kept out of VideosRepositoryPort so
+ * the mock data service (the fallback port implementation) is unaffected.
  */
 @Injectable({ providedIn: 'root' })
 export class CameraRegistryApiService {
@@ -27,5 +35,14 @@ export class CameraRegistryApiService {
         { baseUrl: input.baseUrl, displayName: input.displayName },
       ),
     );
+  }
+
+  async list(): Promise<readonly CameraRegistryEntry[]> {
+    const response = await firstValueFrom(
+      this.http.get<{ items: CameraRegistryEntry[] }>(
+        `${this.config.baseUrl}/api/v1/camera-registry`,
+      ),
+    );
+    return response.items;
   }
 }
