@@ -54,25 +54,29 @@
       selectedFilePath() === node.path ||
       (!selectedFilePath() && selectedFolderPath() === node.path)
     "
-    [attr.aria-expanded]="node.type === 'folder' ? isExpanded(node.id) : null"
+    [attr.aria-expanded]="node.type === 'folder' ? isExpanded(node) : null"
     (click)="select(node)"
-    (keydown.arrowRight)="expand(node.id); $event.preventDefault()"
-    (keydown.arrowLeft)="collapse(node.id); $event.preventDefault()"
+    (keydown.arrowRight)="expand(node); $event.preventDefault()"
+    (keydown.arrowLeft)="collapse(node); $event.preventDefault()"
   >
     @if (node.type === 'folder') {
-      <i
-        class="pi tree-chevron"
-        [class.pi-chevron-down]="isExpanded(node.id)"
-        [class.pi-chevron-right]="!isExpanded(node.id)"
-        aria-hidden="true"
-      ></i
-      ><i class="pi pi-folder tree-icon" aria-hidden="true"></i>
+      @if (isLoading(node.id)) {
+        <i class="pi pi-spin pi-spinner tree-chevron" aria-hidden="true"></i>
+      } @else {
+        <i
+          class="pi tree-chevron"
+          [class.pi-chevron-down]="isExpanded(node)"
+          [class.pi-chevron-right]="!isExpanded(node)"
+          aria-hidden="true"
+        ></i>
+      }
+      <i class="pi pi-folder tree-icon" aria-hidden="true"></i>
     } @else {
       <span class="tree-indent"></span><i class="pi pi-file tree-icon" aria-hidden="true"></i>
     }
     <span class="tree-label">{{ node.name }}</span>
   </button>
-  @if (node.children?.length && isExpanded(node.id)) {
+  @if (node.children?.length && isExpanded(node)) {
     @for (child of node.children; track child.id) {
       <ng-container
         [ngTemplateOutlet]="treeNode"

@@ -31,6 +31,7 @@ Skopiuj wartości z `apps/ftps-remote-manager/.env.example` do głównego pliku
 | --- | --- | --- |
 | `FTPS_REMOTE_MANAGER_HOST` | `127.0.0.1` | interfejs HTTP |
 | `FTPS_REMOTE_MANAGER_PORT` | `10321` | port HTTP |
+| `FTPS_REMOTE_MANAGER_CORS_ORIGINS` | `http://localhost:10300` | dozwolone originy CORS (lista rozdzielona przecinkami, `*` zezwala na wszystkie) |
 | `FTPS_REMOTE_MANAGER_FTP_HOST` | wymagane | adres IP drukarki |
 | `FTPS_REMOTE_MANAGER_FTP_PORT` | `990` | port FTPS |
 | `FTPS_REMOTE_MANAGER_FTP_USER` | wymagane (`bblp` dla A1) | użytkownik FTPS |

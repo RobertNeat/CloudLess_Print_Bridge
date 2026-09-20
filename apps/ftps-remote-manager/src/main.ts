@@ -8,6 +8,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
   const config = app.get<ServiceConfig>(SERVICE_CONFIG);
+  app.enableCors({ origin: config.http.corsOrigins });
   await app.listen(config.http.port, config.http.host);
   Logger.log(
     `FTPS Remote Manager listening on http://${config.http.host}:${config.http.port}`,
