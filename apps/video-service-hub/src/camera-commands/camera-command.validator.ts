@@ -3,12 +3,23 @@ import {
   assertCameraBaseUrl,
   assertIdentifier,
   assertInteger,
+  assertOptionalBoolean,
   assertResolution,
 } from '../common/validation';
 import { cameraCommandPaths, type CameraCommand } from './camera-command.types';
 
 const maxOperationDurationMs = 3_600_000;
-const maxLiveDurationMs = 600_000;
+/**
+ * 24h. Was 600_000 (10 minutes) until a caller needed to watch a live feed
+ * for an entire print — the hub itself has no concept of "how long is
+ * reasonable" beyond bounding session lifetime server-side, so this ceiling
+ * exists purely to guarantee every live session eventually self-reaps
+ * (activeLive entry cleared, viewers ended) even if the client that started
+ * it never calls stop-live (tab closed, browser crashed, network dropped).
+ * Every caller must always send an explicit maxDurationMs within this
+ * ceiling — see CameraCommandApiService.startLive on the frontend.
+ */
+const maxLiveDurationMs = 86_400_000;
 
 export function parseCameraCommand(value: string): CameraCommand {
   if (!(value in cameraCommandPaths)) {
@@ -74,6 +85,7 @@ export function validateCommandPayload(
     case 'start-live':
       validateRequestAndResolution(payload);
       validateLiveDuration(payload);
+      assertOptionalBoolean(payload.persist, 'persist');
       break;
     case 'start-dynamic-live':
       assertIdentifier(payload.requestId, 'requestId');
@@ -81,6 +93,7 @@ export function validateCommandPayload(
         assertResolution(payload.resolution);
       }
       validateLiveDuration(payload);
+      assertOptionalBoolean(payload.persist, 'persist');
       break;
     case 'stop-recording':
     case 'stop-live':

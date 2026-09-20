@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { SERVICE_CONFIG } from '../config/config.module';
 import type { ServiceConfig } from '../config/service-config';
+import { MediaStorageService } from '../storage/media-storage.service';
 import {
   cameraCommandPaths,
   type CameraCommandResult,
@@ -22,7 +23,10 @@ import { assertIdentifier } from '../common/validation';
 export class CameraCommandService {
   private readonly logger = new Logger(CameraCommandService.name);
 
-  constructor(@Inject(SERVICE_CONFIG) private readonly config: ServiceConfig) {}
+  constructor(
+    @Inject(SERVICE_CONFIG) private readonly config: ServiceConfig,
+    private readonly storage: MediaStorageService,
+  ) {}
 
   async execute(
     cameraId: string,
@@ -38,6 +42,17 @@ export class CameraCommandService {
     const command = parseCameraCommand(commandName);
     const cameraBaseUrl = parseCameraBaseUrl(input.cameraBaseUrl);
     const payload = validateCommandPayload(command, input);
+    // `persist` is a hub-only directive for the ingest leg (see
+    // MediaStorageService.setLivePersistIntent) — the camera firmware has no
+    // concept of it, so it must never be forwarded in the outbound POST body.
+    const persist = payload.persist;
+    delete payload.persist;
+    if (command === 'start-live' || command === 'start-dynamic-live') {
+      const requestId = payload.requestId as string;
+      this.storage.setLivePersistIntent(cameraId, requestId, persist !== false);
+    } else if (command === 'stop-live' && typeof payload.requestId === 'string') {
+      this.storage.clearLivePersistIntent(cameraId, payload.requestId);
+    }
     const url = `${cameraBaseUrl}${cameraCommandPaths[command]}`;
 
     try {

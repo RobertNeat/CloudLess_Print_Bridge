@@ -559,6 +559,17 @@ describe('DashboardPage', () => {
         `${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`,
       );
       expect(startLiveReq.request.method).toBe('POST');
+      // persist:false — the hub must never keep a saved 'live' media-library
+      // recording from a session started by this widget (see
+      // MediaStorageService.storeLive / livePersistIntent on the hub).
+      // maxDurationMs: 24h, not the Videos page's 10-minute default — this
+      // widget is meant to run for an entire print — but still a bounded,
+      // explicit value so the camera guarantees the session eventually ends
+      // even if stopLive is never called (see UNBOUNDED_VIEWER_MAX_DURATION_MS).
+      expect(startLiveReq.request.body).toMatchObject({
+        persist: false,
+        maxDurationMs: 86_400_000,
+      });
       // Nothing recording-related must ever be dispatched by this flow.
       httpMock.expectNone(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-recording`);
       httpMock.expectNone(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/timed-recording`);
@@ -611,6 +622,43 @@ describe('DashboardPage', () => {
 
       expect(fixture.componentInstance['dashboard']()?.livePreview.cameraId).toBe('cam-second');
       expect(fixture.componentInstance['livePreviewStreamUrl']()).toBe('');
+      httpMock.verify();
+    });
+
+    it('stops the live-view session on component destroy, since a null-maxDurationMs session never auto-stops on its own', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: 'Kamera drukarki' },
+      ]);
+
+      const startPromise = fixture.componentInstance['setPreviewActive'](true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      httpMock
+        .expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`)
+        .flush({});
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      httpMock.expectOne(`${HUB_BASE}/auth/stream-token`).flush({ streamToken: 'tok-1' });
+      await startPromise;
+
+      fixture.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const stopReq = httpMock.expectOne(
+        `${HUB_BASE}/api/v1/cameras/cam-printer/commands/stop-live`,
+      );
+      expect(stopReq.request.method).toBe('POST');
+      stopReq.flush({});
+      httpMock.verify();
+    });
+
+    it('does not attempt to stop anything on destroy when no stream was ever started', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: 'Kamera drukarki' },
+      ]);
+
+      fixture.destroy();
+      httpMock.expectNone(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/stop-live`);
       httpMock.verify();
     });
   });
