@@ -1,6 +1,7 @@
 import {
   adjustCoordinates,
   clampCoordinates,
+  clampCoordinatesUpperBound,
   validateAxisRanges,
   validateCoordinates,
 } from './coordinate-utils';
@@ -102,6 +103,28 @@ describe('coordinate utilities', () => {
         X: 256,
         Y: 256,
         Z: 20,
+      });
+    });
+
+    describe('clampCoordinatesUpperBound (backend-reported position sanitization)', () => {
+      it('leaves a Z below the configured minimum untouched, unlike clampCoordinates', () => {
+        // The backend's dead-reckoned position after a completed home sits
+        // at a fixed physical Z (10) below the envelope's Z minimum (20) —
+        // that minimum bounds commanded moves, not the physical home
+        // position. Display must show what the backend actually reported.
+        expect(clampCoordinatesUpperBound({ X: 128, Y: 128, Z: 10 }, realEnvelope)).toEqual({
+          X: 128,
+          Y: 128,
+          Z: 10,
+        });
+      });
+
+      it('still clamps a value above the configured maximum', () => {
+        expect(clampCoordinatesUpperBound({ X: 300, Y: 100, Z: 500 }, realEnvelope)).toEqual({
+          X: 256,
+          Y: 100,
+          Z: 240,
+        });
       });
     });
   });

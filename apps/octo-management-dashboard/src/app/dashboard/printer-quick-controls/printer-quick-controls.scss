@@ -1,41 +1,54 @@
 :host {
   display: block;
   height: 100%;
+  container-type: size;
+  container-name: printer-quick-controls;
 }
 .controls {
-  display: grid;
+  display: flex;
   height: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .control {
   position: relative;
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
-  padding: 0.6rem 0.75rem;
+  padding: clamp(0.6rem, 5cqh, 1.4rem) clamp(0.5rem, 4cqw, 1.1rem);
   border: 0;
-  border-right: 1px solid var(--semantic-border-default);
+  border-radius: 0.6rem;
   background: transparent;
   color: var(--semantic-text-primary);
   cursor: pointer;
   text-align: left;
-  gap: 0.6rem;
+  gap: clamp(0.5rem, 3cqw, 1.1rem);
 }
-.control:last-child {
-  border-right: 0;
+.control:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--semantic-border-default);
+  content: '';
 }
 .control:hover {
   background: var(--semantic-surface-hover);
 }
 .icon {
   display: grid;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 2rem;
+  width: clamp(2rem, 12cqw, 3.75rem);
+  height: clamp(2rem, 12cqw, 3.75rem);
+  flex: 0 0 clamp(2rem, 12cqw, 3.75rem);
+  padding: 0.2em;
   border-radius: 0.55rem;
   background: var(--semantic-surface-interactive);
   color: var(--semantic-text-muted);
+  container-type: size;
   place-items: center;
+}
+.icon i {
+  font-size: 65cqmin;
 }
 .control--active .icon {
   background: var(--semantic-accent-subtle);
@@ -52,7 +65,7 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: clamp(0.1rem, 0.6cqh, 0.3rem);
 }
 small {
   overflow: hidden;
@@ -117,6 +130,20 @@ small {
   color: var(--semantic-accent-primary);
 }
 @media (max-width: 650px) {
+  .control {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.45rem 0.25rem;
+    text-align: center;
+    gap: 0.3rem;
+  }
+  .chevron {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+  }
+}
+@container printer-quick-controls (max-width: 420px) {
   .control {
     flex-direction: column;
     justify-content: center;

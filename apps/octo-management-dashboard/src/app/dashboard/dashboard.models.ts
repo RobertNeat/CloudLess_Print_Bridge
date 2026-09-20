@@ -62,6 +62,8 @@ export interface Coordinates {
 
 export interface LivePreviewData {
   cameraName: string;
+  /** Selected video-service-hub camera-registry cameraId. Empty string means nothing is selected yet (registry not loaded, or no cameras registered). */
+  cameraId: string;
   resolution: string;
   availableResolutions: string[];
   active: boolean;

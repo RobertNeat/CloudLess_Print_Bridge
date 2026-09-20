@@ -38,6 +38,22 @@ header strong {
 .live-dot--active {
   background: var(--semantic-status-danger);
   box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--semantic-status-danger) 18%, transparent);
+  animation: live-dot-blink 1.4s ease-in-out infinite;
+}
+@keyframes live-dot-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot--active {
+    animation: none;
+    opacity: 1;
+  }
 }
 .camera-frame {
   position: relative;
@@ -56,25 +72,34 @@ header strong {
   object-position: center;
 }
 .camera-off {
-  display: grid;
+  position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   background: var(--semantic-surface-interactive);
-  place-items: center;
 }
-.camera-off span {
-  display: grid;
-  width: min(30%, 8rem);
-  max-height: 70%;
-  border: 1px solid var(--semantic-border-strong);
-  border-radius: 0.75rem;
-  background: var(--semantic-surface-hover);
-  color: var(--semantic-text-muted);
-  aspect-ratio: 1;
-  place-items: center;
+.camera-off-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: blur(4px);
+  /* Scaled up slightly so the blur doesn't bleed the frame's soft edges into view. */
+  transform: scale(1.05);
 }
-.camera-off i {
-  font-size: clamp(2rem, 6cqw, 4rem);
+.camera-off-message {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 0.6rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--semantic-surface-interactive) 75%, black 25%);
+  color: var(--semantic-text-inverse, #fff);
+  font-size: 0.75rem;
+}
+:host ::ng-deep .preview-actions .p-select {
+  width: clamp(5.5rem, 22cqw, 8rem);
 }
 @media (max-width: 650px) {
   header {
@@ -82,5 +107,8 @@ header strong {
   }
   .preview-actions :is(.p-button-label) {
     display: none;
+  }
+  :host ::ng-deep .preview-actions .p-select {
+    width: 5rem;
   }
 }
