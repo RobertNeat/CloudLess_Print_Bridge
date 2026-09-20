@@ -85,4 +85,62 @@ describe('PrinterTemperatures', () => {
     expect(fixture.componentInstance['selected']()).toBeNull();
     expect(emitted).toEqual([]);
   });
+
+  it('formats current and target temperatures to exactly 2 decimal places, and only shows a target once set', () => {
+    const fixture = TestBed.createComponent(PrinterTemperatures);
+    fixture.componentRef.setInput('temperatures', { chamber: null, bed: 60, nozzle: 215.4 });
+    fixture.detectChanges();
+
+    const nozzleValue = fixture.nativeElement.querySelector(
+      '[data-testid="temperature-reading-nozzle-value"]',
+    ) as HTMLElement;
+    expect(nozzleValue.textContent).toBe('215.40°C');
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="temperature-reading-nozzle-target"]'),
+    ).toBeNull();
+
+    const popoverStub = { toggle: () => {}, hide: () => {} } as unknown as Parameters<
+      PrinterTemperatures['save']
+    >[0];
+    const nozzleReading = fixture.componentInstance['readings']().find(
+      (reading) => reading.sensor === 'nozzle',
+    )!;
+    fixture.componentInstance['openEditor'](new Event('click'), nozzleReading, popoverStub);
+    fixture.componentInstance['draftValue'].set(230);
+    fixture.componentInstance['save'](popoverStub);
+    fixture.detectChanges();
+
+    const nozzleTarget = fixture.nativeElement.querySelector(
+      '[data-testid="temperature-reading-nozzle-target"]',
+    ) as HTMLElement;
+    expect(nozzleTarget.textContent).toContain('230.00°C');
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '[data-testid="temperature-reading-nozzle-value"]',
+        ) as HTMLElement
+      ).textContent,
+    ).toBe('215.40°C');
+  });
+
+  it('initializes the editor draft from the existing target, not the current reading', () => {
+    const fixture = TestBed.createComponent(PrinterTemperatures);
+    fixture.componentRef.setInput('temperatures', { chamber: null, bed: 60, nozzle: 215 });
+    fixture.detectChanges();
+
+    const popoverStub = { toggle: () => {}, hide: () => {} } as unknown as Parameters<
+      PrinterTemperatures['save']
+    >[0];
+    const findNozzle = () =>
+      fixture.componentInstance['readings']().find((reading) => reading.sensor === 'nozzle')!;
+
+    fixture.componentInstance['openEditor'](new Event('click'), findNozzle(), popoverStub);
+    expect(fixture.componentInstance['draftValue']()).toBe(215);
+    fixture.componentInstance['draftValue'].set(230);
+    fixture.componentInstance['save'](popoverStub);
+
+    fixture.componentInstance['openEditor'](new Event('click'), findNozzle(), popoverStub);
+    expect(fixture.componentInstance['draftValue']()).toBe(230);
+  });
 });

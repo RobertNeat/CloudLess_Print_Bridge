@@ -183,7 +183,7 @@ describe('DashboardPage', () => {
     expect(fixture.componentInstance['commandError']()).toBeTruthy();
   });
 
-  it('sets a sensor target temperature and optimistically updates local state', async () => {
+  it('sends a set-temperature command without touching the current reading', async () => {
     const fixture = setUp();
     await fixture.whenStable();
 
@@ -192,10 +192,10 @@ describe('DashboardPage', () => {
     expect(commandPort.executed).toEqual([
       { type: 'set-temperature', change: { sensor: 'nozzle', value: 230 } },
     ]);
-    expect(fixture.componentInstance['dashboard']()?.temperatures.nozzle).toBe(230);
+    expect(fixture.componentInstance['dashboard']()?.temperatures.nozzle).toBe(210);
   });
 
-  it('leaves temperatures untouched when a backend-rejected out-of-range value is sent', async () => {
+  it('reports a command error when a backend-rejected out-of-range value is sent', async () => {
     const fixture = setUp();
     await fixture.whenStable();
     commandPort.failNext = new Error('nozzle celsius must be at most 300');
@@ -227,18 +227,16 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('does not let a poll tick snap a just-submitted target back to the stale current reading', async () => {
+  it('always applies the polled current reading, even after a target is submitted', async () => {
     const fixture = setUp();
     await fixture.whenStable();
     const polling = TestBed.inject(DashboardPollingService);
 
     await fixture.componentInstance['updateTemperature']({ sensor: 'nozzle', value: 230 });
-    // Simulate a poll tick landing immediately after, still reporting the
-    // pre-change current reading (the backend hasn't caught up yet).
     polling.latestDomainState.set({ temperatures: { nozzle: { current: 210 } } });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['dashboard']()?.temperatures.nozzle).toBe(230);
+    expect(fixture.componentInstance['dashboard']()?.temperatures.nozzle).toBe(210);
   });
 
   describe('settableTemperatureSensors (device-capability-driven, not hardcoded)', () => {

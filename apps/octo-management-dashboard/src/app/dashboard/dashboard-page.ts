@@ -386,23 +386,9 @@ export class DashboardPage {
   }
 
   protected async updateTemperature(change: TemperatureChange): Promise<void> {
-    await this.runCommand({ type: 'set-temperature', change }, () => {
-      // Suppress the next poll tick(s) for this field like every other
-      // optimistically-patched control: the backend won't reach the new
-      // target instantly, so an immediate poll would otherwise snap the
-      // just-submitted value back to the stale current reading. Keyed per
-      // sensor so setting one target doesn't also freeze the other two
-      // sensors' current readings.
-      this.controlsSuppression.suppress(`temperatures.${change.sensor}`);
-      this.dashboard.update((data) =>
-        data
-          ? {
-              ...data,
-              temperatures: { ...data.temperatures, [change.sensor]: change.value },
-            }
-          : data,
-      );
-    });
+    // Target temperature is client-side UI state owned by
+    // app-printer-temperatures; this only forwards the command.
+    await this.runCommand({ type: 'set-temperature', change }, () => {});
   }
 
   private async loadData(): Promise<void> {
