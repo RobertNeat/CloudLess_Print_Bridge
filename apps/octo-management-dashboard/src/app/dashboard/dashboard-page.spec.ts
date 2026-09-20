@@ -1,5 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { DashboardPollingService } from './backend/dashboard-polling.service';
 import { CommandExecutionError } from './backend/http-error-mapping';
@@ -52,6 +52,7 @@ function sampleData(): ManagementDashboardData {
     },
     livePreview: {
       cameraName: '',
+      cameraId: '',
       resolution: '',
       availableResolutions: [],
       active: false,
@@ -482,6 +483,135 @@ describe('DashboardPage', () => {
 
       expect(fixture.componentInstance['commandError']()).toEqual({ kind, message });
       expect(fixture.componentInstance['dashboard']()?.controls.lightEnabled).toBe(false);
+    });
+  });
+
+  describe('live-preview hub integration', () => {
+    const HUB_BASE = 'http://localhost:10322';
+    const MQTT_BASE = 'http://localhost:10320';
+
+    async function flushRegistry(fixture: ReturnType<typeof setUp>, entries: unknown[]) {
+      const httpMock = TestBed.inject(HttpTestingController);
+      // DashboardPollingService/TelemetryPollingService also fire on
+      // construction (real mqtt-puppeteer polling, unrelated to this
+      // widget) — drain those so they don't trip httpMock.verify() below.
+      httpMock.match(`${MQTT_BASE}/device_config/state/domain`).forEach((req) => req.flush({}));
+      httpMock
+        .match(`${MQTT_BASE}/telemetry/history`)
+        .forEach((req) => req.flush({ capacity: 0, samples: [] }));
+      // resolveCameras() only runs after loadData()'s mock-source promise
+      // resolves (they're sequenced in the constructor), so the registry
+      // request isn't issued until a microtask after setUp() returns.
+      await fixture.whenStable();
+      await Promise.resolve();
+      const req = httpMock.expectOne(`${HUB_BASE}/api/v1/camera-registry`);
+      req.flush({ items: entries, count: entries.length });
+      await fixture.whenStable();
+      await Promise.resolve();
+      return httpMock;
+    }
+
+    it('resolves the printer camera by displayName, case-insensitively and trimmed', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-other', baseUrl: 'http://cam-other', displayName: 'Some other camera' },
+        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: '  KAMERA drukarki  ' },
+      ]);
+
+      expect(fixture.componentInstance['livePreviewHubAvailable']()).toBe(true);
+      expect(fixture.componentInstance['dashboard']()?.livePreview.cameraId).toBe('cam-printer');
+      expect(fixture.componentInstance['selectedCamera']()).toEqual(
+        expect.objectContaining({ cameraId: 'cam-printer', baseUrl: 'http://cam-printer' }),
+      );
+      httpMock.verify();
+    });
+
+    it('falls back to the first registered camera when no entry matches the configured name', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-other', baseUrl: 'http://cam-other', displayName: 'Some other camera' },
+      ]);
+
+      expect(fixture.componentInstance['livePreviewHubAvailable']()).toBe(true);
+      expect(fixture.componentInstance['dashboard']()?.livePreview.cameraId).toBe('cam-other');
+      httpMock.verify();
+    });
+
+    it('reports hubAvailable=false when the registry has no cameras at all', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, []);
+
+      expect(fixture.componentInstance['livePreviewHubAvailable']()).toBe(false);
+      expect(fixture.componentInstance['dashboard']()?.livePreview.cameraId).toBe('');
+      httpMock.verify();
+    });
+
+    it('awaits startLive and buildStreamUrl before flipping livePreview.active, and never calls a recording command', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: 'Kamera drukarki' },
+      ]);
+
+      const setActivePromise = fixture.componentInstance['setPreviewActive'](true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const startLiveReq = httpMock.expectOne(
+        `${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`,
+      );
+      expect(startLiveReq.request.method).toBe('POST');
+      // Nothing recording-related must ever be dispatched by this flow.
+      httpMock.expectNone(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-recording`);
+      httpMock.expectNone(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/timed-recording`);
+
+      // active must still be false: startLive has not resolved yet.
+      expect(fixture.componentInstance['dashboard']()?.livePreview.active).toBe(false);
+      startLiveReq.flush({});
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const tokenReq = httpMock.expectOne(`${HUB_BASE}/auth/stream-token`);
+      // The stream token has resolved but the tokened stream URL has not
+      // been built yet: active must still be false at this point too.
+      expect(fixture.componentInstance['dashboard']()?.livePreview.active).toBe(false);
+      tokenReq.flush({ streamToken: 'tok-123' });
+
+      await setActivePromise;
+
+      expect(fixture.componentInstance['dashboard']()?.livePreview.active).toBe(true);
+      expect(fixture.componentInstance['livePreviewStreamUrl']()).toContain('streamToken=tok-123');
+      httpMock.verify();
+    });
+
+    it('stops the old camera before applying a source switch made while streaming', async () => {
+      const fixture = setUp();
+      const httpMock = await flushRegistry(fixture, [
+        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: 'Kamera drukarki' },
+        { cameraId: 'cam-second', baseUrl: 'http://cam-second', displayName: 'Second camera' },
+      ]);
+
+      const startPromise = fixture.componentInstance['setPreviewActive'](true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      httpMock
+        .expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`)
+        .flush({});
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      httpMock.expectOne(`${HUB_BASE}/auth/stream-token`).flush({ streamToken: 'tok-1' });
+      await startPromise;
+      expect(fixture.componentInstance['dashboard']()?.livePreview.active).toBe(true);
+
+      const switchPromise = fixture.componentInstance['setPreviewCamera']('cam-second');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const stopReq = httpMock.expectOne(
+        `${HUB_BASE}/api/v1/cameras/cam-printer/commands/stop-live`,
+      );
+      expect(stopReq.request.method).toBe('POST');
+      stopReq.flush({});
+
+      await switchPromise;
+
+      expect(fixture.componentInstance['dashboard']()?.livePreview.cameraId).toBe('cam-second');
+      expect(fixture.componentInstance['livePreviewStreamUrl']()).toBe('');
+      httpMock.verify();
     });
   });
 });

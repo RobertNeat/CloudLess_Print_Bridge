@@ -14,10 +14,22 @@
     </div>
     <div class="preview-actions">
       <p-select
+        id="live-preview-source-select"
+        data-testid="live-preview-source-select"
+        [options]="cameraOptions()"
+        optionLabel="displayName"
+        optionValue="cameraId"
+        [ngModel]="preview().cameraId"
+        [disabled]="preview().active || streaming() || !cameraOptions().length"
+        (ngModelChange)="cameraChanged.emit($event)"
+        size="small"
+        [ariaLabel]="i18n.t('live.sourceAria')"
+      /><p-select
         id="live-preview-resolution-select"
         data-testid="live-preview-resolution-select"
         [options]="preview().availableResolutions"
         [ngModel]="preview().resolution"
+        [disabled]="preview().active || streaming()"
         (ngModelChange)="resolutionChanged.emit($event)"
         size="small"
         [ariaLabel]="i18n.t('live.resolutionAria')"
@@ -30,18 +42,22 @@
         [severity]="preview().active ? 'danger' : 'primary'"
         [outlined]="preview().active"
         [icon]="preview().active ? 'pi pi-stop' : 'pi pi-play'"
+        [loading]="streaming()"
+        [disabled]="streaming() || (!preview().active && (!hubAvailable() || !preview().cameraId))"
         [label]="i18n.t(preview().active ? 'live.stop' : 'live.start')"
         (click)="activeChanged.emit(!preview().active)"
       ></button>
     </div>
   </header>
   <div id="live-preview-camera-frame" class="camera-frame" data-testid="live-preview-camera-frame">
-    @if (preview().active) {
+    @if (preview().active && imageSrc() && !previewFailed()) {
       <img
         id="live-preview-stream-image"
         data-testid="live-preview-stream-image"
-        src="/images/live_preview.png"
+        [src]="imageSrc()"
         [alt]="i18n.t('live.imageAlt')"
+        (error)="onPreviewError()"
+        (load)="onPreviewLoad()"
       />
     } @else {
       <div
@@ -49,9 +65,21 @@
         class="camera-off"
         data-testid="live-preview-offline-placeholder"
         role="img"
-        [attr.aria-label]="i18n.t('live.offAria')"
+        [attr.aria-label]="i18n.t(previewFailed() ? 'live.previewFailed' : 'live.offAria')"
       >
-        <span><i class="pi pi-camera" aria-hidden="true"></i></span>
+        <img
+          id="live-preview-offline-image"
+          data-testid="live-preview-offline-image"
+          class="camera-off-image"
+          src="/images/live_preview.png"
+          alt=""
+          aria-hidden="true"
+        />
+        @if (preview().active && previewFailed()) {
+          <strong class="camera-off-message" data-testid="live-preview-failed-message">{{
+            i18n.t('live.previewFailed')
+          }}</strong>
+        }
       </div>
     }
   </div>

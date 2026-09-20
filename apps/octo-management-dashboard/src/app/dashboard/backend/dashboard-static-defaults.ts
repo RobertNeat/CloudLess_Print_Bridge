@@ -44,10 +44,28 @@ export const STATIC_NAVIGATION_DEFAULTS: PrinterNavigationData = {
   },
 };
 
+/**
+ * The video-service-hub camera-registry displayName the live-preview widget
+ * looks up its camera by (see http-management-dashboard-data.source.ts /
+ * dashboard-page.ts) — matched case-insensitively, trimmed. Kept as a
+ * constant here rather than a hardcoded cameraId so re-registering the
+ * printer's camera under a new cameraId/baseUrl needs no frontend change.
+ */
+export const PRINTER_CAMERA_DISPLAY_NAME = 'Kamera drukarki';
+
+/**
+ * Mirrors the hub's supported resolution codes exactly (assertResolution in
+ * video-service-hub/src/common/validation.ts), same list/order the Videos
+ * page's media-record-dialog already offers — kept in sync manually since
+ * there is no shared package between the two apps.
+ */
+export const LIVE_PREVIEW_AVAILABLE_RESOLUTIONS = ['QVGA', 'VGA', 'SVGA', 'XGA', 'UXGA'];
+
 export const STATIC_LIVE_PREVIEW_DEFAULTS: LivePreviewData = {
-  cameraName: 'Kamera drukarki',
-  resolution: '1280 × 720',
-  availableResolutions: ['640 × 360', '1280 × 720', '1920 × 1080'],
+  cameraName: PRINTER_CAMERA_DISPLAY_NAME,
+  cameraId: '',
+  resolution: 'VGA',
+  availableResolutions: LIVE_PREVIEW_AVAILABLE_RESOLUTIONS,
   active: false,
   latencyMs: 0,
 };

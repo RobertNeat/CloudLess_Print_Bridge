@@ -22,7 +22,7 @@
       "viewBox": { "minX": 0, "minY": 0, "width": 1000, "height": 1000 }
     }
   },
-  "livePreview": { "cameraName": "Kamera drukarki", "resolution": "1280 × 720", "availableResolutions": ["640 × 360", "1280 × 720", "1920 × 1080"], "active": true, "latencyMs": 86 },
+  "livePreview": { "cameraName": "Kamera drukarki", "cameraId": "", "resolution": "VGA", "availableResolutions": ["QVGA", "VGA", "SVGA", "XGA", "UXGA"], "active": false, "latencyMs": 0 },
   "widgets": [
     { "id": "current-print", "type": "print-job", "x": 0, "y": 0, "cols": 4, "rows": 2, "minItemCols": 4, "minItemRows": 2 },
     { "id": "live-preview", "type": "live-preview", "x": 8, "y": 0, "cols": 4, "rows": 4, "minItemCols": 4, "minItemRows": 3 },
