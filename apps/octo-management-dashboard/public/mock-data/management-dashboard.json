@@ -24,14 +24,14 @@
   },
   "livePreview": { "cameraName": "Kamera drukarki", "resolution": "1280 × 720", "availableResolutions": ["640 × 360", "1280 × 720", "1920 × 1080"], "active": true, "latencyMs": 86 },
   "widgets": [
-    { "id": "current-print", "type": "print-job", "x": 0, "y": 0, "cols": 6, "rows": 2, "minItemCols": 4, "minItemRows": 2 },
-    { "id": "live-preview", "type": "live-preview", "x": 6, "y": 0, "cols": 6, "rows": 7, "minItemCols": 4, "minItemRows": 3 },
-    { "id": "quick-controls", "type": "quick-controls", "x": 0, "y": 2, "cols": 6, "rows": 1, "minItemCols": 4 },
-    { "id": "temperatures", "type": "temperatures", "x": 0, "y": 3, "cols": 6, "rows": 1, "minItemCols": 4 },
-    { "id": "navigation", "type": "printer-navigation", "x": 0, "y": 4, "cols": 6, "rows": 6, "minItemCols": 3, "minItemRows": 3 },
-    { "id": "progress", "type": "progress-chart", "x": 0, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
-    { "id": "temperature", "type": "temperature-chart", "x": 4, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
-    { "id": "fan", "type": "fan-chart", "x": 8, "y": 10, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 }
+    { "id": "current-print", "type": "print-job", "x": 0, "y": 0, "cols": 4, "rows": 2, "minItemCols": 4, "minItemRows": 2 },
+    { "id": "live-preview", "type": "live-preview", "x": 8, "y": 0, "cols": 4, "rows": 4, "minItemCols": 4, "minItemRows": 3 },
+    { "id": "quick-controls", "type": "quick-controls", "x": 0, "y": 2, "cols": 4, "rows": 1, "minItemCols": 4 },
+    { "id": "temperatures", "type": "temperatures", "x": 0, "y": 3, "cols": 4, "rows": 1, "minItemCols": 4 },
+    { "id": "navigation", "type": "printer-navigation", "x": 4, "y": 0, "cols": 4, "rows": 4, "minItemCols": 3, "minItemRows": 3 },
+    { "id": "progress", "type": "progress-chart", "x": 0, "y": 4, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
+    { "id": "temperature", "type": "temperature-chart", "x": 4, "y": 4, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 },
+    { "id": "fan", "type": "fan-chart", "x": 8, "y": 4, "cols": 4, "rows": 3, "minItemCols": 3, "minItemRows": 2 }
   ],
   "charts": {
     "progress": {
