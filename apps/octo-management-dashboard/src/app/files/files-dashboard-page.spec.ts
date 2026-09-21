@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MessageService } from 'primeng/api';
 import { FILES_OPERATIONS, FILES_REPOSITORY } from './files-dashboard.ports';
 import type { FileListItem, FilesDashboardData } from './files-dashboard.models';
 import { FilesDashboardPage } from './files-dashboard-page';
@@ -53,6 +54,7 @@ describe('FilesDashboardPage', () => {
             download: async () => {},
           },
         },
+        MessageService,
       ],
     });
     const fixture = TestBed.createComponent(FilesDashboardPage);
@@ -95,6 +97,7 @@ describe('FilesDashboardPage', () => {
             download: async () => {},
           },
         },
+        MessageService,
       ],
     });
     const fixture = TestBed.createComponent(FilesDashboardPage);
@@ -150,6 +153,7 @@ describe('FilesDashboardPage', () => {
             download: async () => {},
           },
         },
+        MessageService,
       ],
     });
     const fixture = TestBed.createComponent(FilesDashboardPage);
@@ -192,6 +196,7 @@ describe('FilesDashboardPage', () => {
             download: async () => {},
           },
         },
+        MessageService,
       ],
     });
     const fixture = TestBed.createComponent(FilesDashboardPage);
@@ -222,5 +227,96 @@ describe('FilesDashboardPage', () => {
     await page.confirmUploadPrompt();
 
     expect(uploaded).toEqual([{ path: '/archive', fileName: 'model.gcode' }]);
+  });
+
+  it('ignores repeat download clicks on the same file during the cooldown and shows a starting toast', async () => {
+    let downloadCalls = 0;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: FILES_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            loadFolder: async () => ({ children: [], files: [] }),
+            listAllFolders: async () => ['/home'],
+          },
+        },
+        {
+          provide: FILES_OPERATIONS,
+          useValue: {
+            execute: async () => 'ok' as const,
+            upload: async () => 'ok' as const,
+            download: async () => {
+              downloadCalls += 1;
+            },
+          },
+        },
+        MessageService,
+      ],
+    });
+    const fixture = TestBed.createComponent(FilesDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const page = fixture.componentInstance as unknown as {
+      executeFileAction: (r: { action: string; file: FileListItem }) => Promise<void>;
+    };
+    const addSpy = vi.spyOn(TestBed.inject(MessageService), 'add');
+
+    await page.executeFileAction({ action: 'download', file: file('first') });
+    await page.executeFileAction({ action: 'download', file: file('first') });
+
+    expect(downloadCalls).toBe(1);
+    expect(addSpy).toHaveBeenCalledTimes(1);
+    expect(addSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'info', detail: expect.stringContaining('first.gcode') }),
+    );
+
+    await page.executeFileAction({ action: 'download', file: file('second') });
+    expect(downloadCalls).toBe(2);
+  });
+
+  it('rejects a delete during the cooldown with an error toast instead of re-running the operation', async () => {
+    let deleteCalls = 0;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: FILES_REPOSITORY,
+          useValue: {
+            load: async () => data,
+            loadFolder: async () => ({ children: [], files: [] }),
+            listAllFolders: async () => ['/home'],
+          },
+        },
+        {
+          provide: FILES_OPERATIONS,
+          useValue: {
+            execute: async () => {
+              deleteCalls += 1;
+              return 'ok' as const;
+            },
+            upload: async () => 'ok' as const,
+            download: async () => {},
+          },
+        },
+        MessageService,
+      ],
+    });
+    const fixture = TestBed.createComponent(FilesDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const page = fixture.componentInstance as unknown as {
+      executeFileAction: (r: { action: string; file: FileListItem }) => Promise<void>;
+    };
+    const addSpy = vi.spyOn(TestBed.inject(MessageService), 'add');
+
+    await page.executeFileAction({ action: 'delete', file: file('first') });
+    await page.executeFileAction({ action: 'delete', file: file('first') });
+
+    expect(deleteCalls).toBe(1);
+    expect(addSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'error', detail: expect.stringContaining('first.gcode') }),
+    );
   });
 });

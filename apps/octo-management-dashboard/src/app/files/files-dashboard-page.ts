@@ -7,6 +7,7 @@ import { SelectModule } from 'primeng/select';
 import { AccessPolicy, type Permission } from '../core/auth-session.service';
 import { FilesDashboardLayoutService } from '../core/files-dashboard-layout.service';
 import { I18nService, type TranslationKey } from '../core/i18n.service';
+import { NotificationService } from '../core/notification.service';
 import { FileDetails } from './file-details/file-details';
 import { FileList } from './file-list/file-list';
 import { FileTree } from './file-tree/file-tree';
@@ -17,6 +18,9 @@ import type {
   FilesDashboardData,
   FileTreeNode,
 } from './files-dashboard.models';
+
+const DOWNLOAD_COOLDOWN_MS = 4000;
+const DELETE_COOLDOWN_MS = 4000;
 
 type OperationNotice =
   | { readonly type: 'denied' }
@@ -71,6 +75,7 @@ export class FilesDashboardPage {
   private readonly repository = inject(FILES_REPOSITORY);
   private readonly operations = inject(FILES_OPERATIONS);
   private readonly access = inject(AccessPolicy);
+  private readonly notifications = inject(NotificationService);
   protected readonly i18n = inject(I18nService);
   protected readonly layout = inject(FilesDashboardLayoutService);
   protected readonly dashboard = signal<FilesDashboardData | null>(null);
@@ -100,6 +105,10 @@ export class FilesDashboardPage {
   // the tree (expand) and the list/pinned (select) in the same tick -- or
   // double-clicked -- only triggers one loadFolder() call.
   private readonly pendingFolderPaths = new Set<string>();
+  // Download/delete both hit the printer's own file server, which can take a
+  // moment to start serving -- without a cooldown, repeated clicks on the
+  // same file before that happens fire the request again unnoticed.
+  private readonly actionCooldowns = new Set<string>();
 
   protected readonly operationMessage = computed(() => {
     const notice = this.operationNotice();
@@ -288,6 +297,8 @@ export class FilesDashboardPage {
     }
 
     if (request.action === 'download') {
+      if (!this.startCooldown('download', request.file.path, DOWNLOAD_COOLDOWN_MS)) return;
+      this.notifications.info('files.downloadStarting', { name: request.file.name });
       try {
         await this.operations.download(request.file);
         this.operationNotice.set({ type: 'succeeded', action: 'download' });
@@ -312,6 +323,10 @@ export class FilesDashboardPage {
     }
 
     // 'delete' needs no extra input, so it runs immediately.
+    if (!this.startCooldown('delete', request.file.path, DELETE_COOLDOWN_MS)) {
+      this.notifications.error('files.deleteCooldown', { name: request.file.name });
+      return;
+    }
     const result = await this.operations.execute(request.action, request.file);
     this.operationNotice.set(
       result === 'error'
@@ -321,6 +336,15 @@ export class FilesDashboardPage {
     if (result === 'ok') {
       await this.refreshFoldersAfterMutation(request.file);
     }
+  }
+
+  // A click during the window is silently ignored rather than restarting the timer.
+  private startCooldown(action: FileAction, path: string, durationMs: number): boolean {
+    const key = `${action}:${path}`;
+    if (this.actionCooldowns.has(key)) return false;
+    this.actionCooldowns.add(key);
+    setTimeout(() => this.actionCooldowns.delete(key), durationMs);
+    return true;
   }
 
   // Fetches every folder on the remote filesystem so the move/upload dialogs
