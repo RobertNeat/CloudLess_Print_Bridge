@@ -1,9 +1,22 @@
 # CloudLess Print Bridge
 
+<div align="center">
+  <img src="docs/app_screenshots/readme_icon.png" alt="icon" width="200" height="auto"/>
+</div>
+
 A local, LAN-only bridge system for a Bambu Lab A1 3D printer. Every service
 in this repo talks to the printer, its microSD card, and its cameras over
 your own network — there is no cloud account, no vendor relay, and no
 internet dependency required for normal operation.
+
+Management dashboard screenshot:
+![image](/docs/app_screenshots/management_screenshot.png)
+
+Video dashboard screenshot:
+![image](/docs/app_screenshots/video_screenshot_narrow.png)
+
+File browser screenshot:
+![image](/docs/app_screenshots/files_screenshot.png)
 
 Polish translation: [README_pl.md](./README_pl.md).
 
@@ -23,14 +36,14 @@ for one transport, plus a dashboard that ties them together:
 
 ## Architecture
 
-| Component | Role |
-| --- | --- |
-| `apps/octo-management-dashboard` | Angular frontend — the actual UI. Printer control/monitoring, an SD-card file browser, and a camera/video dashboard with live preview, composed as customizable gridster widgets. |
-| `apps/mqtt-puppeteer` | NestJS backend. Connects to the printer's MQTT/TLS broker, merges partial state reports into a domain model, and exposes REST + Socket.IO. |
-| `apps/ftps-remote-manager` | NestJS backend. Connects to the printer's FTPS server (microSD card) and exposes REST for listing, downloading, uploading, moving, and deleting files. |
-| `apps/video-service-hub` | NestJS backend for the M5Stack UnitCam S3 cameras. Proxies commands to camera firmware, ingests JPEG/MJPEG/WAV uploads, fans out live MJPEG to multiple viewers, and keeps recording manifests and camera telemetry/presence. |
-| `packages/printer-contracts` | Shared, transport-agnostic TypeScript DTOs for the printer domain model (AMS units/slots, external spool, operation results), consumed by the backends and the dashboard. |
-| `firmware/m5-stack-unitcam-s3` | ESP32-S3 firmware (PlatformIO) for the cameras, implementing the capture/recording/live-stream contract that `video-service-hub` expects. |
+| Component                        | Role                                                                                                                                                                                                                          |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/octo-management-dashboard` | Angular frontend — the actual UI. Printer control/monitoring, an SD-card file browser, and a camera/video dashboard with live preview, composed as customizable gridster widgets.                                             |
+| `apps/mqtt-puppeteer`            | NestJS backend. Connects to the printer's MQTT/TLS broker, merges partial state reports into a domain model, and exposes REST + Socket.IO.                                                                                    |
+| `apps/ftps-remote-manager`       | NestJS backend. Connects to the printer's FTPS server (microSD card) and exposes REST for listing, downloading, uploading, moving, and deleting files.                                                                        |
+| `apps/video-service-hub`         | NestJS backend for the M5Stack UnitCam S3 cameras. Proxies commands to camera firmware, ingests JPEG/MJPEG/WAV uploads, fans out live MJPEG to multiple viewers, and keeps recording manifests and camera telemetry/presence. |
+| `packages/printer-contracts`     | Shared, transport-agnostic TypeScript DTOs for the printer domain model (AMS units/slots, external spool, operation results), consumed by the backends and the dashboard.                                                     |
+| `firmware/m5-stack-unitcam-s3`   | ESP32-S3 firmware (PlatformIO) for the cameras, implementing the capture/recording/live-stream contract that `video-service-hub` expects.                                                                                     |
 
 The dashboard is the only thing an end user opens. It calls
 `mqtt-puppeteer` for printer state and commands, `ftps-remote-manager` for

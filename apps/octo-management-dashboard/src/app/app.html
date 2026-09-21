@@ -2,6 +2,12 @@
   <header id="app-header" class="app-header">
     <p-menubar id="app-main-menu" [model]="menuItems" [attr.aria-label]="t('mainNavigation')">
       <ng-template #start>
+        <button
+          class="logo-button"
+          (click)="navigateToDashboard('management')"
+        >
+          <img src="/favicon.ico" alt="CloudLess Logo" class="logo-icon" />
+        </button>
         <p-select
           id="dashboard-select"
           inputId="dashboard-select"
