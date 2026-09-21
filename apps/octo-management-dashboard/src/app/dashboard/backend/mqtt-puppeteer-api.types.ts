@@ -51,6 +51,8 @@ export interface PrinterJobDto {
   currentLayer?: number;
   totalLayers?: number;
   fileName?: string;
+  /** Resolvable via GET {mqtt-puppeteer baseUrl}/print_job/thumbnail?id=<thumbnailId>. */
+  thumbnailId?: string;
 }
 
 export interface PrinterFansDto {

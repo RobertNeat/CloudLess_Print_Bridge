@@ -14,13 +14,13 @@
   />
   <div class="job-card__body">
     <header>
-      <div>
+      <div class="header-row">
         <span class="eyebrow">{{ i18n.t('printJob.current') }}</span>
-        <h2 id="print-job-name" data-testid="print-job-name">{{ job().name }}</h2>
+        <span id="print-job-status" class="status" data-testid="print-job-status"
+          ><i aria-hidden="true"></i>{{ statusLabel() }}</span
+        >
       </div>
-      <span id="print-job-status" class="status" data-testid="print-job-status"
-        ><i aria-hidden="true"></i>{{ statusLabel() }}</span
-      >
+      <h2 id="print-job-name" data-testid="print-job-name">{{ job().name }}</h2>
     </header>
     <div class="progress-copy">
       <span>{{ i18n.t('printJob.progress') }}</span

@@ -24,6 +24,12 @@ export interface PrinterJobDto {
   currentLayer?: number;
   totalLayers?: number;
   fileName?: string;
+  /**
+   * Identifier of the thumbnail PNG, resolvable via GET
+   * /print_job/thumbnail on mqtt-puppeteer. Undefined until resolved (or
+   * if it never resolves for this file).
+   */
+  thumbnailId?: string;
 }
 
 export interface PrinterFansDto {

@@ -44,7 +44,29 @@ export interface AppConfig {
   };
   auth: AuthConfig;
   stateTemplatePath?: string;
+  ftps: {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    tlsMode: FtpsTlsMode;
+    certificateFingerprint256: string;
+    timeoutMs: number;
+    maximumConcurrentSessions: number;
+  };
+  printJobThumbnail: {
+    /** Remote directory the active job's .gcode is matched against, e.g. "/cache/". */
+    gcodeDirectory: string;
+    /** Remote directory of per-thumbnail-identifier .md5 index files, e.g. "/image/md5/". */
+    md5IndexDirectory: string;
+    /** Remote directory the resolved "<identifier>.png" thumbnail is read from, e.g. "/image/". */
+    imageDirectory: string;
+    /** How often the .md5 index directory is re-listed for newly appeared identifiers. */
+    indexRefreshIntervalMs: number;
+  };
 }
+
+export type FtpsTlsMode = 'implicit' | 'explicit';
 
 export function loadAppConfig(
   environment: NodeJS.ProcessEnv = process.env,
@@ -160,7 +182,69 @@ export function loadAppConfig(
       environment,
       'MQTT_PUPPETEER_PRINTER_STATE_TEMPLATE_PATH',
     ),
+    ftps: loadFtpsConfig(environment),
+    printJobThumbnail: {
+      // Absolute from the FTP session root — see PrintJobThumbnailService's
+      // doc comment for why a "./"-relative path does not work here.
+      gcodeDirectory:
+        envValue(environment, 'MQTT_PUPPETEER_FTP_GCODE_DIR') ?? '/cache/',
+      md5IndexDirectory:
+        envValue(environment, 'MQTT_PUPPETEER_FTP_THUMBNAIL_MD5_DIR') ??
+        '/image/md5/',
+      imageDirectory:
+        envValue(environment, 'MQTT_PUPPETEER_FTP_THUMBNAIL_DIR') ?? '/image/',
+      indexRefreshIntervalMs: integer(
+        envValue(environment, 'MQTT_PUPPETEER_FTP_THUMBNAIL_INDEX_REFRESH_MS'),
+        30_000,
+        1_000,
+      ),
+    },
   };
+}
+
+function loadFtpsConfig(environment: NodeJS.ProcessEnv): AppConfig['ftps'] {
+  const tlsMode = envValue(environment, 'BAMBULAB_A1_FTP_MODE') ?? 'implicit';
+  if (tlsMode !== 'implicit' && tlsMode !== 'explicit') {
+    throw new Error('BAMBULAB_A1_FTP_MODE must be implicit or explicit');
+  }
+
+  const certificateFingerprint256 = requiredValue(
+    environment,
+    'BAMBULAB_A1_FTP_TLS_FINGERPRINT256',
+  )
+    .replaceAll(':', '')
+    .toUpperCase();
+  if (!/^[A-F0-9]{64}$/.test(certificateFingerprint256)) {
+    throw new Error(
+      'BAMBULAB_A1_FTP_TLS_FINGERPRINT256 must contain 64 hexadecimal characters',
+    );
+  }
+
+  return {
+    host: requiredValue(environment, 'BAMBULAB_A1_IP'),
+    port: integer(
+      envValue(environment, 'BAMBULAB_A1_FTP_PORT'),
+      990,
+      1,
+      65_535,
+    ),
+    username: requiredValue(environment, 'BAMBULAB_A1_FTP_USERNAME'),
+    password: requiredValue(environment, 'BAMBULAB_A1_ACCESS_CODE'),
+    tlsMode,
+    certificateFingerprint256,
+    timeoutMs: integer(
+      envValue(environment, 'MQTT_PUPPETEER_FTP_TIMEOUT_MS'),
+      10_000,
+      1,
+    ),
+    maximumConcurrentSessions: 1,
+  };
+}
+
+function requiredValue(environment: NodeJS.ProcessEnv, name: string): string {
+  const value = envValue(environment, name);
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
 }
 
 function loadWorkspaceEnv(environment: NodeJS.ProcessEnv): void {

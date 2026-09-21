@@ -49,7 +49,13 @@ export class AuthGuard implements CanActivate {
 }
 
 function isPublicPath(path: string): boolean {
-  return path.startsWith('/auth/') || path === '/auth';
+  return (
+    path.startsWith('/auth/') ||
+    path === '/auth' ||
+    // <img src> cannot carry a bearer token, so this route is exempt from
+    // auth the same way GET /auth is — see PrintJobController.getThumbnail.
+    path === '/print_job/thumbnail'
+  );
 }
 
 function readBearerToken(header: string | undefined): string | undefined {

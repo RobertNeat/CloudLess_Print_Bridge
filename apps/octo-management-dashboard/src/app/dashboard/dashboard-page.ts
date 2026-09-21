@@ -20,13 +20,17 @@ import {
   type CameraRegistryEntry,
 } from '../videos/backend/camera-registry-api.service';
 import { LiveStreamApiService } from '../videos/backend/live-stream-api.service';
-import { PRINTER_CAMERA_DISPLAY_NAME } from './backend/dashboard-static-defaults';
+import {
+  PRINTER_CAMERA_DISPLAY_NAME,
+  STATIC_PRINT_JOB_PLACEHOLDERS,
+} from './backend/dashboard-static-defaults';
 import {
   DashboardPollingService,
   PollSuppressionWindow,
 } from './backend/dashboard-polling.service';
 import { CommandExecutionError, type CommandError } from './backend/http-error-mapping';
-import { mapJobStatus } from './backend/http-management-dashboard-data.source';
+import { mapJobStatus, resolveThumbnailUrl } from './backend/http-management-dashboard-data.source';
+import { MqttPuppeteerConfig } from './backend/mqtt-puppeteer.config';
 import { TelemetryPollingService } from './backend/telemetry-polling.service';
 import { mapFanChart, mapProgressChart, mapTemperatureChart } from './backend/telemetry-mapping';
 import { CurrentPrintJob } from './current-print-job/current-print-job';
@@ -69,6 +73,7 @@ export class DashboardPage implements OnDestroy {
   private readonly commands = inject(PrinterCommandFacade);
   private readonly polling = inject(DashboardPollingService);
   private readonly telemetryPolling = inject(TelemetryPollingService);
+  private readonly mqttPuppeteerConfig = inject(MqttPuppeteerConfig);
   private readonly controlsSuppression = new PollSuppressionWindow();
   protected readonly i18n = inject(I18nService);
   protected readonly layout = inject(DashboardLayoutService);
@@ -103,9 +108,7 @@ export class DashboardPage implements OnDestroy {
     if (!cameraId) return null;
     return this.cameras()?.find((entry) => entry.cameraId === cameraId) ?? null;
   });
-  protected readonly livePreviewHubAvailable = computed(
-    () => (this.cameras()?.length ?? 0) > 0,
-  );
+  protected readonly livePreviewHubAvailable = computed(() => (this.cameras()?.length ?? 0) > 0);
   protected readonly livePreviewStreamUrl = signal('');
   protected readonly livePreviewStreaming = signal(false);
   private activeLiveRequestId: string | null = null;
@@ -260,6 +263,13 @@ export class DashboardPage implements OnDestroy {
           printJob = {
             ...printJob,
             name: state.job.fileName ?? printJob.name,
+            // thumbnailId resolves asynchronously after load(), so it must
+            // be re-derived here too rather than trusted from initial load.
+            thumbnailUrl: resolveThumbnailUrl(
+              this.mqttPuppeteerConfig.baseUrl,
+              state.job.thumbnailId,
+              STATIC_PRINT_JOB_PLACEHOLDERS.thumbnailUrl,
+            ),
             estimatedPrintTime:
               state.job.remainingSeconds !== undefined
                 ? this.i18n.formatDuration(state.job.remainingSeconds)
@@ -538,10 +548,7 @@ export class DashboardPage implements OnDestroy {
     });
   }
 
-  private async applyStreamActive(
-    camera: CameraRegistryEntry,
-    active: boolean,
-  ): Promise<void> {
+  private async applyStreamActive(camera: CameraRegistryEntry, active: boolean): Promise<void> {
     this.livePreviewStreaming.set(true);
     try {
       if (active) {
@@ -633,8 +640,7 @@ export class DashboardPage implements OnDestroy {
       if (currentCameraId) return;
       const expected = PRINTER_CAMERA_DISPLAY_NAME.trim().toLowerCase();
       const preselected =
-        entries.find((entry) => entry.displayName?.trim().toLowerCase() === expected) ??
-        entries[0];
+        entries.find((entry) => entry.displayName?.trim().toLowerCase() === expected) ?? entries[0];
       if (preselected) {
         this.dashboard.update((data) =>
           data

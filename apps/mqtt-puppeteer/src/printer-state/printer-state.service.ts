@@ -16,6 +16,7 @@ import {
 } from '../common/json';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { BridgeEventsService } from '../events/bridge-events.service';
+import { PrintJobThumbnailService } from '../print-job/print-job-thumbnail.service';
 import {
   PRINTER_DOMAIN_MAPPER,
   type PrinterDomainModelMapper,
@@ -35,6 +36,7 @@ export class PrinterStateService implements OnModuleInit, OnModuleDestroy {
     private readonly mapper: PrinterDomainModelMapper,
     private readonly events: BridgeEventsService,
     private readonly position: PrinterPositionService,
+    private readonly thumbnails: PrintJobThumbnailService,
   ) {
     this.raw = loadTemplate(config.stateTemplatePath);
     this.domain = mapper.map(this.raw);
@@ -68,8 +70,18 @@ export class PrinterStateService implements OnModuleInit, OnModuleDestroy {
   }
 
   getDomain(): PrinterDomainModelDto {
+    const domain = cloneJson(this.domain);
+    const fileName = domain.job?.fileName;
+    if (fileName) {
+      // Resolving a thumbnail requires FTPS I/O and must never block this
+      // synchronous read — request it in the background and surface
+      // whatever is already cached.
+      this.thumbnails.requestResolution(fileName);
+      const thumbnailId = this.thumbnails.getCachedThumbnailId(fileName);
+      if (thumbnailId && domain.job) domain.job.thumbnailId = thumbnailId;
+    }
     return {
-      ...cloneJson(this.domain),
+      ...domain,
       position: this.position.getPosition(),
     };
   }

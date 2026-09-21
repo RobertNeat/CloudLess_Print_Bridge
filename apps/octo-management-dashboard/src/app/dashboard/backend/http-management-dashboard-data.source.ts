@@ -122,6 +122,11 @@ export class HttpManagementDashboardDataSource implements ManagementDashboardDat
       printJob: {
         ...STATIC_PRINT_JOB_PLACEHOLDERS,
         name: domain.job?.fileName ?? STATIC_PRINT_JOB_PLACEHOLDERS.name,
+        thumbnailUrl: resolveThumbnailUrl(
+          this.config.baseUrl,
+          domain.job?.thumbnailId,
+          STATIC_PRINT_JOB_PLACEHOLDERS.thumbnailUrl,
+        ),
         estimatedPrintTime:
           domain.job?.remainingSeconds !== undefined
             ? this.i18n.formatDuration(domain.job.remainingSeconds)
@@ -199,6 +204,20 @@ export function mapJobStatus(status: PrinterJobStatusDto | undefined): PrintJobS
 
 function mapPositionSource(source: BackendPositionSource | undefined): PrinterPositionSource {
   return source ?? 'unknown';
+}
+
+/**
+ * Builds the <img src> URL for GET {baseUrl}/print_job/thumbnail?id=... —
+ * that route is exempt from mqtt-puppeteer's auth guard, so no token needs
+ * to be appended here.
+ */
+export function resolveThumbnailUrl(
+  baseUrl: string,
+  thumbnailId: string | undefined,
+  placeholderUrl: string,
+): string {
+  if (!thumbnailId) return placeholderUrl;
+  return `${baseUrl}/print_job/thumbnail?id=${encodeURIComponent(thumbnailId)}`;
 }
 
 function mapPrintSpeed(speedPercent: number | undefined) {

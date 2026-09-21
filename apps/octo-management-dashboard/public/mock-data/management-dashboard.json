@@ -1,5 +1,5 @@
 {
-  "printJob": { "name": "Obudowa sterownika v4", "thumbnailUrl": "/images/print-part-thumbnail.svg", "thumbnailAlt": "Podgląd drukowanej obudowy", "progress": 68, "currentLayer": 170, "totalLayers": 250, "estimatedPrintTime": "1 godz. 42 min", "status": "printing" },
+  "printJob": { "name": "Obudowa sterownika v4", "thumbnailUrl": "/images/live_preview.png", "thumbnailAlt": "Podgląd drukowanej obudowy", "progress": 68, "currentLayer": 170, "totalLayers": 250, "estimatedPrintTime": "1 godz. 42 min", "status": "printing" },
   "controls": { "lightEnabled": true, "fansEnabled": true, "fanSpeed": 60, "printSpeed": "standard" },
   "temperatures": { "chamber": null, "bed": 60, "nozzle": 215 },
   "coordinates": { "X": 128, "Y": 96, "Z": 42 },
