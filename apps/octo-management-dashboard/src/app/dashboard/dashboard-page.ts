@@ -26,6 +26,7 @@ import {
   PollSuppressionWindow,
 } from './backend/dashboard-polling.service';
 import { CommandExecutionError, type CommandError } from './backend/http-error-mapping';
+import { mapJobStatus } from './backend/http-management-dashboard-data.source';
 import { TelemetryPollingService } from './backend/telemetry-polling.service';
 import { mapFanChart, mapProgressChart, mapTemperatureChart } from './backend/telemetry-mapping';
 import { CurrentPrintJob } from './current-print-job/current-print-job';
@@ -245,7 +246,31 @@ export class DashboardPage implements OnDestroy {
             temperatures.nozzle = state.temperatures.nozzle?.current ?? temperatures.nozzle;
           }
         }
-        return { ...data, controls, coordinates, positionSource, temperatures };
+        // Live print-job progress — this is the actual fix for
+        // "print-job-progress-value/progress-bar/layers/remaining-time
+        // never update": previously this effect patched
+        // controls/coordinates/temperatures but never printJob, so those
+        // fields stayed frozen at whatever the initial loadData() returned
+        // even while the printer kept printing. Mirrors exactly how
+        // http-management-dashboard-data.source.ts composes printJob from
+        // domain.job at load time, reusing the same mapJobStatus mapping so
+        // the two stay in sync.
+        let printJob = data.printJob;
+        if (state.job && !this.controlsSuppression.isSuppressed('printJob')) {
+          printJob = {
+            ...printJob,
+            name: state.job.fileName ?? printJob.name,
+            estimatedPrintTime:
+              state.job.remainingSeconds !== undefined
+                ? this.i18n.formatDuration(state.job.remainingSeconds)
+                : printJob.estimatedPrintTime,
+            progress: state.job.progressPercent ?? printJob.progress,
+            currentLayer: state.job.currentLayer ?? printJob.currentLayer,
+            totalLayers: state.job.totalLayers ?? printJob.totalLayers,
+            status: mapJobStatus(state.job.status),
+          };
+        }
+        return { ...data, controls, coordinates, positionSource, temperatures, printJob };
       });
     });
     effect(() => {
@@ -446,11 +471,12 @@ export class DashboardPage implements OnDestroy {
   protected async setPrintStatus(
     status: ManagementDashboardData['printJob']['status'],
   ): Promise<void> {
-    await this.runCommand({ type: 'set-print-status', status }, () =>
+    await this.runCommand({ type: 'set-print-status', status }, () => {
+      this.controlsSuppression.suppress('printJob');
       this.dashboard.update((data) =>
         data ? { ...data, printJob: { ...data.printJob, status } } : data,
-      ),
-    );
+      );
+    });
   }
 
   protected async updatePreview(

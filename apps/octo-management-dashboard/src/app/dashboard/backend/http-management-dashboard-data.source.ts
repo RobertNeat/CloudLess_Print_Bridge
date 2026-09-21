@@ -178,7 +178,7 @@ export class HttpManagementDashboardDataSource implements ManagementDashboardDat
  * states to 'completed' (terminal, action buttons disabled) rather than the
  * misleading 'printing', since there is no active job to pause or cancel.
  */
-function mapJobStatus(status: PrinterJobStatusDto | undefined): PrintJobStatus {
+export function mapJobStatus(status: PrinterJobStatusDto | undefined): PrintJobStatus {
   switch (status) {
     case 'running':
       return 'printing';
