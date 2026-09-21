@@ -22,7 +22,8 @@ export const STATIC_PRINT_JOB_PLACEHOLDERS: Pick<
   'name' | 'thumbnailUrl' | 'thumbnailAlt' | 'estimatedPrintTime'
 > = {
   name: 'Aktualne zadanie',
-  thumbnailUrl: '/images/print-part-thumbnail.svg',
+  // Used whenever no on-device thumbnail is resolved yet — see resolveThumbnailUrl().
+  thumbnailUrl: '/images/live_preview.png',
   thumbnailAlt: 'Podgląd drukowanego elementu (brak podglądu z drukarki)',
   estimatedPrintTime: '—',
 };

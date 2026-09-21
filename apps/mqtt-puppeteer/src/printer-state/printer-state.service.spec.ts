@@ -1,6 +1,7 @@
 import type { AppConfig } from '../config/app-config';
 import { BridgeEventsService } from '../events/bridge-events.service';
 import { FilamentCatalogService } from '../filaments/filament-catalog.service';
+import type { PrintJobThumbnailService } from '../print-job/print-job-thumbnail.service';
 import type { PrinterCommandProfile } from '../printer-profiles/printer-command-profile';
 import { BambuLabA1Mapper } from './bambu-lab-a1.mapper';
 import { PrinterPositionService } from './printer-position.service';
@@ -31,6 +32,10 @@ describe('PrinterStateService', () => {
     position.onModuleInit();
     return position;
   };
+  const thumbnails = {
+    requestResolution: () => undefined,
+    getCachedThumbnailId: () => undefined,
+  } as unknown as PrintJobThumbnailService;
 
   it('deep-merges partial reports and refreshes the domain projection', () => {
     const events = new BridgeEventsService();
@@ -39,6 +44,7 @@ describe('PrinterStateService', () => {
       createMapper(),
       events,
       createPosition(events),
+      thumbnails,
     );
     service.onModuleInit();
 
@@ -79,6 +85,7 @@ describe('PrinterStateService', () => {
       createMapper(),
       events,
       createPosition(events),
+      thumbnails,
     );
 
     expect(service.applyReport('not-json')).toBe(false);
@@ -92,6 +99,7 @@ describe('PrinterStateService', () => {
       createMapper(),
       events,
       createPosition(events),
+      thumbnails,
     );
     service.applyReport({ print: { mc_percent: 10 } });
     const state = service.getRaw();

@@ -76,6 +76,8 @@ const messages = {
     'files.uploadUnavailable': 'Nie udało się przesłać pliku.',
     'files.uploadSucceeded': 'Plik został przesłany.',
     'files.downloadFailed': 'Nie udało się pobrać pliku.',
+    'files.downloadStarting': 'Plik „{{name}}” zaraz zacznie się pobierać.',
+    'files.deleteCooldown': 'Usuwanie pliku „{{name}}” w toku, poczekaj chwilę przed ponowną próbą.',
     'files.uploadConflictTitle': 'Plik już istnieje',
     'files.uploadConflictMessage': 'Plik „{{name}}” już istnieje w tej lokalizacji. Zastąpić go?',
     'files.overwrite': 'Zastąp',
@@ -376,6 +378,8 @@ const messages = {
     'files.uploadUnavailable': 'The file could not be uploaded.',
     'files.uploadSucceeded': 'File uploaded successfully.',
     'files.downloadFailed': 'The file could not be downloaded.',
+    'files.downloadStarting': 'File "{{name}}" is about to start downloading.',
+    'files.deleteCooldown': 'Deleting file "{{name}}" is in progress, please wait before trying again.',
     'files.uploadConflictTitle': 'File already exists',
     'files.uploadConflictMessage':
       'A file named "{{name}}" already exists at this location. Overwrite it?',

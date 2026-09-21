@@ -1,5 +1,14 @@
 import { loadAppConfig, resolveEnvReferences } from './app-config';
 
+/** Required FTPS env vars, merged into every loadAppConfig() fixture below. */
+const requiredFtpsEnv: NodeJS.ProcessEnv = {
+  BAMBULAB_A1_IP: '192.168.1.200',
+  BAMBULAB_A1_FTP_USERNAME: 'bblp',
+  BAMBULAB_A1_ACCESS_CODE: 'test-access-code',
+  BAMBULAB_A1_FTP_TLS_FINGERPRINT256:
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+};
+
 describe('environment variable interpolation', () => {
   it('resolves a direct reference', () => {
     expect(
@@ -38,7 +47,10 @@ describe('environment variable interpolation', () => {
 });
 
 describe('CORS origin configuration', () => {
-  const baseEnv = { MQTT_PUPPETEER_PRINTER_SN: undefined } as NodeJS.ProcessEnv;
+  const baseEnv = {
+    ...requiredFtpsEnv,
+    MQTT_PUPPETEER_PRINTER_SN: undefined,
+  } as NodeJS.ProcessEnv;
 
   it('defaults to the dashboard local dev origin', () => {
     expect(loadAppConfig(baseEnv).http.corsOrigins).toEqual([
@@ -71,11 +83,12 @@ describe('CORS origin configuration', () => {
 
 describe('telemetry history configuration', () => {
   it('defaults the history capacity to 720 samples', () => {
-    expect(loadAppConfig({}).telemetry.historyCapacity).toBe(720);
+    expect(loadAppConfig(requiredFtpsEnv).telemetry.historyCapacity).toBe(720);
   });
 
   it('reads a configured capacity', () => {
     const config = loadAppConfig({
+      ...requiredFtpsEnv,
       MQTT_PUPPETEER_TELEMETRY_HISTORY_CAPACITY: '100',
     });
 

@@ -20,12 +20,17 @@ import {
   type CameraRegistryEntry,
 } from '../videos/backend/camera-registry-api.service';
 import { LiveStreamApiService } from '../videos/backend/live-stream-api.service';
-import { PRINTER_CAMERA_DISPLAY_NAME } from './backend/dashboard-static-defaults';
+import {
+  PRINTER_CAMERA_DISPLAY_NAME,
+  STATIC_PRINT_JOB_PLACEHOLDERS,
+} from './backend/dashboard-static-defaults';
 import {
   DashboardPollingService,
   PollSuppressionWindow,
 } from './backend/dashboard-polling.service';
 import { CommandExecutionError, type CommandError } from './backend/http-error-mapping';
+import { mapJobStatus, resolveThumbnailUrl } from './backend/http-management-dashboard-data.source';
+import { MqttPuppeteerConfig } from './backend/mqtt-puppeteer.config';
 import { TelemetryPollingService } from './backend/telemetry-polling.service';
 import { mapFanChart, mapProgressChart, mapTemperatureChart } from './backend/telemetry-mapping';
 import { CurrentPrintJob } from './current-print-job/current-print-job';
@@ -68,6 +73,7 @@ export class DashboardPage implements OnDestroy {
   private readonly commands = inject(PrinterCommandFacade);
   private readonly polling = inject(DashboardPollingService);
   private readonly telemetryPolling = inject(TelemetryPollingService);
+  private readonly mqttPuppeteerConfig = inject(MqttPuppeteerConfig);
   private readonly controlsSuppression = new PollSuppressionWindow();
   protected readonly i18n = inject(I18nService);
   protected readonly layout = inject(DashboardLayoutService);
@@ -102,9 +108,7 @@ export class DashboardPage implements OnDestroy {
     if (!cameraId) return null;
     return this.cameras()?.find((entry) => entry.cameraId === cameraId) ?? null;
   });
-  protected readonly livePreviewHubAvailable = computed(
-    () => (this.cameras()?.length ?? 0) > 0,
-  );
+  protected readonly livePreviewHubAvailable = computed(() => (this.cameras()?.length ?? 0) > 0);
   protected readonly livePreviewStreamUrl = signal('');
   protected readonly livePreviewStreaming = signal(false);
   private activeLiveRequestId: string | null = null;
@@ -245,7 +249,38 @@ export class DashboardPage implements OnDestroy {
             temperatures.nozzle = state.temperatures.nozzle?.current ?? temperatures.nozzle;
           }
         }
-        return { ...data, controls, coordinates, positionSource, temperatures };
+        // Live print-job progress — this is the actual fix for
+        // "print-job-progress-value/progress-bar/layers/remaining-time
+        // never update": previously this effect patched
+        // controls/coordinates/temperatures but never printJob, so those
+        // fields stayed frozen at whatever the initial loadData() returned
+        // even while the printer kept printing. Mirrors exactly how
+        // http-management-dashboard-data.source.ts composes printJob from
+        // domain.job at load time, reusing the same mapJobStatus mapping so
+        // the two stay in sync.
+        let printJob = data.printJob;
+        if (state.job && !this.controlsSuppression.isSuppressed('printJob')) {
+          printJob = {
+            ...printJob,
+            name: state.job.fileName ?? printJob.name,
+            // thumbnailId resolves asynchronously after load(), so it must
+            // be re-derived here too rather than trusted from initial load.
+            thumbnailUrl: resolveThumbnailUrl(
+              this.mqttPuppeteerConfig.baseUrl,
+              state.job.thumbnailId,
+              STATIC_PRINT_JOB_PLACEHOLDERS.thumbnailUrl,
+            ),
+            estimatedPrintTime:
+              state.job.remainingSeconds !== undefined
+                ? this.i18n.formatDuration(state.job.remainingSeconds)
+                : printJob.estimatedPrintTime,
+            progress: state.job.progressPercent ?? printJob.progress,
+            currentLayer: state.job.currentLayer ?? printJob.currentLayer,
+            totalLayers: state.job.totalLayers ?? printJob.totalLayers,
+            status: mapJobStatus(state.job.status),
+          };
+        }
+        return { ...data, controls, coordinates, positionSource, temperatures, printJob };
       });
     });
     effect(() => {
@@ -446,11 +481,12 @@ export class DashboardPage implements OnDestroy {
   protected async setPrintStatus(
     status: ManagementDashboardData['printJob']['status'],
   ): Promise<void> {
-    await this.runCommand({ type: 'set-print-status', status }, () =>
+    await this.runCommand({ type: 'set-print-status', status }, () => {
+      this.controlsSuppression.suppress('printJob');
       this.dashboard.update((data) =>
         data ? { ...data, printJob: { ...data.printJob, status } } : data,
-      ),
-    );
+      );
+    });
   }
 
   protected async updatePreview(
@@ -512,10 +548,7 @@ export class DashboardPage implements OnDestroy {
     });
   }
 
-  private async applyStreamActive(
-    camera: CameraRegistryEntry,
-    active: boolean,
-  ): Promise<void> {
+  private async applyStreamActive(camera: CameraRegistryEntry, active: boolean): Promise<void> {
     this.livePreviewStreaming.set(true);
     try {
       if (active) {
@@ -607,8 +640,7 @@ export class DashboardPage implements OnDestroy {
       if (currentCameraId) return;
       const expected = PRINTER_CAMERA_DISPLAY_NAME.trim().toLowerCase();
       const preselected =
-        entries.find((entry) => entry.displayName?.trim().toLowerCase() === expected) ??
-        entries[0];
+        entries.find((entry) => entry.displayName?.trim().toLowerCase() === expected) ?? entries[0];
       if (preselected) {
         this.dashboard.update((data) =>
           data

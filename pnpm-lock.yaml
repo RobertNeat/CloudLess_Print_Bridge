@@ -143,6 +143,9 @@ importers:
       '@nestjs/websockets':
         specifier: ^11.1.28
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(@nestjs/platform-socket.io@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      basic-ftp:
+        specifier: 6.0.1
+        version: 6.0.1
       mqtt:
         specifier: ^5.15.2
         version: 5.15.2(supports-color@8.1.1)
