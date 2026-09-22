@@ -232,7 +232,7 @@ export class FilesDashboardPage {
       });
       return contents;
     } catch (error) {
-      console.error(`[files] failed to load folder "${path}":`, error);
+      console.error('[files] failed to load folder', path, error);
       this.failedPaths.update((current) => new Set(current).add(path));
       return null;
     } finally {

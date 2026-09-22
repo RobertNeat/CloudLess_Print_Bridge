@@ -527,6 +527,10 @@ export class MediaStorageService implements OnModuleInit {
     );
   }
 
+  get storageRoot(): string {
+    return this.config.storage.root;
+  }
+
   resourceDirectory(
     kind: MediaResourceKind,
     cameraId: string,

@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 import type { Response } from 'express';
 import { MediaTokenGuard } from '../auth/media-token.guard';
 import { StreamTokenGuard } from '../auth/stream-token.guard';
@@ -152,7 +152,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendFile('captures', cameraId, requestId, response);
+    this.serveMediaFile('captures', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
@@ -162,7 +162,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendFile('timelapses', cameraId, requestId, response);
+    this.serveMediaFile('timelapses', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
@@ -172,7 +172,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendFile('recordings', cameraId, requestId, response);
+    this.serveMediaFile('recordings', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
@@ -182,7 +182,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendFile('live', cameraId, requestId, response);
+    this.serveMediaFile('live', cameraId, requestId, response);
   }
 
   @UseGuards(MediaTokenGuard)
@@ -192,7 +192,7 @@ export class MediaLibraryController {
     @Param('requestId') requestId: string,
     @Res() response: Response,
   ): void {
-    this.sendFile('audio', cameraId, requestId, response);
+    this.serveMediaFile('audio', cameraId, requestId, response);
   }
 
   @Patch('captures/:cameraId/:requestId')
@@ -311,7 +311,7 @@ export class MediaLibraryController {
     );
   }
 
-  private sendFile(
+  private serveMediaFile(
     kind: MediaResourceKind,
     cameraId: string,
     requestId: string,
@@ -351,6 +351,11 @@ export class MediaLibraryController {
     if (!existsSync(filePath)) {
       throw new NotFoundException('media file was not found');
     }
-    response.sendFile(filePath);
+    const root = this.storage.storageRoot;
+    const relativePath = relative(root, filePath);
+    if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+      throw new NotFoundException('media file was not found');
+    }
+    response.sendFile(relativePath, { root });
   }
 }
