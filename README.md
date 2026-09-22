@@ -7,7 +7,7 @@
 A local, LAN-only bridge system for a Bambu Lab A1 3D printer. Every service
 in this repo talks to the printer, its microSD card, and its cameras over
 your own network — there is no cloud account, no vendor relay, and no
-internet dependency required for normal operation.
+internet dependency required for normal operation..
 
 Management dashboard screenshot:
 ![image](/docs/app_screenshots/management_screenshot.png)
