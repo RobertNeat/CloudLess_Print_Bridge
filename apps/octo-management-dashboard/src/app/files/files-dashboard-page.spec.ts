@@ -316,7 +316,10 @@ describe('FilesDashboardPage', () => {
 
     expect(deleteCalls).toBe(1);
     expect(addSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'error', detail: expect.stringContaining('first.gcode') }),
+      expect.objectContaining({
+        severity: 'error',
+        detail: expect.stringContaining('first.gcode'),
+      }),
     );
   });
 });

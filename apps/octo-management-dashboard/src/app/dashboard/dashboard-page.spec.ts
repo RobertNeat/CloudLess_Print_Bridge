@@ -515,7 +515,11 @@ describe('DashboardPage', () => {
       const fixture = setUp();
       const httpMock = await flushRegistry(fixture, [
         { cameraId: 'cam-other', baseUrl: 'http://cam-other', displayName: 'Some other camera' },
-        { cameraId: 'cam-printer', baseUrl: 'http://cam-printer', displayName: '  KAMERA drukarki  ' },
+        {
+          cameraId: 'cam-printer',
+          baseUrl: 'http://cam-printer',
+          displayName: '  KAMERA drukarki  ',
+        },
       ]);
 
       expect(fixture.componentInstance['livePreviewHubAvailable']()).toBe(true);
@@ -601,9 +605,7 @@ describe('DashboardPage', () => {
 
       const startPromise = fixture.componentInstance['setPreviewActive'](true);
       await new Promise((resolve) => setTimeout(resolve, 0));
-      httpMock
-        .expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`)
-        .flush({});
+      httpMock.expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`).flush({});
       await new Promise((resolve) => setTimeout(resolve, 0));
       httpMock.expectOne(`${HUB_BASE}/auth/stream-token`).flush({ streamToken: 'tok-1' });
       await startPromise;
@@ -633,9 +635,7 @@ describe('DashboardPage', () => {
 
       const startPromise = fixture.componentInstance['setPreviewActive'](true);
       await new Promise((resolve) => setTimeout(resolve, 0));
-      httpMock
-        .expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`)
-        .flush({});
+      httpMock.expectOne(`${HUB_BASE}/api/v1/cameras/cam-printer/commands/start-live`).flush({});
       await new Promise((resolve) => setTimeout(resolve, 0));
       httpMock.expectOne(`${HUB_BASE}/auth/stream-token`).flush({ streamToken: 'tok-1' });
       await startPromise;

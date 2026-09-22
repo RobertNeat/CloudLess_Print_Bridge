@@ -172,7 +172,9 @@ describe('MediaPreview playback', () => {
     expect(acquire).toHaveBeenCalledTimes(1);
 
     acquire.mockResolvedValueOnce('tok-456');
-    (fixture.componentInstance as unknown as { onMp4PlaybackError: () => void }).onMp4PlaybackError();
+    (
+      fixture.componentInstance as unknown as { onMp4PlaybackError: () => void }
+    ).onMp4PlaybackError();
     await fixture.whenStable();
 
     expect(acquire).toHaveBeenCalledTimes(2);

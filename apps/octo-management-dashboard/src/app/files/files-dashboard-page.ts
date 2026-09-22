@@ -318,7 +318,10 @@ export class FilesDashboardPage {
       this.destinationPrompt.set({ action: 'move', file: request.file });
       this.moveDestinationPath.set('');
       this.destinationOptions.set([]);
-      void this.loadDestinationOptions(this.parentPath(request.file.path), this.moveDestinationPath);
+      void this.loadDestinationOptions(
+        this.parentPath(request.file.path),
+        this.moveDestinationPath,
+      );
       return;
     }
 

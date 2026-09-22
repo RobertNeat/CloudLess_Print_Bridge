@@ -1,11 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { I18nService, type TranslationKey } from '../../core/i18n.service';
-import type { MediaRecordAction, MediaRecordRequest, MediaRecordSourceOption } from './media-record-dialog.models';
+import type {
+  MediaRecordAction,
+  MediaRecordRequest,
+  MediaRecordSourceOption,
+} from './media-record-dialog.models';
 
 const DIALOG_TITLE_KEY: Record<MediaRecordAction, TranslationKey> = {
   audio: 'videos.record.dialogTitle.audio',
@@ -76,7 +89,9 @@ export class MediaRecordDialog {
     this.sourceId.set(this.defaultSourceId());
     this.resolution.set(AVAILABLE_RESOLUTIONS[1]);
     this.durationSeconds.set(
-      action === 'timelapse' ? DEFAULT_TIMELAPSE_DURATION_SECONDS : DEFAULT_RECORDING_DURATION_SECONDS,
+      action === 'timelapse'
+        ? DEFAULT_TIMELAPSE_DURATION_SECONDS
+        : DEFAULT_RECORDING_DURATION_SECONDS,
     );
     this.intervalSeconds.set(DEFAULT_TIMELAPSE_INTERVAL_SECONDS);
     this.audioDurationSeconds.set(DEFAULT_AUDIO_DURATION_SECONDS);

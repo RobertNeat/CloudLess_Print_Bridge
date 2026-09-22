@@ -7,7 +7,10 @@ import { CameraCommandService } from './camera-command.service';
 
 describe('CameraCommandService', () => {
   let service: CameraCommandService;
-  let storage: { setLivePersistIntent: jest.Mock; clearLivePersistIntent: jest.Mock };
+  let storage: {
+    setLivePersistIntent: jest.Mock;
+    clearLivePersistIntent: jest.Mock;
+  };
 
   beforeEach(async () => {
     storage = {
@@ -83,7 +86,11 @@ describe('CameraCommandService', () => {
       persist: false,
     });
 
-    expect(storage.setLivePersistIntent).toHaveBeenCalledWith('cam-1', 'live-001', false);
+    expect(storage.setLivePersistIntent).toHaveBeenCalledWith(
+      'cam-1',
+      'live-001',
+      false,
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       'http://192.168.1.231/api/v1/video-service/live/start',
       expect.objectContaining({
@@ -93,7 +100,9 @@ describe('CameraCommandService', () => {
   });
 
   it('defaults the persist intent to true when the field is omitted, preserving existing behavior', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
 
     await service.execute('cam-1', 'start-live', {
       cameraBaseUrl: 'http://192.168.1.231',
@@ -101,17 +110,26 @@ describe('CameraCommandService', () => {
       resolution: 'VGA',
     });
 
-    expect(storage.setLivePersistIntent).toHaveBeenCalledWith('cam-1', 'live-002', true);
+    expect(storage.setLivePersistIntent).toHaveBeenCalledWith(
+      'cam-1',
+      'live-002',
+      true,
+    );
   });
 
   it('clears the persist intent on stop-live', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
 
     await service.execute('cam-1', 'stop-live', {
       cameraBaseUrl: 'http://192.168.1.231',
       requestId: 'live-001',
     });
 
-    expect(storage.clearLivePersistIntent).toHaveBeenCalledWith('cam-1', 'live-001');
+    expect(storage.clearLivePersistIntent).toHaveBeenCalledWith(
+      'cam-1',
+      'live-001',
+    );
   });
 });

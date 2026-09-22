@@ -34,7 +34,4 @@ export interface CaptureRequest {
 }
 
 export type MediaRecordRequest =
-  | AudioRecordRequest
-  | RecordingRequest
-  | TimelapseRequest
-  | CaptureRequest;
+  AudioRecordRequest | RecordingRequest | TimelapseRequest | CaptureRequest;

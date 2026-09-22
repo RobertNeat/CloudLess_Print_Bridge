@@ -65,17 +65,14 @@ describe('resolveCameraNaming', () => {
 
   it('preserves commas and periods in a display name', () => {
     expect(
-      resolveCameraNaming(
-        'camera-1',
-        entry({ displayName: 'Front, Cam v1.2' }),
-      ).name,
+      resolveCameraNaming('camera-1', entry({ displayName: 'Front, Cam v1.2' }))
+        .name,
     ).toBe('Front,_Cam_v1.2');
   });
 
   it('still resolves the ip from baseUrl for metadata/debugging purposes', () => {
     expect(
-      resolveCameraNaming('camera-1', entry({ baseUrl: 'http://10.0.0.5' }))
-        .ip,
+      resolveCameraNaming('camera-1', entry({ baseUrl: 'http://10.0.0.5' })).ip,
     ).toBe('10.0.0.5');
   });
 });
@@ -104,9 +101,9 @@ describe('buildFinalFileName', () => {
   });
 
   it('builds from a sanitized multi-word display name', () => {
-    expect(
-      buildFinalFileName('audio', { name: 'Front_Door' }),
-    ).toBe('audio-Front_Door.wav');
+    expect(buildFinalFileName('audio', { name: 'Front_Door' })).toBe(
+      'audio-Front_Door.wav',
+    );
   });
 
   it('falls back to the sanitized cameraId when the camera is unregistered', () => {

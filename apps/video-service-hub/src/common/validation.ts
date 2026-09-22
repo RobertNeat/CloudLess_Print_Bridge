@@ -107,7 +107,10 @@ export function assertDisplayName(value: unknown): string {
   return trimmed;
 }
 
-export function assertOptionalBoolean(value: unknown, field: string): boolean | undefined {
+export function assertOptionalBoolean(
+  value: unknown,
+  field: string,
+): boolean | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'boolean') {
     throw new BadRequestException(`${field} must be a boolean`);

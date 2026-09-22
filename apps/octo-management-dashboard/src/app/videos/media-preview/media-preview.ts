@@ -80,7 +80,8 @@ export class MediaPreview {
    */
   protected readonly playerIsBounded = computed(() => {
     const item = this.item();
-    const showingMp4Player = !!item && this.isMp4(item) && !!this.mp4Src() && !this.mp4PlaybackFailed();
+    const showingMp4Player =
+      !!item && this.isMp4(item) && !!this.mp4Src() && !this.mp4PlaybackFailed();
     return !showingMp4Player;
   });
 

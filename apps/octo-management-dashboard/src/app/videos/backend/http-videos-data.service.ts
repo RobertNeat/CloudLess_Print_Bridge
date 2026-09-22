@@ -97,7 +97,9 @@ export class HttpVideosDataService implements VideosRepositoryPort {
     return results.flat();
   }
 
-  private async drainEndpoint(endpoint: (typeof LIST_ENDPOINTS)[number]): Promise<BackendMediaItemDto[]> {
+  private async drainEndpoint(
+    endpoint: (typeof LIST_ENDPOINTS)[number],
+  ): Promise<BackendMediaItemDto[]> {
     const items: BackendMediaItemDto[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < MEDIA_PAGE_DRAIN_CAP; page++) {

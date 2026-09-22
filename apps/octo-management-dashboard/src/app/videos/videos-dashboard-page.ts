@@ -286,7 +286,12 @@ export class VideosDashboardPage implements OnDestroy {
   ): Promise<void> {
     switch (request.action) {
       case 'capture':
-        return this.cameraCommands.captureImage(cameraId, cameraBaseUrl, request.resolution, requestId);
+        return this.cameraCommands.captureImage(
+          cameraId,
+          cameraBaseUrl,
+          request.resolution,
+          requestId,
+        );
       case 'timelapse':
         return this.cameraCommands.startTimelapse(
           cameraId,

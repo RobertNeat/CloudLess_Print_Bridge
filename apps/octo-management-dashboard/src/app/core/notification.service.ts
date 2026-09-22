@@ -25,7 +25,11 @@ export class NotificationService {
     this.show('error', key, params);
   }
 
-  private show(severity: 'info' | 'warn' | 'error', key: TranslationKey, params?: TranslationParams): void {
+  private show(
+    severity: 'info' | 'warn' | 'error',
+    key: TranslationKey,
+    params?: TranslationParams,
+  ): void {
     this.messages.add({ severity, detail: this.i18n.t(key, params), life: 4000 });
   }
 }

@@ -22,10 +22,16 @@ describe('NotificationService', () => {
       expect.objectContaining({ severity: 'info', detail: 'Photo captured.' }),
     );
     expect(addSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'warn', detail: 'Select an online camera to start recording.' }),
+      expect.objectContaining({
+        severity: 'warn',
+        detail: 'Select an online camera to start recording.',
+      }),
     );
     expect(addSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'error', detail: 'Could not send the command to the camera.' }),
+      expect.objectContaining({
+        severity: 'error',
+        detail: 'Could not send the command to the camera.',
+      }),
     );
   });
 });

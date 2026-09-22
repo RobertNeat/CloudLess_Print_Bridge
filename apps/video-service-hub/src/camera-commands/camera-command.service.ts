@@ -50,7 +50,10 @@ export class CameraCommandService {
     if (command === 'start-live' || command === 'start-dynamic-live') {
       const requestId = payload.requestId as string;
       this.storage.setLivePersistIntent(cameraId, requestId, persist !== false);
-    } else if (command === 'stop-live' && typeof payload.requestId === 'string') {
+    } else if (
+      command === 'stop-live' &&
+      typeof payload.requestId === 'string'
+    ) {
       this.storage.clearLivePersistIntent(cameraId, payload.requestId);
     }
     const url = `${cameraBaseUrl}${cameraCommandPaths[command]}`;

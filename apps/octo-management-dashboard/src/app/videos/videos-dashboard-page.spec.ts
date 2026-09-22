@@ -254,9 +254,9 @@ describe('VideosDashboardPage record dialog', () => {
       const element = fixture.nativeElement as HTMLElement;
       // Globally-selected source is "online"; explicitly pick "second" in the dialog instead.
       openDialogFor(element, fixture, 'media-capture-button');
-      const sourceSelect = element.querySelector(
-        '#media-record-dialog-source',
-      ) as HTMLElement & { value?: unknown };
+      const sourceSelect = element.querySelector('#media-record-dialog-source') as HTMLElement & {
+        value?: unknown;
+      };
       expect(sourceSelect).not.toBeNull();
 
       const instance = fixture.componentInstance as unknown as {
@@ -274,7 +274,9 @@ describe('VideosDashboardPage record dialog', () => {
       );
 
       // Button spins while the poll hasn't found the file yet.
-      let captureButton = element.querySelector('#media-capture-button button') as HTMLButtonElement;
+      let captureButton = element.querySelector(
+        '#media-capture-button button',
+      ) as HTMLButtonElement;
       expect(captureButton.className).toContain('p-button-loading');
 
       const requestId = captureImage.mock.calls[0][3] as string;
@@ -314,7 +316,9 @@ describe('VideosDashboardPage record dialog', () => {
       await Promise.resolve();
       fixture.detectChanges();
 
-      const captureButton = element.querySelector('#media-capture-button button') as HTMLButtonElement;
+      const captureButton = element.querySelector(
+        '#media-capture-button button',
+      ) as HTMLButtonElement;
       expect(captureButton.className).not.toContain('p-button-loading');
       expect(addSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn' }));
     } finally {
@@ -340,7 +344,9 @@ describe('VideosDashboardPage record dialog', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const captureButton = element.querySelector('#media-capture-button button') as HTMLButtonElement;
+    const captureButton = element.querySelector(
+      '#media-capture-button button',
+    ) as HTMLButtonElement;
     expect(captureButton.className).not.toContain('p-button-loading');
     expect(addSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
@@ -363,7 +369,9 @@ describe('VideosDashboardPage record dialog', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const captureButton = element.querySelector('#media-capture-button button') as HTMLButtonElement;
+      const captureButton = element.querySelector(
+        '#media-capture-button button',
+      ) as HTMLButtonElement;
       const audioButton = element.querySelector('#media-audio-toggle button') as HTMLButtonElement;
       expect(captureButton.className).toContain('p-button-loading');
       expect(audioButton.className).not.toContain('p-button-loading');

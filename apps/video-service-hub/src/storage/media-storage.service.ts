@@ -282,7 +282,9 @@ export class MediaStorageService implements OnModuleInit {
     // opt-out, and every caller that never sets `persist: false` on
     // start-live) so existing behavior — e.g. the Videos page's recordings
     // library — is unaffected.
-    const persist = this.livePersistIntent.get(this.persistIntentKey(cameraId, requestId)) ?? true;
+    const persist =
+      this.livePersistIntent.get(this.persistIntentKey(cameraId, requestId)) ??
+      true;
 
     const directory = this.resourceDirectory('live', cameraId, requestId);
     if (persist) {
@@ -406,10 +408,17 @@ export class MediaStorageService implements OnModuleInit {
   }
 
   /** Called by CameraCommandService when dispatching start-live/start-dynamic-live. See livePersistIntent's doc comment. */
-  setLivePersistIntent(cameraId: string, requestId: string, persist: boolean): void {
+  setLivePersistIntent(
+    cameraId: string,
+    requestId: string,
+    persist: boolean,
+  ): void {
     assertIdentifier(cameraId, 'cameraId');
     assertIdentifier(requestId, 'requestId');
-    this.livePersistIntent.set(this.persistIntentKey(cameraId, requestId), persist);
+    this.livePersistIntent.set(
+      this.persistIntentKey(cameraId, requestId),
+      persist,
+    );
   }
 
   /** Called by CameraCommandService when dispatching stop-live, so an intent never outlives the session it was set for if the camera never POSTs back (e.g. it failed to start). */

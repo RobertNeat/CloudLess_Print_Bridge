@@ -31,11 +31,13 @@
           <span
             class="temperature__target"
             [attr.data-testid]="'temperature-reading-' + reading.sensor + '-target'"
-            [attr.aria-label]="i18n.t('temperatures.value') + ': ' + formatTemperature(reading.target)"
+            [attr.aria-label]="
+              i18n.t('temperatures.value') + ': ' + formatTemperature(reading.target)
+            "
             >{{ i18n.t('temperatures.value') }}: {{ formatTemperature(reading.target) }}</span
           >
-        }</span
-      >
+        }
+      </span>
     </button>
   }
 </section>

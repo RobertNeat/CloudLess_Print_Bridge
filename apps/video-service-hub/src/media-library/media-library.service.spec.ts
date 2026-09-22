@@ -116,12 +116,8 @@ describe('MediaLibraryService', () => {
     // Newest-first ordering: the last item overall (capture-24, latest
     // capturedAt) is the 25th of the day and must read _025, not restart at
     // _001 just because it landed on the second page.
-    expect(secondPage.items.at(-1)?.fileName).toBe(
-      'image-front_001.jpg',
-    );
-    expect(secondPage.items[0]?.fileName).toBe(
-      'image-front_005.jpg',
-    );
+    expect(secondPage.items.at(-1)?.fileName).toBe('image-front_001.jpg');
+    expect(secondPage.items[0]?.fileName).toBe('image-front_005.jpg');
   }, 60_000);
 
   it('filters by cameraId', async () => {
