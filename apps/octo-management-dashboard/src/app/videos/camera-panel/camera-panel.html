@@ -59,10 +59,18 @@
           ><strong>{{ source.name }}</strong
           ><small>{{ sourceLocation(source) }}</small></span
         >
-        @if (source.id === selectedSourceId()) {
-          <i class="pi pi-check selected-check" aria-hidden="true"></i>
-        }
+        <span
+          role="button"
+          tabindex="0"
+          class="source-menu-button"
+          [attr.aria-label]="i18n.t('videos.source.menuAria', { name: source.name })"
+          (click)="$event.stopPropagation(); menuSourceId.set(source.id); sourceMenu.toggle($event)"
+          (keydown.enter)="$event.stopPropagation()"
+        >
+          <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+        </span>
       </button>
     }
   </div>
+  <p-menu #sourceMenu [model]="sourceMenuItems()" [popup]="true" appendTo="body" />
 </section>

@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import type { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
 import { I18nService, type TranslationKey } from '../../core/i18n.service';
 import type {
   CameraLocationCode,
@@ -34,7 +36,7 @@ const locationKeys: Record<CameraLocationCode, TranslationKey> = {
 
 @Component({
   selector: 'app-camera-panel',
-  imports: [ButtonModule],
+  imports: [ButtonModule, MenuModule],
   templateUrl: './camera-panel.html',
   styleUrl: './camera-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +49,20 @@ export class CameraPanel {
   readonly streamActive = input.required<boolean>();
   readonly sourceSelected = output<string>();
   readonly addCamera = output<void>();
+  readonly removeCamera = output<string>();
+  protected readonly menuSourceId = signal<string | null>(null);
+
+  protected readonly sourceMenuItems = computed<MenuItem[]>(() => [
+    {
+      label: this.i18n.t('videos.removeCamera'),
+      icon: 'pi pi-trash',
+      styleClass: 'file-action--danger',
+      command: () => {
+        const sourceId = this.menuSourceId();
+        if (sourceId) this.removeCamera.emit(sourceId);
+      },
+    },
+  ]);
 
   protected sourceLocation(source: CameraSource): string {
     const key = locationKeys[source.locationCode as CameraLocationCode] as

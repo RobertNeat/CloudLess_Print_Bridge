@@ -67,6 +67,7 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly newCameraId = signal('');
   protected readonly newCameraBaseUrl = signal('');
   protected readonly newCameraDisplayName = signal('');
+  protected readonly newCameraLocation = signal('');
   protected readonly recordDialogAction = signal<MediaRecordAction | null>(null);
   protected readonly pendingActions = signal<ReadonlySet<MediaRecordAction>>(new Set());
   /**
@@ -359,6 +360,7 @@ export class VideosDashboardPage implements OnDestroy {
     this.newCameraId.set('');
     this.newCameraBaseUrl.set('');
     this.newCameraDisplayName.set('');
+    this.newCameraLocation.set('');
     this.addCameraError.set(false);
     this.addCameraOpen.set(true);
   }
@@ -380,6 +382,7 @@ export class VideosDashboardPage implements OnDestroy {
         cameraId: this.newCameraId().trim(),
         baseUrl: this.newCameraBaseUrl().trim(),
         displayName: this.newCameraDisplayName().trim() || undefined,
+        locationCode: this.newCameraLocation().trim() || undefined,
       });
       if (this.destroyRef.destroyed) return;
       this.addCameraOpen.set(false);
@@ -388,6 +391,17 @@ export class VideosDashboardPage implements OnDestroy {
       if (!this.destroyRef.destroyed) this.addCameraError.set(true);
     } finally {
       if (!this.destroyRef.destroyed) this.addCameraSubmitting.set(false);
+    }
+  }
+
+  protected async removeCamera(sourceId: string): Promise<void> {
+    try {
+      await this.cameraRegistry.remove(sourceId);
+      if (this.destroyRef.destroyed) return;
+      if (this.selectedSource()?.id === sourceId) this.liveStreamUrl.set('');
+      await this.loadData();
+    } catch {
+      if (!this.destroyRef.destroyed) this.notifications.error('videos.removeCamera.error');
     }
   }
 

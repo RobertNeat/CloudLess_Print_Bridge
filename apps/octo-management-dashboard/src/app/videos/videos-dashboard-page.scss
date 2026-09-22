@@ -109,6 +109,27 @@
   text-align: right;
 }
 
+.add-camera-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.add-camera-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--semantic-text-muted);
+}
+.add-camera-form__error {
+  margin: 0;
+  color: var(--semantic-danger, #d9534f);
+}
+.add-camera-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 @media (max-width: 820px) {
   .live-area {
     grid-template-columns: minmax(0, 1fr);

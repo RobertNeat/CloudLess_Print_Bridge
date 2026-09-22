@@ -30,6 +30,7 @@
             [streamActive]="data.player.active"
             (sourceSelected)="selectSource($event)"
             (addCamera)="openAddCamera()"
+            (removeCamera)="removeCamera($event)"
           />
           <app-video-player
             [player]="data.player"
@@ -110,6 +111,7 @@
       <input
         pInputText
         type="text"
+        placeholder="dcda0c74d028"
         [ngModel]="newCameraId()"
         (ngModelChange)="newCameraId.set($event)"
         name="cameraId"
@@ -135,10 +137,23 @@
       <input
         pInputText
         type="text"
+        placeholder="Front"
         [ngModel]="newCameraDisplayName()"
         (ngModelChange)="newCameraDisplayName.set($event)"
         name="cameraDisplayName"
         id="add-camera-displayname-input"
+      />
+    </label>
+    <label>
+      <span>{{ i18n.t('videos.addCamera.location') }}</span>
+      <input
+        pInputText
+        type="text"
+        placeholder="Bambulab A1"
+        [ngModel]="newCameraLocation()"
+        (ngModelChange)="newCameraLocation.set($event)"
+        name="cameraLocation"
+        id="add-camera-location-input"
       />
     </label>
     @if (addCameraError()) {

@@ -161,7 +161,7 @@ textarea {
   justify-content: center;
 }
 
-// File action menus are appended to <body>, outside the file-list component scope.
+// Popup action menus (file-list, camera-panel) are appended to <body>, outside their component scope.
 .file-action--danger {
   color: var(--semantic-status-danger);
 }
