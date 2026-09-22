@@ -33,7 +33,11 @@ export class CameraRegistryApiService {
     await firstValueFrom(
       this.http.post(
         `${this.config.baseUrl}/api/v1/camera-registry/${encodeURIComponent(input.cameraId)}`,
-        { baseUrl: input.baseUrl, displayName: input.displayName, locationCode: input.locationCode },
+        {
+          baseUrl: input.baseUrl,
+          displayName: input.displayName,
+          locationCode: input.locationCode,
+        },
       ),
     );
   }
@@ -49,7 +53,9 @@ export class CameraRegistryApiService {
 
   async remove(cameraId: string): Promise<void> {
     await firstValueFrom(
-      this.http.delete(`${this.config.baseUrl}/api/v1/camera-registry/${encodeURIComponent(cameraId)}`),
+      this.http.delete(
+        `${this.config.baseUrl}/api/v1/camera-registry/${encodeURIComponent(cameraId)}`,
+      ),
     );
   }
 }
