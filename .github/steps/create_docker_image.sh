@@ -32,7 +32,7 @@ if docker manifest inspect "$image_ref" >/dev/null 2>&1; then
   exit 0
 fi
 
-docker build --pull \
+DOCKER_BUILDKIT=1 docker build --pull \
   --file "$DOCKERFILE" \
   --build-arg "PROJECT_PATH=$PROJECT_PATH" \
   --build-arg "RUNTIME_VERSION=$RUNTIME_VERSION" \

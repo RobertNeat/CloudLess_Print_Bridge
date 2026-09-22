@@ -5,9 +5,23 @@ ARG PACKAGE_NAME
 ARG PROJECT_PATH
 WORKDIR /workspace
 RUN corepack enable
+ENV npm_config_store_dir=/pnpm/store
+
+# Install dependencies before copying the rest of the source so this layer
+# (and the pnpm store cache mount below) stays valid across source-only
+# commits, avoiding a full cold reinstall of every package on every build.
+COPY .npmrc pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/ftps-remote-manager/package.json ./apps/ftps-remote-manager/package.json
+COPY apps/mqtt-puppeteer/package.json ./apps/mqtt-puppeteer/package.json
+COPY apps/octo-management-dashboard/package.json ./apps/octo-management-dashboard/package.json
+COPY apps/video-service-hub/package.json ./apps/video-service-hub/package.json
+COPY packages/printer-contracts/package.json ./packages/printer-contracts/package.json
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
 COPY . .
-RUN pnpm install --frozen-lockfile \
-    && pnpm --filter "${PACKAGE_NAME}..." build \
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm --filter "${PACKAGE_NAME}..." build \
     && pnpm deploy --filter "${PACKAGE_NAME}" --prod --legacy /opt/app
 
 FROM node:${RUNTIME_VERSION}-alpine
