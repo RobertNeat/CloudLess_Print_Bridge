@@ -1,27 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    // Without this, tsc infers rootDir from the common ancestor of every
-    // input file — including @cloudless/printer-contracts's *.d.ts (a
-    // workspace dependency resolved from packages/printer-contracts/dist)
-    // and scripts/generate-command-catalog-doc.ts (a sibling of src/, not
-    // inside it). That common ancestor is the monorepo root, so tsc mirrors
-    // each file's full relative path under dist/, emitting src/main.ts as
-    // dist/src/main.js instead of dist/main.js — exactly what start:prod
-    // (`node dist/main`) and the Dockerfile (`node dist/main.js`) expect.
-    // Pinning rootDir to src/ keeps the emitted layout stable regardless of
-    // what other declaration files happen to be part of the compile graph.
+    // Pin rootDir or tsc infers it from scripts/ and workspace .d.ts deps, emitting dist/src/main.js instead of dist/main.js
     "rootDir": "./src",
-    // Default tsBuildInfoFile location (next to outDir, i.e. the project
-    // root) survives `rm -rf dist` — including nest-cli.json's own
-    // deleteOutDir on every build. A cache saved under the OLD rootDir
-    // inference (before this file pinned rootDir above) makes `--incremental`
-    // believe every output file is already up to date and emit nothing at
-    // all, silently, with exit code 0 — which is exactly what broke
-    // `nest start --watch` after this fix first landed (dist/main.js never
-    // got written, even though tsc reported "0 errors"). Keeping the cache
-    // inside dist/ means it's wiped on every clean build, so it can never
-    // outlive the rootDir setting it was generated under again.
+    // Keep inside dist/ so deleteOutDir wipes stale incremental cache instead of it silently emitting nothing
     "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "exclude": ["node_modules", "test", "dist", "scripts", "**/*spec.ts"]
