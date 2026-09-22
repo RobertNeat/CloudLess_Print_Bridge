@@ -5,8 +5,10 @@ ARG PROJECT_PATH
 ARG PACKAGE_NAME
 WORKDIR /workspace
 RUN corepack enable
+ENV npm_config_store_dir=/pnpm/store
 COPY . .
-RUN pnpm install --frozen-lockfile \
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile \
     && pnpm --filter "${PACKAGE_NAME}..." build
 
 FROM nginx:1.29-alpine

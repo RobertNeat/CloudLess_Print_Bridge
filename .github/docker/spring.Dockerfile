@@ -6,9 +6,11 @@ RUN apt-get update \
 ARG PROJECT_PATH
 WORKDIR /source
 COPY ${PROJECT_PATH}/pom.xml ./pom.xml
-RUN mvn --batch-mode dependency:go-offline
+RUN --mount=type=cache,id=maven-repo,target=/root/.m2/repository \
+    mvn --batch-mode dependency:go-offline
 COPY ${PROJECT_PATH}/src ./src
-RUN mvn --batch-mode package -DskipTests
+RUN --mount=type=cache,id=maven-repo,target=/root/.m2/repository \
+    mvn --batch-mode package -DskipTests
 
 FROM eclipse-temurin:${RUNTIME_VERSION}-jre
 RUN apt-get update \
