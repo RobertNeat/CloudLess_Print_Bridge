@@ -2,6 +2,7 @@ name: cloudless-print-bridge
 
 services:
   mqtt-puppeteer:
+    container_name: "3D_printer-mqtt"
     image: ${REGISTRY}/${MQTT_PUPPETEER_IMAGE}:${IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -31,6 +32,7 @@ services:
       start_period: 10s
 
   ftps-remote-manager:
+    container_name: "3D_printer-ftps"
     image: ${REGISTRY}/${FTPS_REMOTE_MANAGER_IMAGE}:${IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -53,6 +55,7 @@ services:
       - "${FTPS_REMOTE_MANAGER_HOST_PORT}:${FTPS_REMOTE_MANAGER_CONTAINER_PORT}"
 
   video-service-hub:
+    container_name: "3D_printer-video"
     image: ${REGISTRY}/${VIDEO_SERVICE_HUB_IMAGE}:${IMAGE_TAG}
     restart: unless-stopped
     environment:
@@ -89,6 +92,7 @@ services:
       start_period: 10s
 
   octo-management-dashboard:
+    container_name: "3D_printer-dashboard"
     image: ${REGISTRY}/${OCTO_MANAGEMENT_DASHBOARD_IMAGE}:${IMAGE_TAG}
     restart: unless-stopped
     environment:
