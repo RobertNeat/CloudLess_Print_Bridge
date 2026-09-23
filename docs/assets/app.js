@@ -77,7 +77,7 @@
     var btn = document.getElementById("theme-toggle");
     if (btn) {
       btn.setAttribute("aria-pressed", String(theme === "dark"));
-      btn.textContent = theme === "dark" ? "☀️ Light" : "🌙 Dark";
+      btn.textContent = theme === "dark" ? "Light" : "Dark";
     }
   }
 

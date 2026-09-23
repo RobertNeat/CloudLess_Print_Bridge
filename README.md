@@ -2,6 +2,8 @@
 
 <div align="center">
   <img src="docs/media/readme_icon.png" alt="icon" width="200" height="auto"/>
+
+  [![Documentation](https://img.shields.io/badge/📖_Documentation-1d5fa8?style=for-the-badge&logoColor=white)](https://robertneat.github.io/CloudLess_Print_Bridge/)
 </div>
 
 A local, LAN-only bridge system for a Bambu Lab A1 3D printer. Every service

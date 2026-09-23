@@ -1,5 +1,11 @@
 # CloudLess Print Bridge
 
+<div align="center">
+  <img src="docs/media/readme_icon.png" alt="icon" width="200" height="auto"/>
+
+  [![Dokumentacja](https://img.shields.io/badge/📖_Dokumentacja-1d5fa8?style=for-the-badge&logoColor=white)](https://robertneat.github.io/CloudLess_Print_Bridge/)
+</div>
+
 Lokalny system bridge działający wyłącznie w sieci LAN dla drukarki 3D Bambu
 Lab A1. Każdy serwis w tym repozytorium łączy się z drukarką, jej kartą
 microSD i kamerami przez własną sieć użytkownika — bez konta w chmurze, bez
@@ -24,14 +30,14 @@ odpowiedzialny za jeden transport, oraz dashboardem, który je spina:
 
 ## Architektura
 
-| Komponent | Rola |
-| --- | --- |
-| `apps/octo-management-dashboard` | Frontend Angular — właściwy interfejs użytkownika. Sterowanie i monitorowanie drukarki, przeglądarka plików karty SD oraz dashboard kamer/wideo z podglądem live, złożone z konfigurowalnych widgetów gridster. |
-| `apps/mqtt-puppeteer` | Backend NestJS. Łączy się z brokerem MQTT/TLS drukarki, scala częściowe raporty stanu w model domenowy i udostępnia REST + Socket.IO. |
-| `apps/ftps-remote-manager` | Backend NestJS. Łączy się z serwerem FTPS drukarki (karta microSD) i udostępnia REST do listowania, pobierania, wysyłania, przenoszenia i usuwania plików. |
-| `apps/video-service-hub` | Backend NestJS dla kamer M5Stack UnitCam S3. Przekazuje komendy do firmware kamer, przyjmuje przesyłane JPEG/MJPEG/WAV, rozprowadza live MJPEG do wielu odbiorców oraz prowadzi manifesty nagrań i telemetrię/obecność kamer. |
-| `packages/printer-contracts` | Współdzielone, niezależne od transportu kontrakty TypeScript dla modelu domenowego drukarki (jednostki/sloty AMS, zewnętrzna szpula, wyniki operacji), używane przez backendy i dashboard. |
-| `firmware/m5-stack-unitcam-s3` | Firmware ESP32-S3 (PlatformIO) dla kamer, implementujący kontrakt przechwytywania/nagrywania/live streamu oczekiwany przez `video-service-hub`. |
+| Komponent                        | Rola                                                                                                                                                                                                                          |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/octo-management-dashboard` | Frontend Angular — właściwy interfejs użytkownika. Sterowanie i monitorowanie drukarki, przeglądarka plików karty SD oraz dashboard kamer/wideo z podglądem live, złożone z konfigurowalnych widgetów gridster.               |
+| `apps/mqtt-puppeteer`            | Backend NestJS. Łączy się z brokerem MQTT/TLS drukarki, scala częściowe raporty stanu w model domenowy i udostępnia REST + Socket.IO.                                                                                         |
+| `apps/ftps-remote-manager`       | Backend NestJS. Łączy się z serwerem FTPS drukarki (karta microSD) i udostępnia REST do listowania, pobierania, wysyłania, przenoszenia i usuwania plików.                                                                    |
+| `apps/video-service-hub`         | Backend NestJS dla kamer M5Stack UnitCam S3. Przekazuje komendy do firmware kamer, przyjmuje przesyłane JPEG/MJPEG/WAV, rozprowadza live MJPEG do wielu odbiorców oraz prowadzi manifesty nagrań i telemetrię/obecność kamer. |
+| `packages/printer-contracts`     | Współdzielone, niezależne od transportu kontrakty TypeScript dla modelu domenowego drukarki (jednostki/sloty AMS, zewnętrzna szpula, wyniki operacji), używane przez backendy i dashboard.                                    |
+| `firmware/m5-stack-unitcam-s3`   | Firmware ESP32-S3 (PlatformIO) dla kamer, implementujący kontrakt przechwytywania/nagrywania/live streamu oczekiwany przez `video-service-hub`.                                                                               |
 
 Dashboard jest jedynym elementem, który otwiera użytkownik końcowy. Wywołuje
 `mqtt-puppeteer` po stan i komendy drukarki, `ftps-remote-manager` po
