@@ -1,7 +1,7 @@
 # CloudLess Print Bridge
 
 <div align="center">
-  <img src="docs/app_screenshots/readme_icon.png" alt="icon" width="200" height="auto"/>
+  <img src="docs/media/readme_icon.png" alt="icon" width="200" height="auto"/>
 </div>
 
 A local, LAN-only bridge system for a Bambu Lab A1 3D printer. Every service
@@ -10,13 +10,13 @@ your own network — there is no cloud account, no vendor relay, and no
 internet dependency required for normal operation..
 
 Management dashboard screenshot:
-![image](/docs/app_screenshots/management_screenshot.png)
+![image](/docs/media/management_screenshot.png)
 
 Video dashboard screenshot:
-![image](/docs/app_screenshots/video_screenshot_narrow.png)
+![image](/docs/media/video_screenshot_narrow.png)
 
 File browser screenshot:
-![image](/docs/app_screenshots/files_screenshot.png)
+![image](/docs/media/files_screenshot.png)
 
 Polish translation: [README_pl.md](./README_pl.md).
 
@@ -56,12 +56,14 @@ peripherals.
 - `apps/` — the four applications described above, each with its own README.
 - `packages/` — shared library code (`printer-contracts`).
 - `firmware/` — camera firmware (PlatformIO project, own README/README_pl pair).
-- `docs/` — cross-cutting documentation: architecture, day-to-day dev commands,
-  operations/CI-CD, and the environment variable reference.
+- `docs/` — the published GitHub Pages wiki (dashboard usage docs); the
+  underlying cross-cutting markdown docs (architecture, day-to-day dev
+  commands, operations/CI-CD, environment variable reference) live in
+  `docs/readmes/`.
 - `.github/` — GitHub Actions workflows, Dockerfiles (`.github/docker/`), CI
   pipeline steps and docs. `infrastructure/README.md` describes a Docker/Compose
   layout that was planned but never built — the actual Dockerfiles and compose
-  file live under `.github/docker/` and `deploy/`, see `docs/operations.md`.
+  file live under `.github/docker/` and `deploy/`, see `docs/readmes/operations.md`.
 
 ## Prerequisites
 
@@ -112,12 +114,13 @@ service-specific setup notes:
 
 ## Further documentation
 
-Cross-cutting docs live in [`docs/`](./docs/):
+Cross-cutting docs live in [`docs/readmes/`](./docs/readmes/) (`docs/` itself is
+the published GitHub Pages wiki):
 
-- [docs/architecture.md](./docs/architecture.md) — how the pieces talk to each other.
-- [docs/development.md](./docs/development.md) — day-to-day dev-cycle commands.
-- [docs/operations.md](./docs/operations.md) — this repo's CI/CD and deployment configuration.
-- [docs/env_variables_description.md](./docs/env_variables_description.md) — full environment variable reference.
+- [docs/readmes/architecture.md](./docs/readmes/architecture.md) — how the pieces talk to each other.
+- [docs/readmes/development.md](./docs/readmes/development.md) — day-to-day dev-cycle commands.
+- [docs/readmes/operations.md](./docs/readmes/operations.md) — this repo's CI/CD and deployment configuration.
+- [docs/readmes/env_variables_description.md](./docs/readmes/env_variables_description.md) — full environment variable reference.
 
 ## License
 

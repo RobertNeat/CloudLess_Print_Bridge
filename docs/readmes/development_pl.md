@@ -3,8 +3,8 @@
 [English](development.md) | Polski
 
 Codzienne komendy pracy w tym monorepo. Szerszy obraz jest w
-`docs/architecture.md`; zmienne środowiskowe są w
-`docs/env_variables_description.md` oraz w README każdej aplikacji.
+`docs/readmes/architecture.md`; zmienne środowiskowe są w
+`docs/readmes/env_variables_description.md` oraz w README każdej aplikacji.
 
 ## Wymagania
 
@@ -133,11 +133,11 @@ zadeklarowany dokładnie raz.
 
 Skopiuj `.env.example` z głównego katalogu repo do `.env` i uzupełnij dane
 drukarki/kamery. Pełny opis zmiennych (uwierzytelnianie, zmienne per serwis,
-zasady interpolacji `${VAR}`) jest w `docs/env_variables_description.md`,
+zasady interpolacji `${VAR}`) jest w `docs/readmes/env_variables_description.md`,
 albo w README każdej aplikacji dla zmiennych tego serwisu z osobna.
 
 ## Powiązane dokumenty
 
-- `docs/architecture.md` — mapa architektury międzyserwisowej.
-- `docs/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
-- `docs/env_variables_description.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/architecture.md` — mapa architektury międzyserwisowej.
+- `docs/readmes/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
+- `docs/readmes/env_variables_description.md` — pełny opis zmiennych środowiskowych.

@@ -89,7 +89,7 @@ Istnieje jako jedyne źródło prawdy, dzięki czemu:
 
 Zobacz `packages/printer-contracts/README.md` po listę eksportowanych typów
 oraz `packages/README.md` po przegląd katalogu pakietów. Uwaga: pliki
-`docs/shared-objects.md` i `docs/dependency-management.md` w tym repo opisują
+`docs/readmes/shared-objects.md` i `docs/dependency-management.md` w tym repo opisują
 wcześniejszą, bardziej ogólną nazwę pakietu (`shared-contracts`) i
 przykładowy układ plików sprzed powstania faktycznego pakietu
 `printer-contracts` — opis w tym pliku jest tym zgodnym z tym, co istnieje
@@ -115,6 +115,6 @@ zaostrzenia CORS — to celowa granica zakresu, a nie przeoczenie.
   `apps/video-service-hub/docs/service_architecture.md`,
   `apps/video-service-hub/docs/rest_endpoints.md` — wnętrze huba kamer.
 - `packages/printer-contracts/README.md` — eksportowane DTO.
-- `docs/env_variables_description.md` — pełny opis zmiennych środowiskowych.
-- `docs/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
-- `docs/development.md` — codzienne komendy deweloperskie.
+- `docs/readmes/env_variables_description.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
+- `docs/readmes/development.md` — codzienne komendy deweloperskie.

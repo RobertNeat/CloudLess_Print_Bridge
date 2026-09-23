@@ -44,13 +44,15 @@ do drukarki lub jej peryferiów.
 - `apps/` — cztery aplikacje opisane wyżej, każda z własnym README.
 - `packages/` — współdzielony kod biblioteczny (`printer-contracts`).
 - `firmware/` — firmware kamer (projekt PlatformIO, własna para README/README_pl).
-- `docs/` — dokumentacja przekrojowa: architektura, codzienne komendy
-  deweloperskie, operacje/CI-CD oraz pełna lista zmiennych środowiskowych.
+- `docs/` — opublikowana wiki GitHub Pages (dokumentacja użytkowa dashboardu);
+  bazowa dokumentacja przekrojowa w markdown (architektura, codzienne komendy
+  deweloperskie, operacje/CI-CD, pełna lista zmiennych środowiskowych) znajduje
+  się w `docs/readmes/`.
 - `.github/` — workflowy GitHub Actions, Dockerfile'y (`.github/docker/`), kroki
   i dokumentacja pipeline'u CI. `infrastructure/README.md` opisuje planowaną,
   ale nigdy niezbudowaną strukturę Docker/Compose — rzeczywiste Dockerfile'y i
   plik compose znajdują się w `.github/docker/` i `deploy/`, zobacz
-  `docs/operations.md`.
+  `docs/readmes/operations.md`.
 
 ## Wymagania wstępne
 
@@ -100,12 +102,13 @@ README danej aplikacji:
 
 ## Dalsza dokumentacja
 
-Dokumentacja przekrojowa znajduje się w [`docs/`](./docs/):
+Dokumentacja przekrojowa znajduje się w [`docs/readmes/`](./docs/readmes/)
+(sam `docs/` to opublikowana wiki GitHub Pages):
 
-- [docs/architecture.md](./docs/architecture.md) — jak poszczególne elementy się komunikują.
-- [docs/development.md](./docs/development.md) — codzienne komendy deweloperskie.
-- [docs/operations.md](./docs/operations.md) — konfiguracja CI/CD i wdrożenia tego repozytorium.
-- [docs/env_variables_description.md](./docs/env_variables_description.md) — pełna lista zmiennych środowiskowych.
+- [docs/readmes/architecture.md](./docs/readmes/architecture.md) — jak poszczególne elementy się komunikują.
+- [docs/readmes/development.md](./docs/readmes/development.md) — codzienne komendy deweloperskie.
+- [docs/readmes/operations.md](./docs/readmes/operations.md) — konfiguracja CI/CD i wdrożenia tego repozytorium.
+- [docs/readmes/env_variables_description.md](./docs/readmes/env_variables_description.md) — pełna lista zmiennych środowiskowych.
 
 ## Licencja
 

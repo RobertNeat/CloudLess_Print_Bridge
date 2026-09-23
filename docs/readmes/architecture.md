@@ -89,7 +89,7 @@ It exists as a single source of truth so that:
 
 See `packages/printer-contracts/README.md` for the exported types and
 `packages/README.md` for the packages directory as a whole. Note:
-`docs/shared-objects.md` and `docs/dependency-management.md` in this repo
+`docs/readmes/shared-objects.md` and `docs/dependency-management.md` in this repo
 describe an earlier, more generic package name (`shared-contracts`) and
 example file layout that predates the actual `printer-contracts` package —
 treat this file's description as the accurate one for what exists today.
@@ -114,6 +114,6 @@ CORS — this is a deliberate scope boundary, not an oversight.
   `apps/video-service-hub/docs/service_architecture.md`,
   `apps/video-service-hub/docs/rest_endpoints.md` — camera hub internals.
 - `packages/printer-contracts/README.md` — shared DTO exports.
-- `docs/env_variables_description.md` — full environment variable reference.
-- `docs/operations.md` — this repo's CI/CD and deployment configuration.
-- `docs/development.md` — day-to-day dev commands.
+- `docs/readmes/env_variables_description.md` — full environment variable reference.
+- `docs/readmes/operations.md` — this repo's CI/CD and deployment configuration.
+- `docs/readmes/development.md` — day-to-day dev commands.

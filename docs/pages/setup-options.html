@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setup options — CloudLess Print Bridge Wiki</title>
+<meta name="description" content="Three ways to run the CloudLess Print Bridge stack: development environment, Docker Desktop, and a permanent local server." />
+<link rel="stylesheet" href="../assets/style.css" />
+<script src="../assets/init.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="topbar__menu-btn" aria-label="Toggle navigation">&#9776;</button>
+  <a class="topbar__brand" href="../index.html">
+    <img src="../media/readme_icon.png" alt="" onerror="this.style.display='none'" />
+    <span>CloudLess Print Bridge</span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__controls">
+    <div class="lang-switch">
+      <button id="lang-en" class="btn" aria-pressed="true">EN</button>
+      <button id="lang-pl" class="btn" aria-pressed="false">PL</button>
+    </div>
+    <button id="theme-toggle" class="btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav id="sidebar-nav" aria-label="Documentation sections"></nav>
+  </aside>
+
+  <main class="content">
+
+    <div data-lang="en">
+      <h1>Setup options</h1>
+      <p>
+        There are three ways to get the whole stack (the
+        <code>octo-management-dashboard</code> plus its three backends —
+        <code>mqtt-puppeteer</code>, <code>ftps-remote-manager</code>, and
+        <code>video-service-hub</code>) running, in increasing order of
+        permanence:
+      </p>
+      <ul>
+        <li><strong>Development environment</strong> — for making code changes; each service runs from source with hot reload.</li>
+        <li><strong>Docker Desktop</strong> — for trying the built stack locally, on your own machine, without a Node/Angular dev toolchain.</li>
+        <li><strong>Local server</strong> — for a permanent, always-on installation on a LAN machine that the whole household/network can reach.</li>
+      </ul>
+
+      <h2 id="development-environment">Development environment</h2>
+      <p>
+        This is the setup for actively working on the code: every service
+        runs from source, with hot reload, under <code>pnpm</code>.
+      </p>
+
+      <h3>Install</h3>
+      <pre><code>pnpm install</code></pre>
+
+      <h3>Run each service in its own terminal</h3>
+      <p>
+        Each of the four apps needs its own terminal window/tab. Root
+        scripts (from the repo's <code>package.json</code>):
+      </p>
+      <pre><code>pnpm dev:mqtt        # @cloudless/mqtt-puppeteer      -&gt; start:dev, :10320
+pnpm dev:ftps        # @cloudless/ftps-remote-manager  -&gt; start:dev, :10321
+pnpm dev:video       # @cloudless/video-service-hub    -&gt; start:dev, :10322 (+ MQTT :1883)
+pnpm dev:dashboard   # @cloudless/octo-management-dashboard -&gt; start (ng serve), :10300</code></pre>
+      <p>Equivalent direct form, if you prefer <code>--filter</code> explicitly:</p>
+      <pre><code>pnpm --filter @cloudless/mqtt-puppeteer start:dev
+pnpm --filter @cloudless/ftps-remote-manager start:dev
+pnpm --filter @cloudless/video-service-hub start:dev
+pnpm --filter @cloudless/octo-management-dashboard start</code></pre>
+
+      <h3>Dev-server proxy</h3>
+      <p>
+        The dashboard's Angular dev server (<code>ng serve</code>, port
+        <code>10300</code>) proxies API calls to the three backends via
+        <code>apps/octo-management-dashboard/proxy.conf.json</code>:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Path prefix</th><th>Proxies to</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/api/mqtt</code></td><td><code>http://localhost:10320</code> (<code>mqtt-puppeteer</code>)</td></tr>
+          <tr><td><code>/api/ftps</code></td><td><code>http://localhost:10321</code> (<code>ftps-remote-manager</code>)</td></tr>
+          <tr><td><code>/api/video</code></td><td><code>http://localhost:10322</code> (<code>video-service-hub</code>)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel panel--note">
+        <p>
+          The <code>video-service-hub</code> proxy target is
+          <strong>hardcoded to port 10322</strong> in
+          <code>proxy.conf.json</code>. Running that service on a custom
+          port breaks the dashboard's dev proxy for <code>/api/video</code>
+          unless you also edit <code>proxy.conf.json</code> to match — the
+          dev server does not auto-detect a different port. This is why the
+          default <code>pnpm --filter @cloudless/video-service-hub
+          start:dev</code> command (not a custom-port variant) is the one to
+          use.
+        </p>
+      </div>
+
+      <h3>Environment variables</h3>
+      <p>
+        Copy the root <code>.env.example</code> to <code>.env</code> and
+        fill in your printer's specifics — at minimum
+        <code>BAMBULAB_A1_IP</code>, <code>BAMBULAB_A1_ACCESS_CODE</code>,
+        and <code>BAMBULAB_A1_SN</code> (the printer's LAN IP, access code,
+        and serial number, all found on the printer itself):
+      </p>
+      <pre><code>cp .env.example .env</code></pre>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Key variables to fill in</h3>
+          <ul>
+            <li><code>BAMBULAB_A1_IP</code> — printer's LAN IP address</li>
+            <li><code>BAMBULAB_A1_ACCESS_CODE</code> — printer's access code</li>
+            <li><code>BAMBULAB_A1_SN</code> — printer's serial number</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Already set to sane defaults</h3>
+          <ul>
+            <li><code>MQTT_PUPPETEER_PORT=10320</code></li>
+            <li><code>FTPS_REMOTE_MANAGER_PORT=10321</code></li>
+            <li><code>VIDEO_SERVICE_HUB_PORT=10322</code></li>
+            <li><code>CLOUDLESS_AUTH_MODE=disabled</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Build, test, lint</h3>
+      <pre><code>pnpm build                          # pnpm -r build (root script)
+pnpm test                           # pnpm -r test (root script)
+pnpm lint                           # pnpm -r lint (root script)
+pnpm --filter &lt;package-name&gt; check  # lint + typecheck for one app</code></pre>
+      <div class="panel">
+        <p>
+          <code>pnpm -r lint</code> currently fails repo-wide due to
+          pre-existing formatting issues in <code>video-service-hub</code>
+          and <code>octo-management-dashboard</code> — this is a known,
+          pre-existing state, not something a fresh checkout is expected to
+          fix on its own.
+        </p>
+      </div>
+
+      <h2 id="docker-desktop">Docker Desktop</h2>
+      <p>
+        This is for trying the already-built stack locally on your own
+        machine, without setting up Node.js, pnpm, or Angular tooling — you
+        only need Docker Desktop.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          <code>deploy/compose.yml</code> references each service's image
+          as <code>${REGISTRY}/${...IMAGE}:${IMAGE_TAG}</code> — there is
+          <strong>no <code>build:</code> key</strong> in the compose file.
+          Running <code>docker compose up</code> alone does <strong>not</strong>
+          build any images locally; it only tries to pull images that
+          already exist somewhere. You must either build the four images
+          yourself first, or point <code>REGISTRY</code>/<code>IMAGE_TAG</code>
+          at a registry where they were already built and pushed.
+        </p>
+      </div>
+
+      <h3>Option A — build the images locally</h3>
+      <p>
+        The three NestJS backends build with
+        <code>.github/docker/node.Dockerfile</code>; the dashboard builds
+        with <code>.github/docker/angular.Dockerfile</code>. Tag each image
+        so its name matches what <code>compose.yml</code> expects
+        (<code>${REGISTRY}/${...IMAGE}:${IMAGE_TAG}</code>) — for a
+        purely-local run you can set <code>REGISTRY</code> to something
+        simple like <code>local</code> and <code>IMAGE_TAG</code> to
+        <code>dev</code>:
+      </p>
+      <pre><code>docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/mqtt-puppeteer \
+  --build-arg PROJECT_PATH=apps/mqtt-puppeteer \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10320 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/mqtt-puppeteer:dev .
+
+docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/ftps-remote-manager \
+  --build-arg PROJECT_PATH=apps/ftps-remote-manager \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10321 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/ftps-remote-manager:dev .
+
+docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/video-service-hub \
+  --build-arg PROJECT_PATH=apps/video-service-hub \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10322 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/video-service-hub:dev .
+
+docker build -f .github/docker/angular.Dockerfile \
+  --build-arg PACKAGE_NAME=@cloudless/octo-management-dashboard \
+  --build-arg PROJECT_PATH=apps/octo-management-dashboard \
+  --build-arg BUILD_OUTPUT=apps/octo-management-dashboard/dist/octo-management-dashboard/browser \
+  --build-arg SERVER_CONFIG=apps/octo-management-dashboard/nginx.conf \
+  --build-arg APP_PORT=10300 \
+  -t local/octo-management-dashboard:dev .</code></pre>
+      <p>
+        Then export matching values so <code>compose.yml</code> resolves to
+        the images you just built:
+      </p>
+      <pre><code>export REGISTRY=local
+export IMAGE_TAG=dev
+export MQTT_PUPPETEER_IMAGE=mqtt-puppeteer
+export FTPS_REMOTE_MANAGER_IMAGE=ftps-remote-manager
+export VIDEO_SERVICE_HUB_IMAGE=video-service-hub
+export OCTO_MANAGEMENT_DASHBOARD_IMAGE=octo-management-dashboard</code></pre>
+
+      <h3>Option B — point at already-built images</h3>
+      <p>
+        If images were already built and pushed elsewhere (e.g. by this
+        repo's CI pipeline, to a registry you have pull access to), set
+        <code>REGISTRY</code> and <code>IMAGE_TAG</code> to that registry
+        and the commit SHA/tag you want, and skip building anything
+        yourself.
+      </p>
+
+      <h3>Bring the stack up</h3>
+      <p>
+        Once the images exist under the names <code>compose.yml</code>
+        expects, copy <code>.env.example</code> to configure the printer
+        and camera variables that <code>compose.yml</code> reads (plus the
+        per-service <code>*_HOST_PORT</code> / <code>*_CONTAINER_PORT</code>
+        variables it needs — see <code>.env.example</code>), then:
+      </p>
+      <pre><code>docker compose -f deploy/compose.yml up -d</code></pre>
+      <p>Open the dashboard at <code>http://localhost:10300</code>.</p>
+
+      <h3>Ports</h3>
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>mqtt-puppeteer</code></td><td>10320</td><td>REST API + health</td></tr>
+          <tr><td><code>ftps-remote-manager</code></td><td>10321</td><td>REST API</td></tr>
+          <tr><td><code>video-service-hub</code></td><td>10322</td><td>REST API + MJPEG streaming + health</td></tr>
+          <tr><td><code>video-service-hub</code></td><td>1883</td><td>Embedded MQTT broker (published separately from the app port)</td></tr>
+          <tr><td><code>octo-management-dashboard</code></td><td>10300</td><td>Web UI (served via nginx)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel">
+        <p>
+          <code>ftps-remote-manager</code> has no <code>/health</code>
+          endpoint yet, so the dashboard's <code>depends_on</code> entry for
+          it uses the <code>service_started</code> condition rather than
+          <code>service_healthy</code>. In practice this means Compose only
+          waits for that container to start, not for it to actually be
+          ready to serve requests — <code>mqtt-puppeteer</code> and
+          <code>video-service-hub</code> do get real healthchecks
+          (<code>/api/mqtt/health</code>, <code>/health</code>) and the
+          dashboard waits for those to pass before it starts.
+        </p>
+      </div>
+
+      <h2 id="local-server">Local server</h2>
+      <p>
+        This is essentially the same procedure as Docker Desktop above, but
+        framed for a dedicated, always-on host on your LAN — a NAS, a
+        mini-PC, a Raspberry Pi-class box, or similar — rather than your own
+        development machine, so the dashboard and printer bridge stay
+        reachable even when your laptop is off.
+      </p>
+      <h3>Steps</h3>
+      <ul>
+        <li>Build or pull the four images once on (or for) that host, exactly as described in the Docker Desktop section above.</li>
+        <li>Configure <code>.env</code> with the printer/camera variables on that host.</li>
+        <li>Run <code>docker compose -f deploy/compose.yml up -d</code> on that host.</li>
+      </ul>
+      <div class="panel panel--note">
+        <p>
+          Every service in <code>deploy/compose.yml</code> already sets
+          <code>restart: unless-stopped</code>. Combined with Docker's own
+          daemon being configured to start on boot (the default on most
+          NAS/Docker Desktop-on-boot setups), this means the whole stack
+          comes back up automatically after the host reboots — no manual
+          <code>docker compose up</code> needed after a power cycle.
+        </p>
+      </div>
+      <p>
+        Instead of opening <code>http://localhost:10300</code>, point your
+        browser at that machine's LAN IP, e.g.
+        <code>http://&lt;server-lan-ip&gt;:10300</code>, from any device on
+        the same network.
+      </p>
+      <div class="panel">
+        <p>
+          As an illustration of what a fixed-address local server
+          deployment looks like, this repo's own CI/CD pipeline documents
+          (in <code>docs/operations.md</code>) a production deploy target
+          at host <code>192.168.1.160</code> pulling images from a local
+          registry at <code>192.168.1.162:5000</code>. These are just this
+          project's own example coordinates, not addresses you should use —
+          substitute your own server's LAN IP and, if you run one, your own
+          image registry.
+        </p>
+      </div>
+
+    </div>
+
+    <div data-lang="pl">
+      <h1>Opcje instalacji</h1>
+      <p>
+        Istnieją trzy sposoby uruchomienia całego stosu (
+        <code>octo-management-dashboard</code> wraz z trzema usługami
+        backendowymi — <code>mqtt-puppeteer</code>,
+        <code>ftps-remote-manager</code> i <code>video-service-hub</code>),
+        w rosnącej kolejności trwałości:
+      </p>
+      <ul>
+        <li><strong>Środowisko deweloperskie</strong> — do wprowadzania zmian w kodzie; każda usługa działa ze źródeł z automatycznym przeładowaniem.</li>
+        <li><strong>Docker Desktop</strong> — do wypróbowania zbudowanego stosu lokalnie, na własnym komputerze, bez narzędzi deweloperskich Node/Angular.</li>
+        <li><strong>Serwer lokalny</strong> — do trwałej, stale działającej instalacji na maszynie w sieci LAN, dostępnej dla całego gospodarstwa domowego/sieci.</li>
+      </ul>
+
+      <h2 id="development-environment">Środowisko deweloperskie</h2>
+      <p>
+        To konfiguracja do aktywnej pracy nad kodem: każda usługa działa ze
+        źródeł, z automatycznym przeładowaniem, pod kontrolą
+        <code>pnpm</code>.
+      </p>
+
+      <h3>Instalacja</h3>
+      <pre><code>pnpm install</code></pre>
+
+      <h3>Uruchomienie każdej usługi w osobnym terminalu</h3>
+      <p>
+        Każda z czterech aplikacji wymaga własnego okna/karty terminala.
+        Skrypty główne (z <code>package.json</code> w katalogu głównym):
+      </p>
+      <pre><code>pnpm dev:mqtt        # @cloudless/mqtt-puppeteer      -&gt; start:dev, :10320
+pnpm dev:ftps        # @cloudless/ftps-remote-manager  -&gt; start:dev, :10321
+pnpm dev:video       # @cloudless/video-service-hub    -&gt; start:dev, :10322 (+ MQTT :1883)
+pnpm dev:dashboard   # @cloudless/octo-management-dashboard -&gt; start (ng serve), :10300</code></pre>
+      <p>Równoważna postać bezpośrednia, jeśli wolisz jawne <code>--filter</code>:</p>
+      <pre><code>pnpm --filter @cloudless/mqtt-puppeteer start:dev
+pnpm --filter @cloudless/ftps-remote-manager start:dev
+pnpm --filter @cloudless/video-service-hub start:dev
+pnpm --filter @cloudless/octo-management-dashboard start</code></pre>
+
+      <h3>Proxy serwera deweloperskiego</h3>
+      <p>
+        Serwer deweloperski Angulara dla dashboardu (<code>ng serve</code>,
+        port <code>10300</code>) przekazuje wywołania API do trzech usług
+        backendowych poprzez
+        <code>apps/octo-management-dashboard/proxy.conf.json</code>:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Prefiks ścieżki</th><th>Przekierowuje do</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/api/mqtt</code></td><td><code>http://localhost:10320</code> (<code>mqtt-puppeteer</code>)</td></tr>
+          <tr><td><code>/api/ftps</code></td><td><code>http://localhost:10321</code> (<code>ftps-remote-manager</code>)</td></tr>
+          <tr><td><code>/api/video</code></td><td><code>http://localhost:10322</code> (<code>video-service-hub</code>)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel panel--note">
+        <p>
+          Cel proxy dla <code>video-service-hub</code> jest
+          <strong>zapisany na sztywno jako port 10322</strong> w pliku
+          <code>proxy.conf.json</code>. Uruchomienie tej usługi na innym
+          porcie psuje proxy deweloperskie dashboardu dla
+          <code>/api/video</code>, chyba że dodatkowo zmienisz
+          <code>proxy.conf.json</code> — serwer deweloperski nie wykrywa
+          automatycznie innego portu. Dlatego właśnie domyślne polecenie
+          <code>pnpm --filter @cloudless/video-service-hub start:dev</code>
+          (a nie wariant z niestandardowym portem) jest tym, którego należy
+          używać.
+        </p>
+      </div>
+
+      <h3>Zmienne środowiskowe</h3>
+      <p>
+        Skopiuj plik <code>.env.example</code> z katalogu głównego do
+        <code>.env</code> i uzupełnij dane swojej drukarki — przynajmniej
+        <code>BAMBULAB_A1_IP</code>, <code>BAMBULAB_A1_ACCESS_CODE</code>
+        oraz <code>BAMBULAB_A1_SN</code> (adres IP drukarki w sieci LAN, kod
+        dostępu i numer seryjny — wszystkie widoczne na samej drukarce):
+      </p>
+      <pre><code>cp .env.example .env</code></pre>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Kluczowe zmienne do uzupełnienia</h3>
+          <ul>
+            <li><code>BAMBULAB_A1_IP</code> — adres IP drukarki w sieci LAN</li>
+            <li><code>BAMBULAB_A1_ACCESS_CODE</code> — kod dostępu drukarki</li>
+            <li><code>BAMBULAB_A1_SN</code> — numer seryjny drukarki</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Już ustawione na rozsądne wartości domyślne</h3>
+          <ul>
+            <li><code>MQTT_PUPPETEER_PORT=10320</code></li>
+            <li><code>FTPS_REMOTE_MANAGER_PORT=10321</code></li>
+            <li><code>VIDEO_SERVICE_HUB_PORT=10322</code></li>
+            <li><code>CLOUDLESS_AUTH_MODE=disabled</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Budowanie, testy, lint</h3>
+      <pre><code>pnpm build                          # pnpm -r build (skrypt główny)
+pnpm test                           # pnpm -r test (skrypt główny)
+pnpm lint                           # pnpm -r lint (skrypt główny)
+pnpm --filter &lt;nazwa-pakietu&gt; check # lint + typecheck dla jednej aplikacji</code></pre>
+      <div class="panel">
+        <p>
+          <code>pnpm -r lint</code> obecnie kończy się błędem w całym
+          repozytorium z powodu istniejących wcześniej problemów z
+          formatowaniem w <code>video-service-hub</code> oraz
+          <code>octo-management-dashboard</code> — to znany, istniejący
+          wcześniej stan, a nie coś, co świeży checkout ma naprawić sam z
+          siebie.
+        </p>
+      </div>
+
+      <h2 id="docker-desktop">Docker Desktop</h2>
+      <p>
+        To sposób na wypróbowanie już zbudowanego stosu lokalnie, na
+        własnym komputerze, bez konfigurowania Node.js, pnpm czy narzędzi
+        Angulara — potrzebny jest tylko Docker Desktop.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          <code>deploy/compose.yml</code> odwołuje się do obrazu każdej
+          usługi jako <code>${REGISTRY}/${...IMAGE}:${IMAGE_TAG}</code> —
+          w pliku compose <strong>nie ma klucza <code>build:</code></strong>.
+          Samo uruchomienie <code>docker compose up</code>
+          <strong>nie</strong> buduje żadnych obrazów lokalnie — próbuje
+          jedynie pobrać obrazy, które już gdzieś istnieją. Musisz albo
+          zbudować cztery obrazy samodzielnie, albo ustawić
+          <code>REGISTRY</code>/<code>IMAGE_TAG</code> tak, by wskazywały
+          na rejestr, w którym zostały już zbudowane i wypchnięte.
+        </p>
+      </div>
+
+      <h3>Opcja A — zbuduj obrazy lokalnie</h3>
+      <p>
+        Trzy usługi backendowe NestJS budują się przy użyciu
+        <code>.github/docker/node.Dockerfile</code>; dashboard buduje się
+        przy użyciu <code>.github/docker/angular.Dockerfile</code>. Oznacz
+        każdy obraz tak, by jego nazwa odpowiadała temu, czego oczekuje
+        <code>compose.yml</code>
+        (<code>${REGISTRY}/${...IMAGE}:${IMAGE_TAG}</code>) — dla czysto
+        lokalnego uruchomienia możesz ustawić <code>REGISTRY</code> na coś
+        prostego, np. <code>local</code>, a <code>IMAGE_TAG</code> na
+        <code>dev</code>:
+      </p>
+      <pre><code>docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/mqtt-puppeteer \
+  --build-arg PROJECT_PATH=apps/mqtt-puppeteer \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10320 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/mqtt-puppeteer:dev .
+
+docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/ftps-remote-manager \
+  --build-arg PROJECT_PATH=apps/ftps-remote-manager \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10321 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/ftps-remote-manager:dev .
+
+docker build -f .github/docker/node.Dockerfile \
+  --build-arg RUNTIME_VERSION=24 \
+  --build-arg PACKAGE_NAME=@cloudless/video-service-hub \
+  --build-arg PROJECT_PATH=apps/video-service-hub \
+  --build-arg BUILD_OUTPUT=dist \
+  --build-arg APP_PORT=10322 \
+  --build-arg START_COMMAND="node dist/main.js" \
+  -t local/video-service-hub:dev .
+
+docker build -f .github/docker/angular.Dockerfile \
+  --build-arg PACKAGE_NAME=@cloudless/octo-management-dashboard \
+  --build-arg PROJECT_PATH=apps/octo-management-dashboard \
+  --build-arg BUILD_OUTPUT=apps/octo-management-dashboard/dist/octo-management-dashboard/browser \
+  --build-arg SERVER_CONFIG=apps/octo-management-dashboard/nginx.conf \
+  --build-arg APP_PORT=10300 \
+  -t local/octo-management-dashboard:dev .</code></pre>
+      <p>
+        Następnie wyeksportuj odpowiadające wartości, aby
+        <code>compose.yml</code> wskazywał na obrazy, które właśnie
+        zbudowano:
+      </p>
+      <pre><code>export REGISTRY=local
+export IMAGE_TAG=dev
+export MQTT_PUPPETEER_IMAGE=mqtt-puppeteer
+export FTPS_REMOTE_MANAGER_IMAGE=ftps-remote-manager
+export VIDEO_SERVICE_HUB_IMAGE=video-service-hub
+export OCTO_MANAGEMENT_DASHBOARD_IMAGE=octo-management-dashboard</code></pre>
+
+      <h3>Opcja B — wskaż już zbudowane obrazy</h3>
+      <p>
+        Jeśli obrazy zostały już zbudowane i wypchnięte gdzie indziej
+        (np. przez potok CI tego repozytorium, do rejestru, do którego
+        masz dostęp), ustaw <code>REGISTRY</code> i <code>IMAGE_TAG</code>
+        na ten rejestr oraz żądany SHA/tag commita i pomiń samodzielne
+        budowanie.
+      </p>
+
+      <h3>Uruchomienie stosu</h3>
+      <p>
+        Gdy obrazy istnieją pod nazwami oczekiwanymi przez
+        <code>compose.yml</code>, skopiuj <code>.env.example</code>, aby
+        skonfigurować zmienne drukarki i kamery odczytywane przez
+        <code>compose.yml</code> (a także zmienne
+        <code>*_HOST_PORT</code>/<code>*_CONTAINER_PORT</code> dla każdej
+        usługi — zob. <code>.env.example</code>), a następnie:
+      </p>
+      <pre><code>docker compose -f deploy/compose.yml up -d</code></pre>
+      <p>Otwórz dashboard pod adresem <code>http://localhost:10300</code>.</p>
+
+      <h3>Porty</h3>
+      <table>
+        <thead>
+          <tr><th>Usługa</th><th>Port</th><th>Przeznaczenie</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>mqtt-puppeteer</code></td><td>10320</td><td>API REST + healthcheck</td></tr>
+          <tr><td><code>ftps-remote-manager</code></td><td>10321</td><td>API REST</td></tr>
+          <tr><td><code>video-service-hub</code></td><td>10322</td><td>API REST + strumień MJPEG + healthcheck</td></tr>
+          <tr><td><code>video-service-hub</code></td><td>1883</td><td>Wbudowany broker MQTT (publikowany osobno od portu aplikacji)</td></tr>
+          <tr><td><code>octo-management-dashboard</code></td><td>10300</td><td>Interfejs webowy (serwowany przez nginx)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel">
+        <p>
+          <code>ftps-remote-manager</code> nie ma jeszcze punktu
+          <code>/health</code>, dlatego wpis <code>depends_on</code>
+          dashboardu dla tej usługi używa warunku
+          <code>service_started</code> zamiast <code>service_healthy</code>.
+          W praktyce oznacza to, że Compose czeka jedynie na uruchomienie
+          tego kontenera, a nie na jego faktyczną gotowość do obsługi
+          żądań — <code>mqtt-puppeteer</code> i <code>video-service-hub</code>
+          mają prawdziwe healthchecki (<code>/api/mqtt/health</code>,
+          <code>/health</code>), a dashboard czeka na ich powodzenie przed
+          startem.
+        </p>
+      </div>
+
+      <h2 id="local-server">Serwer lokalny</h2>
+      <p>
+        Jest to zasadniczo ta sama procedura co w przypadku Docker Desktop
+        powyżej, ale ujęta z myślą o dedykowanym, stale działającym hoście
+        w sieci LAN — NAS-ie, mini-PC, urządzeniu klasy Raspberry Pi lub
+        podobnym — a nie o Twoim komputerze deweloperskim, tak aby
+        dashboard i most drukarki pozostawały dostępne nawet wtedy, gdy
+        Twój laptop jest wyłączony.
+      </p>
+      <h3>Kroki</h3>
+      <ul>
+        <li>Zbuduj lub pobierz cztery obrazy jednorazowo na (lub dla) tym hoście, dokładnie tak jak opisano w sekcji Docker Desktop powyżej.</li>
+        <li>Skonfiguruj <code>.env</code> ze zmiennymi drukarki/kamery na tym hoście.</li>
+        <li>Uruchom <code>docker compose -f deploy/compose.yml up -d</code> na tym hoście.</li>
+      </ul>
+      <div class="panel panel--note">
+        <p>
+          Każda usługa w <code>deploy/compose.yml</code> ma już ustawione
+          <code>restart: unless-stopped</code>. W połączeniu z demonem
+          Dockera skonfigurowanym do uruchamiania się przy starcie systemu
+          (domyślne w większości konfiguracji NAS/Docker Desktop
+          uruchamianych przy starcie), oznacza to, że cały stos wraca
+          automatycznie po ponownym uruchomieniu hosta — bez potrzeby
+          ręcznego <code>docker compose up</code> po cyklu zasilania.
+        </p>
+      </div>
+      <p>
+        Zamiast otwierać <code>http://localhost:10300</code>, skieruj
+        przeglądarkę na adres IP tej maszyny w sieci LAN, np.
+        <code>http://&lt;adres-ip-serwera&gt;:10300</code>, z dowolnego
+        urządzenia w tej samej sieci.
+      </p>
+      <div class="panel">
+        <p>
+          Jako ilustrację tego, jak wygląda wdrożenie na stałym adresie
+          lokalnego serwera, dokumentacja potoku CI/CD tego repozytorium
+          (w <code>docs/operations.md</code>) opisuje docelowy host
+          produkcyjny <code>192.168.1.160</code>, pobierający obrazy z
+          lokalnego rejestru pod adresem <code>192.168.1.162:5000</code>.
+          Są to jedynie przykładowe współrzędne tego konkretnego projektu,
+          a nie adresy, których należy używać — podstaw adres IP własnego
+          serwera w sieci LAN oraz, jeśli taki prowadzisz, własny rejestr
+          obrazów.
+        </p>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/nav.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

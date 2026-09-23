@@ -142,5 +142,5 @@ five stages:
 - `.github/pipeline_docs/overview.md`, `pipeline_guidelines.md`,
   `pre_merge_check.md`, `production_deployment.md`, `release_ghcr.md` — the
   portable, repo-agnostic explanation of how the pipeline product works.
-- `docs/architecture.md` — cross-service architecture map.
-- `docs/development.md` — day-to-day dev commands.
+- `docs/readmes/architecture.md` — cross-service architecture map.
+- `docs/readmes/development.md` — day-to-day dev commands.

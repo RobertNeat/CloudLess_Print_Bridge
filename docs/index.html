@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CloudLess Print Bridge Wiki</title>
+<meta name="description" content="LAN-only management dashboard docs for the Bambu Lab A1 bridge system — setup, dashboard pages, and components." />
+<link rel="stylesheet" href="assets/style.css" />
+<script src="assets/init.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="topbar__menu-btn" aria-label="Toggle navigation">&#9776;</button>
+  <a class="topbar__brand" href="index.html">
+    <img src="media/readme_icon.png" alt="" onerror="this.style.display='none'" />
+    <span>CloudLess Print Bridge</span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__controls">
+    <div class="lang-switch">
+      <button id="lang-en" class="btn" aria-pressed="true">EN</button>
+      <button id="lang-pl" class="btn" aria-pressed="false">PL</button>
+    </div>
+    <button id="theme-toggle" class="btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav id="sidebar-nav" aria-label="Documentation sections"></nav>
+  </aside>
+
+  <main class="content">
+
+    <div data-lang="en">
+      <h1>CloudLess Print Bridge</h1>
+      <p>
+        A local, LAN-only bridge system for a Bambu Lab A1 3D printer. Every
+        service talks to the printer, its microSD card, and its cameras over
+        your own network — there is no cloud account, no vendor relay, and
+        no internet dependency required for normal operation.
+      </p>
+
+      <div class="panel panel--note">
+        <p>
+          This wiki documents the <strong>dashboard</strong> — the single UI
+          an end user opens day to day — plus the setup paths for getting it
+          (and the backends it talks to) running.
+        </p>
+      </div>
+
+      <h2 id="desktop-launch">Quickstart — desktop launch</h2>
+      <p>
+        The fastest path to a working dashboard on your own machine: install
+        dependencies once, start each service, then open the dashboard in a
+        browser.
+      </p>
+
+      <h3>1. Install</h3>
+      <pre><code>pnpm install</code></pre>
+      <p>Requires Node.js compatible with the pinned <code>pnpm@11.17.0</code> (see <code>packageManager</code> in the root <code>package.json</code>).</p>
+
+      <h3>2. Start the backends and the dashboard</h3>
+      <p>Run each command from the repo root, in separate terminals:</p>
+      <pre><code>pnpm dev:mqtt       # mqtt-puppeteer      — printer control/monitoring, :10320
+pnpm dev:ftps       # ftps-remote-manager — SD card file management, :10321
+pnpm dev:video      # video-service-hub   — cameras, live preview, recording, :10322
+pnpm dev:dashboard  # octo-management-dashboard — the UI, :10300</code></pre>
+
+      <div class="panel">
+        <p>
+          The dashboard's dev server proxies <code>/api/mqtt</code>,
+          <code>/api/ftps</code> and <code>/api/video</code> to the three
+          backend ports (<code>proxy.conf.json</code>). It expects the
+          backends on their default ports
+          (<code>10320</code> / <code>10321</code> / <code>10322</code>) —
+          running a backend on a custom port breaks the proxy unless you
+          edit that file to match.
+        </p>
+      </div>
+
+      <h3>3. Configure the printer connection</h3>
+      <p>
+        Copy the root <code>.env.example</code> to <code>.env</code> and fill
+        in your printer's LAN IP, access code, and serial number (from the
+        printer's own network settings screen) before the backends can do
+        anything useful. See
+        <a href="pages/setup-options.html#development-environment">Setup options</a>
+        for the full variable list.
+      </p>
+
+      <h3>4. Open the dashboard</h3>
+      <p>
+        Once all four commands are running, open
+        <code>http://localhost:10300</code> in a browser. You land on the
+        <a href="pages/management-page.html">Management page</a> by default;
+        the top navigation switches between Management, Files, and Video.
+      </p>
+
+      <h2 id="next-steps">Where to go next</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Setup options</h3>
+          <p>Development environment, Docker Desktop, or a permanent local server install.</p>
+          <p><a href="pages/setup-options.html">Read more &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Management page</h3>
+          <p>Print job control, quick controls, jog navigation, live preview, telemetry.</p>
+          <p><a href="pages/management-page.html">Read more &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Files page</h3>
+          <p>Browse, upload, and download files on the printer's SD card.</p>
+          <p><a href="pages/files-page.html">Read more &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Video page</h3>
+          <p>Live camera preview, recording, and the media library.</p>
+          <p><a href="pages/video-page.html">Read more &rarr;</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div data-lang="pl">
+      <h1>CloudLess Print Bridge</h1>
+      <p>
+        Lokalny system mostkujący (tylko w sieci LAN) dla drukarki 3D Bambu
+        Lab A1. Każda usługa komunikuje się z drukarką, jej kartą microSD i
+        kamerami wyłącznie w Twojej własnej sieci — bez konta w chmurze, bez
+        pośrednika producenta i bez wymaganego dostępu do internetu w
+        normalnej pracy.
+      </p>
+
+      <div class="panel panel--note">
+        <p>
+          Ta wiki dokumentuje <strong>dashboard</strong> — jedyny interfejs,
+          który otwiera użytkownik na co dzień — oraz sposoby jego
+          uruchomienia wraz z usługami backendowymi, z którymi się komunikuje.
+        </p>
+      </div>
+
+      <h2 id="desktop-launch">Szybki start — uruchomienie na desktopie</h2>
+      <p>
+        Najszybsza droga do działającego dashboardu na własnym komputerze:
+        zainstaluj zależności raz, uruchom każdą usługę, a następnie otwórz
+        dashboard w przeglądarce.
+      </p>
+
+      <h3>1. Instalacja</h3>
+      <pre><code>pnpm install</code></pre>
+      <p>Wymaga Node.js zgodnego z przypiętą wersją <code>pnpm@11.17.0</code> (patrz pole <code>packageManager</code> w głównym <code>package.json</code>).</p>
+
+      <h3>2. Uruchom backendy i dashboard</h3>
+      <p>Uruchom każdą komendę z katalogu głównego repozytorium, w osobnych terminalach:</p>
+      <pre><code>pnpm dev:mqtt       # mqtt-puppeteer      — sterowanie/monitoring drukarki, :10320
+pnpm dev:ftps       # ftps-remote-manager — zarządzanie plikami na karcie SD, :10321
+pnpm dev:video      # video-service-hub   — kamery, podgląd na żywo, nagrywanie, :10322
+pnpm dev:dashboard  # octo-management-dashboard — interfejs użytkownika, :10300</code></pre>
+
+      <div class="panel">
+        <p>
+          Serwer deweloperski dashboardu przekierowuje <code>/api/mqtt</code>,
+          <code>/api/ftps</code> i <code>/api/video</code> na porty trzech
+          backendów (<code>proxy.conf.json</code>). Oczekuje backendów na ich
+          domyślnych portach
+          (<code>10320</code> / <code>10321</code> / <code>10322</code>) —
+          uruchomienie backendu na innym porcie zepsuje proxy, chyba że
+          zmodyfikujesz ten plik.
+        </p>
+      </div>
+
+      <h3>3. Skonfiguruj połączenie z drukarką</h3>
+      <p>
+        Skopiuj główny plik <code>.env.example</code> do <code>.env</code> i
+        uzupełnij adres IP drukarki w sieci LAN, kod dostępu oraz numer
+        seryjny (z ekranu ustawień sieciowych drukarki), zanim backendy będą
+        mogły cokolwiek zrobić. Pełną listę zmiennych znajdziesz w sekcji
+        <a href="pages/setup-options.html#development-environment">Opcje instalacji</a>.
+      </p>
+
+      <h3>4. Otwórz dashboard</h3>
+      <p>
+        Gdy wszystkie cztery komendy działają, otwórz
+        <code>http://localhost:10300</code> w przeglądarce. Domyślnie
+        trafiasz na <a href="pages/management-page.html">Panel zarządzania</a>;
+        górna nawigacja przełącza między Zarządzaniem, Plikami i Wideo.
+      </p>
+
+      <h2 id="next-steps">Co dalej</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Opcje instalacji</h3>
+          <p>Środowisko deweloperskie, Docker Desktop lub stała instalacja na serwerze lokalnym.</p>
+          <p><a href="pages/setup-options.html">Czytaj dalej &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Panel zarządzania</h3>
+          <p>Sterowanie zadaniem druku, szybkie sterowanie, nawigacja osi, podgląd na żywo, telemetria.</p>
+          <p><a href="pages/management-page.html">Czytaj dalej &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Strona plików</h3>
+          <p>Przeglądaj, wysyłaj i pobieraj pliki z karty SD drukarki.</p>
+          <p><a href="pages/files-page.html">Czytaj dalej &rarr;</a></p>
+        </div>
+        <div class="card">
+          <h3>Strona wideo</h3>
+          <p>Podgląd kamer na żywo, nagrywanie i biblioteka mediów.</p>
+          <p><a href="pages/video-page.html">Czytaj dalej &rarr;</a></p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="assets/nav.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

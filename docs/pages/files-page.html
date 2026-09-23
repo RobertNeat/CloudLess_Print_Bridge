@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Files page — CloudLess Print Bridge Wiki</title>
+<meta name="description" content="LAN-only file browser docs for the Bambu Lab A1 bridge system — setup, dashboard pages, and components." />
+<link rel="stylesheet" href="../assets/style.css" />
+<script src="../assets/init.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="topbar__menu-btn" aria-label="Toggle navigation">&#9776;</button>
+  <a class="topbar__brand" href="../index.html">
+    <img src="../media/readme_icon.png" alt="" onerror="this.style.display='none'" />
+    <span>CloudLess Print Bridge</span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__controls">
+    <div class="lang-switch">
+      <button id="lang-en" class="btn" aria-pressed="true">EN</button>
+      <button id="lang-pl" class="btn" aria-pressed="false">PL</button>
+    </div>
+    <button id="theme-toggle" class="btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav id="sidebar-nav" aria-label="Documentation sections"></nav>
+  </aside>
+
+  <main class="content">
+
+    <div data-lang="en">
+      <h1>Files page</h1>
+      <p>
+        The Files page (route <code>/files</code>) is a file browser for the
+        printer's SD card. It talks to <code>ftps-remote-manager</code> for
+        every folder listing and file operation, and presents the result as a
+        three-panel layout: a file tree, a file list (browser), and a file
+        details panel — implemented in
+        <code>files/files-dashboard-page.ts</code> /
+        <code>.html</code>.
+      </p>
+
+      <h2 id="overview">Overview</h2>
+      <div class="figure">
+        <img src="../media/files_screenshot.png" alt="Files page screenshot"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>The Files page with its default three-panel layout.</figcaption>
+      </div>
+      <p>
+        Folders load lazily — a folder's contents are only fetched from the
+        printer when you first expand it. File actions (download, rename,
+        move, delete) are gated by permissions and, for rename and move, show
+        a confirmation dialog before anything happens. Uploading a file opens
+        a destination picker, and if the upload would overwrite an existing
+        file you get an overwrite confirmation dialog before it proceeds.
+        Download and delete each have a 4-second client-side cooldown after
+        you trigger them, to prevent accidental duplicate requests.
+      </p>
+
+      <h2 id="layout-theme-language">Layout, theme &amp; language</h2>
+
+      <h3>Panel layout</h3>
+      <p>
+        The Files page has its own layout service
+        (<code>core/files-dashboard-layout.service.ts</code>,
+        <code>FilesDashboardLayoutService</code>), reachable from the same
+        gear/settings menu in the top bar used on the Management page — it is
+        only shown there while the Files dashboard is the active page. It
+        exposes two independent settings:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Setting</th><th>Options</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Browser width</strong></td>
+            <td>Standard / Wide / Maximum</td>
+            <td>Controls how wide the file-list panel is, and therefore how many file rows are visible without scrolling</td>
+          </tr>
+          <tr>
+            <td><strong>Details position</strong></td>
+            <td>Right / Left</td>
+            <td>Controls which side of the screen the file details panel sits on</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        A <strong>Restore original layout</strong> option resets both
+        settings back to their defaults. Like the Management page, your
+        choices are saved to the browser's local storage and restored on your
+        next visit.
+      </p>
+      <div class="panel">
+        <p>
+          These are display preferences only, stored per browser — they
+          don't affect anything on the printer or in other browsers/devices.
+        </p>
+      </div>
+
+      <h3>Light / dark mode</h3>
+      <p>
+        The moon/sun icon in the top bar toggles between light and dark
+        theme, exactly as on the Management page: an immediate switch with no
+        reload, and dark mode also re-colors any theme-aware thumbnails shown
+        in the file details panel.
+      </p>
+
+      <h3>Language (PL / EN)</h3>
+      <p>
+        The language toggle in the top bar switches every label and button on
+        the Files page between Polish and English immediately, with no page
+        reload — identical behavior to the Management page.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          As with the rest of the dashboard, the default language is
+          <strong>Polish</strong> the first time you open it on a given
+          browser (this documentation site itself defaults to English,
+          independently of that).
+        </p>
+      </div>
+
+      <h2 id="app-file-tree">File tree</h2>
+      <div class="figure">
+        <img src="../media/app-file-tree.png" alt="File tree panel"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        The left-hand navigation panel
+        (<code>files/file-tree/file-tree.ts</code> /
+        <code>.html</code>). A <strong>Pinned</strong> section at the top
+        offers one-click buttons for frequently used locations — such as the
+        models, cache, and printer logs folders — followed by a recursive,
+        expandable tree of the SD card's folders and files.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Pinned-locations section (models / cache / printer logs, and similar)</li>
+            <li>Recursive folder/file tree with chevron expand/collapse icons</li>
+            <li>Per-node loading spinner while a folder's contents are being lazy-loaded</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Click a folder to select and expand/collapse it</li>
+            <li>Click a file to select it</li>
+            <li>Keyboard: left/right arrow collapses/expands the currently focused node</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            None beyond the shared layout options described in
+            <a href="#layout-theme-language">Layout, theme &amp; language</a>
+            above — the tree itself has no settings of its own.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-file-list">File list</h2>
+      <div class="figure">
+        <img src="../media/app-file-list.png" alt="File list panel"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        The central browser panel
+        (<code>files/file-list/file-list.ts</code> /
+        <code>.html</code>), showing the contents of whichever folder is
+        currently selected.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Breadcrumb path (Home + clickable path segments)</li>
+            <li>File count for the current folder</li>
+            <li>File rows: icon by file kind, name, size, and modified date</li>
+            <li>Empty state when a search yields no results</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Search box — filters the current folder's files by name</li>
+            <li>Sort toggle — ascending/descending by name</li>
+            <li>Breadcrumb segments — click to jump to that folder</li>
+            <li>Kebab (⋮) menu per row — <strong>Download</strong>, <strong>Rename</strong>, <strong>Move</strong>, <strong>Delete</strong></li>
+          </ul>
+          <p>
+            <strong>Delete</strong> is styled as a dangerous/destructive
+            action in the kebab menu. Rename and Move both show a
+            confirmation dialog before the change is applied. Download and
+            Delete are subject to the page's 4-second cooldown described in
+            <a href="#overview">Overview</a>.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            The panel's width — Standard, Wide, or Maximum, set from
+            <a href="#layout-theme-language">Layout, theme &amp; language</a>
+            — directly affects how many file rows are visible at once without
+            scrolling. Sort order can be toggled ascending/descending at any
+            time.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-file-details">File details</h2>
+      <div class="figure">
+        <img src="../media/app-file-details.png" alt="File details panel"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        The right-hand (or left-hand, depending on your layout setting) panel
+        (<code>files/file-details/file-details.ts</code> /
+        <code>.html</code>), showing metadata for the currently selected
+        file and hosting the upload zone.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Thumbnail, or a generic model-preview placeholder with an extension badge for non-thumbnailable files</li>
+            <li>Basic metadata: type, size, modified date</li>
+            <li>
+              For 3D print files, extended metadata: layer count, filament
+              density (g/cm³), filament diameter (mm), max print dimensions
+              (X × Y × Z mm), filament length (m), estimated material cost,
+              and estimated print time
+            </li>
+            <li>"Choose a file" empty state when nothing is selected</li>
+            <li>Optional status message area for upload/operation feedback</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Embedded upload zone — drag-and-drop a file, or click to browse for one</li>
+            <li>Uploading opens a destination picker dialog</li>
+            <li>An overwrite confirmation dialog appears if the upload would replace an existing file</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            Which side of the screen this panel appears on — Right or Left —
+            is configurable via
+            <a href="#layout-theme-language">Layout, theme &amp; language</a>
+            above.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <div data-lang="pl">
+      <h1>Strona plików</h1>
+      <p>
+        Strona plików (trasa <code>/files</code>) to przeglądarka plików na
+        karcie SD drukarki. Komunikuje się z <code>ftps-remote-manager</code>
+        w zakresie każdego listowania folderów i operacji na plikach, a
+        wynik prezentuje w układzie trzech paneli: drzewa plików, listy
+        plików (przeglądarki) oraz panelu szczegółów pliku — zaimplementowane
+        w <code>files/files-dashboard-page.ts</code> /
+        <code>.html</code>.
+      </p>
+
+      <h2 id="overview">Przegląd</h2>
+      <div class="figure">
+        <img src="../media/files_screenshot.png" alt="Zrzut ekranu strony plików"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>Strona plików z domyślnym układem trzech paneli.</figcaption>
+      </div>
+      <p>
+        Foldery są ładowane leniwie — zawartość folderu jest pobierana z
+        drukarki dopiero przy pierwszym rozwinięciu. Akcje na plikach
+        (pobieranie, zmiana nazwy, przenoszenie, usuwanie) są ograniczone
+        uprawnieniami, a dla zmiany nazwy i przenoszenia wyświetlane jest
+        okno potwierdzenia, zanim cokolwiek się wydarzy. Przesyłanie pliku
+        otwiera okno wyboru miejsca docelowego, a jeśli przesłanie
+        nadpisałoby istniejący plik, pojawia się okno potwierdzenia
+        nadpisania. Pobieranie i usuwanie mają 4-sekundowy czas odnowienia po
+        stronie przeglądarki po ich wywołaniu, aby zapobiec przypadkowym
+        powtórnym żądaniom.
+      </p>
+
+      <h2 id="layout-theme-language">Układ, motyw i język</h2>
+
+      <h3>Układ paneli</h3>
+      <p>
+        Strona plików ma własną usługę układu
+        (<code>core/files-dashboard-layout.service.ts</code>,
+        <code>FilesDashboardLayoutService</code>), dostępną z tego samego
+        menu ustawień (ikona koła zębatego) w górnym pasku co na panelu
+        zarządzania — jest ona widoczna tylko wtedy, gdy aktywną stroną jest
+        strona plików. Udostępnia dwa niezależne ustawienia:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Ustawienie</th><th>Opcje</th><th>Efekt</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Szerokość przeglądarki</strong></td>
+            <td>Standardowa / Szeroka / Maksymalna</td>
+            <td>Określa szerokość panelu listy plików, a tym samym liczbę wierszy widocznych bez przewijania</td>
+          </tr>
+          <tr>
+            <td><strong>Pozycja szczegółów</strong></td>
+            <td>Prawa / Lewa</td>
+            <td>Określa, po której stronie ekranu znajduje się panel szczegółów pliku</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Opcja <strong>Przywróć domyślny układ</strong> resetuje oba
+        ustawienia do wartości domyślnych. Podobnie jak na panelu
+        zarządzania, wybór jest zapisywany lokalnie w przeglądarce i
+        przywracany przy kolejnej wizycie.
+      </p>
+      <div class="panel">
+        <p>
+          Są to wyłącznie preferencje wyświetlania zapisywane per
+          przeglądarka — nie wpływają na nic na samej drukarce ani na innych
+          przeglądarkach/urządzeniach.
+        </p>
+      </div>
+
+      <h3>Tryb jasny / ciemny</h3>
+      <p>
+        Ikona księżyca/słońca w górnym pasku przełącza między motywem jasnym
+        a ciemnym, dokładnie tak jak na panelu zarządzania: przełączenie jest
+        natychmiastowe, bez przeładowania strony, a tryb ciemny zmienia
+        kolorystykę także wszelkich miniatur wrażliwych na motyw
+        wyświetlanych w panelu szczegółów pliku.
+      </p>
+
+      <h3>Język (PL / EN)</h3>
+      <p>
+        Przełącznik języka w górnym pasku zmienia natychmiast wszystkie
+        etykiety i przyciski na stronie plików między polskim a angielskim,
+        bez przeładowania strony — zachowanie identyczne jak na panelu
+        zarządzania.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          Podobnie jak w całym dashboardzie, domyślnym językiem jest
+          <strong>polski</strong> przy pierwszym otwarciu w danej
+          przeglądarce (ta strona dokumentacji domyślnie ustawia angielski,
+          niezależnie od tego).
+        </p>
+      </div>
+
+      <h2 id="app-file-tree">Drzewo plików</h2>
+      <div class="figure">
+        <img src="../media/app-file-tree.png" alt="Panel drzewa plików"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Lewy panel nawigacji
+        (<code>files/file-tree/file-tree.ts</code> /
+        <code>.html</code>). Sekcja <strong>Przypięte</strong> u góry oferuje
+        przyciski jednym kliknięciem do często używanych lokalizacji — takich
+        jak foldery modeli, pamięci podręcznej i logów drukarki — a poniżej
+        znajduje się rekursywne, rozwijane drzewo folderów i plików karty SD.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Sekcja przypiętych lokalizacji (modele / pamięć podręczna / logi drukarki i podobne)</li>
+            <li>Rekursywne drzewo folderów/plików z ikonami rozwijania/zwijania (chevron)</li>
+            <li>Wskaźnik ładowania przy węźle podczas leniwego wczytywania zawartości folderu</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Kliknięcie folderu zaznacza go i rozwija/zwija</li>
+            <li>Kliknięcie pliku zaznacza go</li>
+            <li>Klawiatura: strzałka w lewo/prawo zwija/rozwija aktualnie zaznaczony węzeł</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Brak poza wspólnymi opcjami układu opisanymi w sekcji
+            <a href="#layout-theme-language">Układ, motyw i język</a>
+            powyżej — samo drzewo nie ma własnych ustawień.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-file-list">Lista plików</h2>
+      <div class="figure">
+        <img src="../media/app-file-list.png" alt="Panel listy plików"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Środkowy panel przeglądarki
+        (<code>files/file-list/file-list.ts</code> /
+        <code>.html</code>), pokazujący zawartość aktualnie wybranego
+        folderu.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Ścieżka okruszkowa (Home + klikalne segmenty ścieżki)</li>
+            <li>Liczba plików w bieżącym folderze</li>
+            <li>Wiersze plików: ikona według rodzaju pliku, nazwa, rozmiar i data modyfikacji</li>
+            <li>Stan pustego wyniku, gdy wyszukiwanie nie zwróci żadnych plików</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Pole wyszukiwania — filtruje pliki bieżącego folderu po nazwie</li>
+            <li>Przełącznik sortowania — rosnąco/malejąco według nazwy</li>
+            <li>Segmenty ścieżki okruszkowej — kliknięcie przenosi do danego folderu</li>
+            <li>Menu kebab (⋮) przy każdym wierszu — <strong>Pobierz</strong>, <strong>Zmień nazwę</strong>, <strong>Przenieś</strong>, <strong>Usuń</strong></li>
+          </ul>
+          <p>
+            <strong>Usuń</strong> jest stylizowane jako akcja
+            niebezpieczna/destrukcyjna w menu kebab. Zmiana nazwy i
+            przenoszenie wyświetlają okno potwierdzenia przed wprowadzeniem
+            zmiany. Pobieranie i usuwanie podlegają 4-sekundowemu czasowi
+            odnowienia opisanemu w sekcji <a href="#overview">Przegląd</a>.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Szerokość panelu — Standardowa, Szeroka lub Maksymalna,
+            ustawiana w sekcji
+            <a href="#layout-theme-language">Układ, motyw i język</a>
+            — bezpośrednio wpływa na liczbę wierszy plików widocznych
+            jednocześnie bez przewijania. Kolejność sortowania można
+            przełączać rosnąco/malejąco w dowolnym momencie.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-file-details">Szczegóły pliku</h2>
+      <div class="figure">
+        <img src="../media/app-file-details.png" alt="Panel szczegółów pliku"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Prawy (lub lewy, w zależności od ustawienia układu) panel
+        (<code>files/file-details/file-details.ts</code> /
+        <code>.html</code>), pokazujący metadane aktualnie wybranego pliku
+        i zawierający strefę przesyłania plików.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Miniatura lub ogólny placeholder podglądu modelu z odznaką rozszerzenia dla plików bez miniatury</li>
+            <li>Podstawowe metadane: typ, rozmiar, data modyfikacji</li>
+            <li>
+              Dla plików wydruku 3D — rozszerzone metadane: liczba warstw,
+              gęstość filamentu (g/cm³), średnica filamentu (mm), maksymalne
+              wymiary wydruku (X × Y × Z mm), długość filamentu (m),
+              szacowany koszt materiału oraz szacowany czas druku
+            </li>
+            <li>Stan pusty „wybierz plik”, gdy nic nie jest zaznaczone</li>
+            <li>Opcjonalny obszar komunikatów statusu dla przesyłania/operacji</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Wbudowana strefa przesyłania — przeciągnij i upuść plik lub kliknij, aby go wybrać</li>
+            <li>Przesyłanie otwiera okno wyboru miejsca docelowego</li>
+            <li>Okno potwierdzenia nadpisania pojawia się, gdy przesłanie zastąpiłoby istniejący plik</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Po której stronie ekranu znajduje się ten panel — po prawej czy
+            po lewej — można skonfigurować w sekcji
+            <a href="#layout-theme-language">Układ, motyw i język</a>
+            powyżej.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/nav.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

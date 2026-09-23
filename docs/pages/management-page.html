@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Management page — CloudLess Print Bridge Wiki</title>
+<meta name="description" content="LAN-only management dashboard docs for the Bambu Lab A1 bridge system — setup, dashboard pages, and components." />
+<link rel="stylesheet" href="../assets/style.css" />
+<script src="../assets/init.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="topbar__menu-btn" aria-label="Toggle navigation">&#9776;</button>
+  <a class="topbar__brand" href="../index.html">
+    <img src="../media/readme_icon.png" alt="" onerror="this.style.display='none'" />
+    <span>CloudLess Print Bridge</span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__controls">
+    <div class="lang-switch">
+      <button id="lang-en" class="btn" aria-pressed="true">EN</button>
+      <button id="lang-pl" class="btn" aria-pressed="false">PL</button>
+    </div>
+    <button id="theme-toggle" class="btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav id="sidebar-nav" aria-label="Documentation sections"></nav>
+  </aside>
+
+  <main class="content">
+
+    <div data-lang="en">
+      <h1>Management page</h1>
+      <p>
+        The Management page (route <code>/management</code>) is the printer
+        control and monitoring surface: current print job status, quick
+        controls (light, fans, print speed), a jog/navigation panel, a live
+        camera preview, and telemetry charts (progress, temperatures, fan
+        speeds). It talks to <code>mqtt-puppeteer</code> for printer state
+        and commands (over polled REST — not Socket.IO), and to
+        <code>video-service-hub</code> for the live preview stream.
+      </p>
+
+      <h2 id="overview">Overview</h2>
+      <div class="figure">
+        <img src="../media/management_screenshot.png" alt="Management page screenshot"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>The Management page with its default widget layout.</figcaption>
+      </div>
+      <p>
+        Widgets are arranged in a draggable, resizable grid
+        (<a href="https://github.com/tiberiuzuld/angular-gridster2" target="_blank" rel="noopener">angular-gridster2</a>).
+        Each widget corresponds to one of the components documented below.
+      </p>
+
+      <h2 id="layout-theme-language">Layout, theme &amp; language</h2>
+
+      <h3>Rearranging widgets</h3>
+      <p>
+        Open the gear/settings menu in the top bar and choose
+        <strong>Edit layout</strong>. While editing, every widget can be
+        dragged to a new position, resized from any of its eight edges, or
+        moved with the arrow keys. Choose <strong>Apply layout</strong> to
+        leave edit mode. The chosen positions and sizes are saved to your
+        browser's local storage and restored on your next visit — a
+        <strong>Restore original layout</strong> option resets everything
+        back to the defaults.
+      </p>
+      <div class="panel">
+        <p>
+          The grid uses a fixed 12-column layout with a fixed row height;
+          resizing snaps to that grid rather than being free-form pixel
+          resizing.
+        </p>
+      </div>
+
+      <h3>Light / dark mode</h3>
+      <p>
+        The moon/sun icon in the top bar toggles between light and dark
+        theme. Unlike language, theme defaults to your operating system's
+        light/dark preference on first visit, then remembers your explicit
+        choice. The telemetry charts re-color themselves immediately when
+        you switch theme.
+      </p>
+
+      <h3>Language (PL / EN)</h3>
+      <p>
+        The language toggle in the top bar switches every label, button,
+        and chart axis between Polish and English immediately, with no page
+        reload. Your choice is remembered for future visits.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          The dashboard's own default language is <strong>Polish</strong>
+          the first time you open it on a given browser (this documentation
+          site itself defaults to English, independently of that).
+        </p>
+      </div>
+
+      <h2 id="app-current-print-job">Current print job</h2>
+      <div class="figure">
+        <img src="../media/app-current-print-job.png" alt="Current print job widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Shows the active print's thumbnail, a status badge (<em>printing</em>,
+        <em>paused</em>, <em>completed</em>, <em>cancelled</em>, or
+        <em>error</em>), the job name, a progress bar, the current/total
+        layer count, and the estimated remaining time.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Job thumbnail</li>
+            <li>Status badge</li>
+            <li>Job name</li>
+            <li>Progress bar (percentage)</li>
+            <li>Layer counter (current / total)</li>
+            <li>Estimated remaining time</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Pause</strong> — pauses the active print</li>
+            <li><strong>Resume</strong> — shown instead of Pause while paused</li>
+            <li><strong>Stop</strong> — cancels the print</li>
+          </ul>
+          <p>Pause and Stop are disabled once the job reaches a terminal state (completed, cancelled, or error).</p>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            None beyond the shared widget repositioning/resizing described
+            in <a href="#layout-theme-language">Layout, theme &amp; language</a>
+            above — the widget itself has no settings of its own.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-printer-quick-controls">Printer quick controls</h2>
+      <div class="figure">
+        <img src="../media/app-printer-quick-controls.png" alt="Printer quick controls widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Three toggle buttons for common in-print adjustments, each opening a small popover for fine control.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Chamber light on/off state</li>
+            <li>Fan on/off state and current speed</li>
+            <li>Active print-speed mode</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Light</strong> — one click toggles the chamber light on/off</li>
+            <li><strong>Fans</strong> — opens a popover with an on/off toggle and a 10%-step speed slider</li>
+            <li><strong>Print speed</strong> — opens a popover to choose Silent, Standard, Sport, or Ludicrous</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            Turning fans off and back on restores the last speed you had
+            set, so you don't have to re-pick it every time. No other
+            persisted settings.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-printer-navigation">Printer navigation</h2>
+      <div class="figure">
+        <img src="../media/app-printer-navigation.png" alt="Printer navigation widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        An SVG overlay on a bed diagram for jogging the toolhead and homing
+        the printer, with a fully user-calibratable axis layout.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Bed diagram with X / Y / Z axis lines</li>
+            <li>Current position readout (draggable to any corner)</li>
+            <li>Jog disabled/greyed out when the printer's position is unknown (not yet homed)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Jog split-buttons at each axis end — click for the default step, use the dropdown for alternate step sizes</li>
+            <li>Hotend up/down split-buttons</li>
+            <li><strong>Home</strong> — sends the physical homing command</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>Open the gear icon on the widget for a calibration panel that lets you:</p>
+          <ul>
+            <li>Click-place where each axis's positive/negative markers and the hotend marker sit on the bed image (drag to reposition, arrow keys to nudge, Enter to confirm, Escape to cancel)</li>
+            <li>Choose the primary jog step size</li>
+            <li>Choose where the position readout panel is anchored (top-left, top-right, bottom-left, bottom-right)</li>
+          </ul>
+          <p>
+            <strong>Reset axes</strong> restores the default calibration.
+            This calibration is purely a local display preference — it does
+            not change anything on the printer itself.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-live-preview">Live preview</h2>
+      <div class="figure">
+        <img src="../media/app-live-preview.png" alt="Live preview widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>An embedded MJPEG camera stream from one of your configured cameras, without leaving the Management page.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Live status dot (streaming / ready / offline)</li>
+            <li>Live MJPEG image, or an offline placeholder when inactive</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Camera source selector (disabled while a stream is active)</li>
+            <li>Resolution selector (disabled while a stream is active)</li>
+            <li><strong>Start / Stop</strong> button</li>
+          </ul>
+          <p>
+            If a frame fails to load, the widget automatically retries up
+            to 5 times before showing a "failed to load" message.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>Choice of camera source and resolution before starting the stream. No further persisted settings.</p>
+        </div>
+      </div>
+
+      <h2 id="app-telemetry-chart">Telemetry chart</h2>
+      <div class="figure">
+        <img src="../media/app-telemetry-chart.png" alt="Telemetry chart widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Read-only line charts tracking printer values over time. The Management page uses this widget three times: print progress, temperatures (nozzle/bed/chamber, target vs. actual), and fan speeds.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Time-series line chart with a legend when more than one value is plotted</li>
+            <li>Hover shows a vertical guide line and the exact values at that point</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <p>Hover/point the pointer over the chart to inspect values. No editable controls — it is read-only.</p>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            Colors automatically switch between light and dark palettes with
+            the global theme toggle; axis and tooltip labels switch with the
+            language toggle. No other settings.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <div data-lang="pl">
+      <h1>Panel zarządzania</h1>
+      <p>
+        Panel zarządzania (trasa <code>/management</code>) to główny widok
+        sterowania i monitorowania drukarki: status bieżącego zadania druku,
+        szybkie sterowanie (światło, wentylatory, prędkość druku), panel
+        nawigacji/jog, podgląd kamery na żywo oraz wykresy telemetrii
+        (postęp, temperatury, prędkości wentylatorów). Komunikuje się z
+        <code>mqtt-puppeteer</code> w zakresie stanu i poleceń drukarki
+        (poprzez odpytywanie REST, a nie Socket.IO) oraz z
+        <code>video-service-hub</code> w zakresie strumienia podglądu na żywo.
+      </p>
+
+      <h2 id="overview">Przegląd</h2>
+      <div class="figure">
+        <img src="../media/management_screenshot.png" alt="Zrzut ekranu panelu zarządzania"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>Panel zarządzania z domyślnym układem widżetów.</figcaption>
+      </div>
+      <p>
+        Widżety są rozmieszczone w przeciąganej, skalowalnej siatce
+        (<a href="https://github.com/tiberiuzuld/angular-gridster2" target="_blank" rel="noopener">angular-gridster2</a>).
+        Każdy widżet odpowiada jednemu z komponentów opisanych poniżej.
+      </p>
+
+      <h2 id="layout-theme-language">Układ, motyw i język</h2>
+
+      <h3>Zmiana układu widżetów</h3>
+      <p>
+        Otwórz menu ustawień (ikona koła zębatego) w górnym pasku i wybierz
+        <strong>Edytuj układ</strong>. W trybie edycji każdy widżet można
+        przeciągnąć w nowe miejsce, zmienić jego rozmiar z dowolnej z ośmiu
+        krawędzi lub przesunąć strzałkami. Wybierz
+        <strong>Zatwierdź układ</strong>, aby wyjść z trybu edycji. Wybrane
+        pozycje i rozmiary są zapisywane lokalnie w przeglądarce i
+        przywracane przy kolejnej wizycie — opcja
+        <strong>Przywróć domyślny układ</strong> resetuje wszystko do
+        wartości domyślnych.
+      </p>
+      <div class="panel">
+        <p>
+          Siatka ma stałą liczbę 12 kolumn i stałą wysokość wiersza —
+          zmiana rozmiaru „przyciąga” do siatki zamiast dowolnego,
+          pikselowego skalowania.
+        </p>
+      </div>
+
+      <h3>Tryb jasny / ciemny</h3>
+      <p>
+        Ikona księżyca/słońca w górnym pasku przełącza między motywem jasnym
+        a ciemnym. W odróżnieniu od języka, motyw domyślnie dopasowuje się
+        do preferencji systemu operacyjnego przy pierwszej wizycie, a
+        następnie zapamiętuje wybór użytkownika. Wykresy telemetrii od razu
+        zmieniają kolorystykę po przełączeniu motywu.
+      </p>
+
+      <h3>Język (PL / EN)</h3>
+      <p>
+        Przełącznik języka w górnym pasku zmienia natychmiast wszystkie
+        etykiety, przyciski i opisy osi wykresów między polskim a
+        angielskim, bez przeładowania strony. Wybór jest zapamiętywany na
+        kolejne wizyty.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          Domyślnym językiem samego dashboardu jest <strong>polski</strong>
+          przy pierwszym otwarciu w danej przeglądarce (ta strona
+          dokumentacji domyślnie ustawia angielski, niezależnie od tego).
+        </p>
+      </div>
+
+      <h2 id="app-current-print-job">Bieżące zadanie druku</h2>
+      <div class="figure">
+        <img src="../media/app-current-print-job.png" alt="Widżet bieżącego zadania druku"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Pokazuje miniaturę aktywnego wydruku, etykietę statusu
+        (<em>drukowanie</em>, <em>wstrzymano</em>, <em>zakończono</em>,
+        <em>anulowano</em> lub <em>błąd</em>), nazwę zadania, pasek postępu,
+        licznik warstw (bieżąca / łączna) oraz szacowany pozostały czas.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Miniatura zadania</li>
+            <li>Etykieta statusu</li>
+            <li>Nazwa zadania</li>
+            <li>Pasek postępu (procent)</li>
+            <li>Licznik warstw (bieżąca / łączna)</li>
+            <li>Szacowany pozostały czas</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Wstrzymaj</strong> — wstrzymuje aktywny wydruk</li>
+            <li><strong>Wznów</strong> — wyświetlany zamiast „Wstrzymaj” podczas pauzy</li>
+            <li><strong>Zatrzymaj</strong> — anuluje wydruk</li>
+          </ul>
+          <p>Przyciski „Wstrzymaj” i „Zatrzymaj” są nieaktywne, gdy zadanie osiągnie stan końcowy (zakończono, anulowano lub błąd).</p>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Brak poza wspólnym przenoszeniem/zmianą rozmiaru widżetu opisanym
+            w sekcji <a href="#layout-theme-language">Układ, motyw i język</a>
+            powyżej — sam widżet nie ma własnych ustawień.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-printer-quick-controls">Szybkie sterowanie drukarką</h2>
+      <div class="figure">
+        <img src="../media/app-printer-quick-controls.png" alt="Widżet szybkiego sterowania drukarką"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Trzy przyciski przełączające do najczęstszych regulacji w trakcie druku, każdy otwiera mały popover z dokładniejszą kontrolą.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Stan włączenia światła w komorze</li>
+            <li>Stan wentylatorów i bieżąca prędkość</li>
+            <li>Aktywny tryb prędkości druku</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Światło</strong> — jedno kliknięcie włącza/wyłącza światło w komorze</li>
+            <li><strong>Wentylatory</strong> — otwiera popover z przełącznikiem wł./wył. i suwakiem prędkości w krokach co 10%</li>
+            <li><strong>Prędkość druku</strong> — otwiera popover z wyborem trybu Cichy, Standardowy, Sportowy lub Szalony</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Wyłączenie i ponowne włączenie wentylatorów przywraca ostatnio
+            ustawioną prędkość, więc nie trzeba wybierać jej za każdym razem
+            od nowa. Brak innych zapamiętywanych ustawień.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-printer-navigation">Nawigacja drukarki</h2>
+      <div class="figure">
+        <img src="../media/app-printer-navigation.png" alt="Widżet nawigacji drukarki"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Nakładka SVG na schemacie stołu do przesuwania głowicy (jog) i
+        bazowania drukarki, z w pełni kalibrowalnym przez użytkownika
+        układem osi.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Schemat stołu z liniami osi X, Y, Z</li>
+            <li>Odczyt bieżącej pozycji (można przeciągnąć w dowolny róg)</li>
+            <li>Sterowanie jog jest wyszarzone, gdy pozycja drukarki jest nieznana (przed bazowaniem)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Przyciski jog na końcu każdej osi — kliknięcie wykonuje domyślny krok, rozwijana lista pozwala wybrać inny krok</li>
+            <li>Przyciski góra/dół dla hotendu</li>
+            <li><strong>Bazuj</strong> — wysyła fizyczne polecenie bazowania</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Ikona koła zębatego na widżecie otwiera panel kalibracji, który pozwala:</p>
+          <ul>
+            <li>Kliknięciem ustawić, gdzie na obrazie stołu znajdują się znaczniki dodatnie/ujemne każdej osi oraz znacznik hotendu (przeciągnij, by przesunąć, strzałki do drobnej korekty, Enter zatwierdza, Escape anuluje)</li>
+            <li>Wybrać domyślny krok jog</li>
+            <li>Wybrać, gdzie zakotwiczony jest panel odczytu pozycji (góra-lewo, góra-prawo, dół-lewo, dół-prawo)</li>
+          </ul>
+          <p>
+            <strong>Resetuj osie</strong> przywraca domyślną kalibrację. Ta
+            kalibracja jest wyłącznie lokalnym ustawieniem wyświetlania —
+            nie zmienia niczego na samej drukarce.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-live-preview">Podgląd na żywo</h2>
+      <div class="figure">
+        <img src="../media/app-live-preview.png" alt="Widżet podglądu na żywo"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Osadzony strumień MJPEG z jednej ze skonfigurowanych kamer, bez opuszczania panelu zarządzania.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Kropka statusu na żywo (transmisja / gotowe / offline)</li>
+            <li>Obraz MJPEG na żywo lub zastępcza grafika, gdy podgląd jest nieaktywny</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Wybór źródła kamery (nieaktywny podczas trwającej transmisji)</li>
+            <li>Wybór rozdzielczości (nieaktywny podczas trwającej transmisji)</li>
+            <li>Przycisk <strong>Start / Stop</strong></li>
+          </ul>
+          <p>
+            Jeśli klatka się nie załaduje, widżet automatycznie ponawia
+            próbę do 5 razy, zanim pokaże komunikat o błędzie.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Wybór źródła kamery i rozdzielczości przed uruchomieniem transmisji. Brak innych zapamiętywanych ustawień.</p>
+        </div>
+      </div>
+
+      <h2 id="app-telemetry-chart">Wykres telemetrii</h2>
+      <div class="figure">
+        <img src="../media/app-telemetry-chart.png" alt="Widżet wykresu telemetrii"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Wykresy liniowe (tylko do odczytu) śledzące wartości drukarki w czasie. Panel zarządzania używa tego widżetu trzykrotnie: postęp druku, temperatury (dysza/stół/komora, wartość docelowa vs. rzeczywista) oraz prędkości wentylatorów.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Wykres liniowy szeregu czasowego z legendą, gdy widoczna jest więcej niż jedna wartość</li>
+            <li>Najechanie kursorem pokazuje pionową linię prowadzącą i dokładne wartości w tym punkcie</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <p>Najedź kursorem na wykres, aby sprawdzić wartości. Brak edytowalnych elementów sterujących — wykres jest tylko do odczytu.</p>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Kolory automatycznie przełączają się między paletą jasną i
+            ciemną wraz z globalnym przełącznikiem motywu; etykiety osi i
+            dymków zmieniają się wraz z przełącznikiem języka. Brak innych
+            ustawień.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/nav.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

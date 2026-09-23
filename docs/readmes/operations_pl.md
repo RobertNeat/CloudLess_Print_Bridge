@@ -151,5 +151,5 @@ uruchamia wszystkie pięć etapów:
 - `.github/pipeline_docs/overview.md`, `pipeline_guidelines.md`,
   `pre_merge_check.md`, `production_deployment.md`, `release_ghcr.md` —
   przenośny, niezależny od repozytorium opis działania produktu pipeline.
-- `docs/architecture.md` — mapa architektury międzyserwisowej.
-- `docs/development.md` — codzienne komendy deweloperskie.
+- `docs/readmes/architecture.md` — mapa architektury międzyserwisowej.
+- `docs/readmes/development.md` — codzienne komendy deweloperskie.

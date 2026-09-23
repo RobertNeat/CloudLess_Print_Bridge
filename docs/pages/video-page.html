@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video page — CloudLess Print Bridge Wiki</title>
+<meta name="description" content="LAN-only management dashboard docs for the Bambu Lab A1 bridge system — setup, dashboard pages, and components." />
+<link rel="stylesheet" href="../assets/style.css" />
+<script src="../assets/init.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button id="menu-toggle" class="topbar__menu-btn" aria-label="Toggle navigation">&#9776;</button>
+  <a class="topbar__brand" href="../index.html">
+    <img src="../media/readme_icon.png" alt="" onerror="this.style.display='none'" />
+    <span>CloudLess Print Bridge</span>
+  </a>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__controls">
+    <div class="lang-switch">
+      <button id="lang-en" class="btn" aria-pressed="true">EN</button>
+      <button id="lang-pl" class="btn" aria-pressed="false">PL</button>
+    </div>
+    <button id="theme-toggle" class="btn">🌙 Dark</button>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav id="sidebar-nav" aria-label="Documentation sections"></nav>
+  </aside>
+
+  <main class="content">
+
+    <div data-lang="en">
+      <h1>Video page</h1>
+      <p>
+        The Video page (route <code>/videos</code>) is the camera and media
+        control surface: watch live camera feeds, start recordings,
+        timelapses, audio captures and photo captures, browse everything
+        you've captured in a media library, and add or remove camera
+        sources. It talks to <code>video-service-hub</code> for streaming,
+        capture commands, and media storage.
+      </p>
+
+      <h2 id="overview">Overview</h2>
+      <div class="figure">
+        <img src="../media/video_screenshot_narrow.png" alt="Video page screenshot"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>The Video page's default layout.</figcaption>
+      </div>
+      <p>
+        The page is split vertically: the top area holds the camera panel
+        and the live video player side by side (with an error banner above
+        them that appears if a stream or capture command fails), and the
+        bottom area holds the media library. Three overlays are reachable
+        from this page:
+      </p>
+      <ul>
+        <li>
+          A <strong>media-preview overlay</strong>, opened by clicking any
+          library item, which supports playback (recordings and
+          timelapses of certain kinds are transcoded to MP4 for playback),
+          renaming, and deleting the item.
+        </li>
+        <li>
+          A <strong>record dialog</strong>, a form for starting a capture —
+          its fields adapt to the action type, offering a camera source and
+          resolution for all kinds, plus an interval and/or duration field
+          for timelapses and audio recordings.
+        </li>
+        <li>
+          An <strong>Add Camera dialog</strong>, with fields for Camera ID,
+          Camera URL, Display name, and Location, validated client-side
+          before submission. Each configured camera's own menu offers a
+          matching <strong>Remove camera</strong> action.
+        </li>
+      </ul>
+
+      <h2 id="layout-theme-language">Layout, theme &amp; language</h2>
+
+      <h3>Filtering the media library</h3>
+      <p>
+        Because this page is centered on browsing captured media, its top
+        bar shows three extra controls that only appear while the Video
+        page is active:
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Date filter</h3>
+          <p>Opens a small calendar/date-picker popover to show only media captured on one specific day.</p>
+        </div>
+        <div class="card">
+          <h3>Camera-source filter</h3>
+          <p>Opens a popover to show only media captured from one specific camera, or "All cameras".</p>
+        </div>
+        <div class="card">
+          <h3>Name search</h3>
+          <p>A free-text box that filters the media library by file name as you type, case- and locale-aware.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <p>
+          All three filters combine: date <strong>and</strong> source
+          <strong>and</strong> name search are applied together, and each
+          is only applied if you've actually set it.
+        </p>
+      </div>
+
+      <h3>Light / dark mode</h3>
+      <p>
+        The moon/sun icon in the top bar toggles between light and dark
+        theme, the same as on every other page — the choice applies
+        immediately with no page reload. On this page, dark mode also
+        swaps theme-specific thumbnail images, such as audio waveform
+        thumbnails, which have separate light and dark versions.
+      </p>
+
+      <h3>Language (PL / EN)</h3>
+      <p>
+        The language toggle in the top bar switches every label and button
+        between Polish and English immediately, with no page reload. Your
+        choice is remembered for future visits.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          The dashboard's own default language is <strong>Polish</strong>
+          the first time you open it on a given browser (this documentation
+          site itself defaults to English, independently of that).
+        </p>
+      </div>
+
+      <h2 id="camera-panel">Camera panel</h2>
+      <div class="figure">
+        <img src="../media/camera-panel.png" alt="Camera panel widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Shows a "Live camera" status badge and metrics for the currently
+        selected camera, plus the list of all configured camera sources.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>"Live camera" status badge (Stream active / Stream ready / Camera offline)</li>
+            <li>Metrics list: status, power, mode, resolution, fps, temperature, camera IP, service IP</li>
+            <li>
+              A radio-button-style list of configured camera sources, each
+              showing its name, a location label (such as "Printer
+              chamber", "Build plate", or "Workshop"), and an
+              online/offline indicator dot
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Click a camera source to select it as the active feed</li>
+            <li>Each source has its own menu with a <strong>Remove camera</strong> option</li>
+            <li>An <strong>Add camera (+)</strong> button opens the Add Camera dialog described in Overview</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>
+            None beyond adding, removing, or selecting camera sources —
+            there's no separate settings panel for this widget itself.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-video-player">Video player</h2>
+      <div class="figure">
+        <img src="../media/app-video-player.png" alt="Video player widget"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Displays the live MJPEG feed from the currently selected camera, or
+        a "Stream stopped" / "Camera offline" placeholder when inactive.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Live MJPEG image, or a placeholder when inactive</li>
+          </ul>
+          <p>
+            If a frame fails to load, the widget automatically retries up
+            to 5 times, about 1 second apart, before showing a "could not
+            connect" message — the same retry behavior as the Management
+            page's Live preview widget.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li>Resolution selector, including an "Automatic" option plus explicit resolutions</li>
+            <li><strong>Start / Stop</strong> button</li>
+          </ul>
+          <p>
+            The Start/Stop button is disabled while a start is in progress,
+            or while inactive if starting isn't currently possible (for
+            example, no camera is selected).
+          </p>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>Choice of resolution before starting. No persisted settings.</p>
+        </div>
+      </div>
+
+      <h2>Media library</h2>
+      <p>
+        One "Media library" panel groups everything you've captured into
+        four sections — audio, recordings, timelapses, and images — not
+        four separate widgets. All four live inside this single panel and
+        share the date/source/name-search filters described in
+        <a href="#layout-theme-language">Layout, theme &amp; language</a>
+        above. Every section has a header with an icon and an item count, a
+        record-action button specific to that kind of media (disabled
+        unless the selected camera supports it, and showing a loading
+        spinner while a capture is starting), and a responsive grid of
+        clickable thumbnail cards — recordings and timelapses additionally
+        show a play-icon badge and a duration badge. Clicking any card opens
+        the media-preview overlay for playback, rename, or delete. Each
+        section shows a "No results" empty state when the active filters
+        exclude everything.
+      </p>
+
+      <h2 id="media-library-section-audio">Media library — Audio</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-audio.png" alt="Media library — Audio section"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Icon: a speaker/volume icon. Record button: <strong>Record audio</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Section header with icon and item count</li>
+            <li>Grid of audio-recording thumbnail cards (waveform thumbnail, theme-aware light/dark variants)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Record audio</strong> — starts a standalone audio recording from a camera's microphone, if supported</li>
+            <li>Click a card to open the media-preview overlay for playback, rename, or delete</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>No section-specific settings beyond the shared filters above.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-recording">Media library — Recordings</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-recording.png" alt="Media library — Recordings section"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Icon: a video-camera icon. Record button: <strong>Record</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Section header with icon and item count</li>
+            <li>Grid of video-recording thumbnail cards with a play-icon badge and a duration badge</li>
+          </ul>
+          <p>
+            Recordings captured directly from the live-view widget on the
+            Management page (not through the record dialog) are also merged
+            into this same section by the backend, so it shows every kind
+            of video recording in one place.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Record</strong> — starts a video recording from the selected camera</li>
+            <li>Click a card to open the media-preview overlay for playback, rename, or delete</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>No section-specific settings beyond the shared filters above.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-timelapse">Media library — Timelapses</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-timelapse.png" alt="Media library — Timelapses section"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Icon: a clock icon. Record button: <strong>Start timelapse</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Section header with icon and item count</li>
+            <li>Grid of timelapse thumbnail cards with a play-icon badge and a duration badge</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Start timelapse</strong> — opens the record dialog to configure an interval-based capture over a longer duration, e.g. for tracking an entire print</li>
+            <li>Click a card to open the media-preview overlay for playback, rename, or delete</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>No section-specific settings beyond the shared filters above.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-image">Media library — Images</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-image.png" alt="Media library — Images section"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Icon: an images/gallery icon. Record button: <strong>Capture photo</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Displayed information</h3>
+          <ul>
+            <li>Section header with icon and item count</li>
+            <li>Grid of still-photo thumbnail cards</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interactions</h3>
+          <ul>
+            <li><strong>Capture photo</strong> — takes a single still photo from the selected camera</li>
+            <li>Click a card to open the media-preview overlay for viewing, rename, or delete</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Customization</h3>
+          <p>No section-specific settings beyond the shared filters above.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div data-lang="pl">
+      <h1>Strona wideo</h1>
+      <p>
+        Strona wideo (trasa <code>/videos</code>) to powierzchnia sterowania
+        kamerami i mediami: podgląd kamer na żywo, uruchamianie nagrań,
+        timelapse'ów, nagrań audio i zdjęć, przeglądanie wszystkiego, co
+        zostało zarejestrowane, w bibliotece mediów, a także dodawanie lub
+        usuwanie źródeł kamer. Komunikuje się z <code>video-service-hub</code>
+        w zakresie strumieniowania, poleceń rejestrowania i przechowywania
+        mediów.
+      </p>
+
+      <h2 id="overview">Przegląd</h2>
+      <div class="figure">
+        <img src="../media/video_screenshot_narrow.png" alt="Zrzut ekranu strony wideo"
+             onerror="this.closest('.figure').style.display='none'" />
+        <figcaption>Strona wideo z domyślnym układem.</figcaption>
+      </div>
+      <p>
+        Strona jest podzielona pionowo: górny obszar zawiera panel kamery i
+        odtwarzacz wideo na żywo obok siebie (z banerem błędu nad nimi,
+        pojawiającym się, gdy polecenie strumienia lub nagrywania się nie
+        powiedzie), a dolny obszar zawiera bibliotekę mediów. Z tej strony
+        dostępne są trzy nakładki:
+      </p>
+      <ul>
+        <li>
+          <strong>Nakładka podglądu mediów</strong>, otwierana kliknięciem
+          dowolnej pozycji biblioteki, która umożliwia odtwarzanie (nagrania
+          i timelapse'y niektórych rodzajów są transkodowane do MP4 na
+          potrzeby odtwarzania), zmianę nazwy oraz usuwanie pozycji.
+        </li>
+        <li>
+          <strong>Okno dialogowe nagrywania</strong> — formularz do
+          rozpoczęcia rejestracji, którego pola dopasowują się do rodzaju
+          akcji: źródło kamery i rozdzielczość dla wszystkich rodzajów, a
+          dodatkowo pole interwału i/lub czasu trwania dla timelapse'ów i
+          nagrań audio.
+        </li>
+        <li>
+          <strong>Okno dialogowe „Dodaj kamerę”</strong> z polami
+          Identyfikator kamery, Adres URL kamery, Nazwa wyświetlana i
+          Lokalizacja, walidowane po stronie klienta przed wysłaniem. Menu
+          każdej skonfigurowanej kamery zawiera odpowiadającą mu akcję
+          <strong>Usuń kamerę</strong>.
+        </li>
+      </ul>
+
+      <h2 id="layout-theme-language">Układ, motyw i język</h2>
+
+      <h3>Filtrowanie biblioteki mediów</h3>
+      <p>
+        Ponieważ ta strona koncentruje się na przeglądaniu zarejestrowanych
+        mediów, jej górny pasek pokazuje trzy dodatkowe elementy sterujące,
+        widoczne wyłącznie, gdy strona wideo jest aktywna:
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Filtr daty</h3>
+          <p>Otwiera mały popover z kalendarzem/wyborem daty, aby pokazać tylko media zarejestrowane danego dnia.</p>
+        </div>
+        <div class="card">
+          <h3>Filtr źródła kamery</h3>
+          <p>Otwiera popover, aby pokazać tylko media z jednej wybranej kamery, lub „Wszystkie kamery”.</p>
+        </div>
+        <div class="card">
+          <h3>Wyszukiwanie po nazwie</h3>
+          <p>Pole tekstowe filtrujące bibliotekę mediów po nazwie pliku w trakcie pisania, z uwzględnieniem wielkości liter i ustawień regionalnych.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <p>
+          Wszystkie trzy filtry łączą się: data <strong>i</strong> źródło
+          <strong>i</strong> wyszukiwanie nazwy są stosowane razem, a każdy
+          z nich jest brany pod uwagę tylko wtedy, gdy został faktycznie
+          ustawiony.
+        </p>
+      </div>
+
+      <h3>Tryb jasny / ciemny</h3>
+      <p>
+        Ikona księżyca/słońca w górnym pasku przełącza między motywem
+        jasnym a ciemnym, tak samo jak na innych stronach — wybór
+        stosowany jest natychmiast, bez przeładowania strony. Na tej
+        stronie tryb ciemny dodatkowo zamienia miniatury zależne od motywu,
+        np. miniatury przebiegu fali dźwiękowej audio mają osobne wersje
+        jasną i ciemną.
+      </p>
+
+      <h3>Język (PL / EN)</h3>
+      <p>
+        Przełącznik języka w górnym pasku zmienia natychmiast wszystkie
+        etykiety i przyciski między polskim a angielskim, bez przeładowania
+        strony. Wybór jest zapamiętywany na kolejne wizyty.
+      </p>
+      <div class="panel panel--note">
+        <p>
+          Domyślnym językiem samego dashboardu jest <strong>polski</strong>
+          przy pierwszym otwarciu w danej przeglądarce (ta strona
+          dokumentacji domyślnie ustawia angielski, niezależnie od tego).
+        </p>
+      </div>
+
+      <h2 id="camera-panel">Panel kamery</h2>
+      <div class="figure">
+        <img src="../media/camera-panel.png" alt="Widżet panelu kamery"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Pokazuje etykietę statusu „Kamera na żywo” oraz metryki aktualnie
+        wybranej kamery, a także listę wszystkich skonfigurowanych źródeł
+        kamer.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Etykieta statusu „Kamera na żywo” (Transmisja aktywna / Transmisja gotowa / Kamera offline)</li>
+            <li>Lista metryk: status, zasilanie, tryb, rozdzielczość, fps, temperatura, IP kamery, IP usługi</li>
+            <li>
+              Lista źródeł kamer w formie przełączników radiowych, każda
+              pozycja pokazuje nazwę, etykietę lokalizacji (np. „Komora
+              drukarki”, „Stół roboczy” lub „Warsztat”) oraz wskaźnik
+              online/offline
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Kliknięcie źródła kamery wybiera je jako aktywny podgląd</li>
+            <li>Każde źródło ma własne menu z opcją <strong>Usuń kamerę</strong></li>
+            <li>Przycisk <strong>Dodaj kamerę (+)</strong> otwiera okno dialogowe „Dodaj kamerę” opisane w Przeglądzie</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>
+            Brak poza dodawaniem, usuwaniem i wybieraniem źródeł kamer —
+            sam widżet nie ma osobnego panelu ustawień.
+          </p>
+        </div>
+      </div>
+
+      <h2 id="app-video-player">Odtwarzacz wideo</h2>
+      <div class="figure">
+        <img src="../media/app-video-player.png" alt="Widżet odtwarzacza wideo"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>
+        Wyświetla strumień MJPEG na żywo z aktualnie wybranej kamery, lub
+        zastępczy komunikat „Transmisja zatrzymana” / „Kamera offline”, gdy
+        jest nieaktywny.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Obraz MJPEG na żywo lub zastępczy widok, gdy podgląd jest nieaktywny</li>
+          </ul>
+          <p>
+            Jeśli klatka się nie załaduje, widżet automatycznie ponawia
+            próbę do 5 razy, w odstępach około 1 sekundy, zanim pokaże
+            komunikat „nie udało się połączyć” — to samo zachowanie
+            ponawiania co w widżecie Podgląd na żywo na panelu zarządzania.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li>Wybór rozdzielczości, w tym opcja „Automatyczna” oraz rozdzielczości jawne</li>
+            <li>Przycisk <strong>Start / Stop</strong></li>
+          </ul>
+          <p>
+            Przycisk Start/Stop jest nieaktywny podczas trwającego
+            uruchamiania, a także wtedy, gdy uruchomienie nie jest obecnie
+            możliwe (np. nie wybrano kamery), o ile podgląd jest
+            nieaktywny.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Wybór rozdzielczości przed uruchomieniem. Brak zapamiętywanych ustawień.</p>
+        </div>
+      </div>
+
+      <h2>Biblioteka mediów</h2>
+      <p>
+        Jeden panel „Biblioteka mediów” grupuje wszystko, co zostało
+        zarejestrowane, w cztery sekcje — audio, nagrania, timelapse'y i
+        zdjęcia — a nie w cztery osobne widżety. Wszystkie cztery znajdują
+        się w tym jednym panelu i współdzielą filtry daty/źródła/nazwy
+        opisane w sekcji
+        <a href="#layout-theme-language">Układ, motyw i język</a>
+        powyżej. Każda sekcja ma nagłówek z ikoną i licznikiem pozycji,
+        przycisk akcji nagrywania właściwy dla danego rodzaju mediów
+        (nieaktywny, jeśli wybrana kamera go nie obsługuje, i pokazujący
+        wskaźnik ładowania podczas rozpoczynania rejestracji), oraz
+        responsywną siatkę klikalnych kart miniatur — nagrania i
+        timelapse'y dodatkowo pokazują odznakę ikony odtwarzania i odznakę
+        czasu trwania. Kliknięcie dowolnej karty otwiera nakładkę podglądu
+        mediów umożliwiającą odtwarzanie, zmianę nazwy lub usunięcie. Każda
+        sekcja pokazuje stan pustej listy „Brak wyników”, gdy aktywne
+        filtry wykluczają wszystko.
+      </p>
+
+      <h2 id="media-library-section-audio">Biblioteka mediów — Audio</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-audio.png" alt="Sekcja biblioteki mediów — Audio"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Ikona: ikona głośnika. Przycisk nagrywania: <strong>Nagraj audio</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Nagłówek sekcji z ikoną i licznikiem pozycji</li>
+            <li>Siatka kart miniatur nagrań audio (miniatura przebiegu fali dźwiękowej, warianty jasny/ciemny zależne od motywu)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Nagraj audio</strong> — rozpoczyna samodzielne nagranie audio z mikrofonu kamery, jeśli jest obsługiwany</li>
+            <li>Kliknięcie karty otwiera nakładkę podglądu mediów do odtwarzania, zmiany nazwy lub usunięcia</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Brak ustawień specyficznych dla sekcji poza wspólnymi filtrami opisanymi powyżej.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-recording">Biblioteka mediów — Nagrania</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-recording.png" alt="Sekcja biblioteki mediów — Nagrania"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Ikona: ikona kamery wideo. Przycisk nagrywania: <strong>Nagraj</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Nagłówek sekcji z ikoną i licznikiem pozycji</li>
+            <li>Siatka kart miniatur nagrań wideo z odznaką ikony odtwarzania i odznaką czasu trwania</li>
+          </ul>
+          <p>
+            Nagrania zarejestrowane bezpośrednio z widżetu podglądu na żywo
+            na panelu zarządzania (nie przez okno dialogowe nagrywania) są
+            również scalane przez backend do tej samej sekcji, dzięki czemu
+            pokazuje ona wszystkie rodzaje nagrań wideo w jednym miejscu.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Nagraj</strong> — rozpoczyna nagranie wideo z wybranej kamery</li>
+            <li>Kliknięcie karty otwiera nakładkę podglądu mediów do odtwarzania, zmiany nazwy lub usunięcia</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Brak ustawień specyficznych dla sekcji poza wspólnymi filtrami opisanymi powyżej.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-timelapse">Biblioteka mediów — Timelapse</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-timelapse.png" alt="Sekcja biblioteki mediów — Timelapse"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Ikona: ikona zegara. Przycisk nagrywania: <strong>Rozpocznij timelapse</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Nagłówek sekcji z ikoną i licznikiem pozycji</li>
+            <li>Siatka kart miniatur timelapse'ów z odznaką ikony odtwarzania i odznaką czasu trwania</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Rozpocznij timelapse</strong> — otwiera okno dialogowe nagrywania, aby skonfigurować rejestrację opartą na interwałach przez dłuższy czas, np. do śledzenia całego wydruku</li>
+            <li>Kliknięcie karty otwiera nakładkę podglądu mediów do odtwarzania, zmiany nazwy lub usunięcia</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Brak ustawień specyficznych dla sekcji poza wspólnymi filtrami opisanymi powyżej.</p>
+        </div>
+      </div>
+
+      <h2 id="media-library-section-image">Biblioteka mediów — Zdjęcia</h2>
+      <div class="figure">
+        <img src="../media/media-library-section-image.png" alt="Sekcja biblioteki mediów — Zdjęcia"
+             onerror="this.closest('.figure').style.display='none'" />
+      </div>
+      <p>Ikona: ikona galerii zdjęć. Przycisk nagrywania: <strong>Zrób zdjęcie</strong>.</p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Wyświetlane informacje</h3>
+          <ul>
+            <li>Nagłówek sekcji z ikoną i licznikiem pozycji</li>
+            <li>Siatka kart miniatur zdjęć</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Interakcje</h3>
+          <ul>
+            <li><strong>Zrób zdjęcie</strong> — wykonuje pojedyncze zdjęcie z wybranej kamery</li>
+            <li>Kliknięcie karty otwiera nakładkę podglądu mediów do wyświetlenia, zmiany nazwy lub usunięcia</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Dostosowanie</h3>
+          <p>Brak ustawień specyficznych dla sekcji poza wspólnymi filtrami opisanymi powyżej.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/nav.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
