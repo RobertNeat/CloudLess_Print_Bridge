@@ -31,22 +31,26 @@ export class EmbeddedMqttBrokerService implements MqttBrokerEndpointProvider {
     try {
       await new Promise<void>((resolve, reject) => {
         this.server?.once('error', reject);
-        this.server?.listen(this.config.mqtt.port, '0.0.0.0', () => {
-          this.server?.off('error', reject);
-          const address = this.server?.address();
-          this.listeningPort =
-            typeof address === 'object' && address
-              ? address.port
-              : this.config.mqtt.port;
-          resolve();
-        });
+        this.server?.listen(
+          this.config.mqtt.port,
+          this.config.mqtt.host,
+          () => {
+            this.server?.off('error', reject);
+            const address = this.server?.address();
+            this.listeningPort =
+              typeof address === 'object' && address
+                ? address.port
+                : this.config.mqtt.port;
+            resolve();
+          },
+        );
       });
     } catch (error) {
       await this.close();
       throw error;
     }
     this.logger.log(
-      `Embedded MQTT broker listening on 0.0.0.0:${this.listeningPort}`,
+      `Embedded MQTT broker listening on ${this.config.mqtt.host}:${this.listeningPort}`,
     );
     return { url: `mqtt://127.0.0.1:${this.listeningPort}` };
   }
@@ -71,7 +75,7 @@ export class EmbeddedMqttBrokerService implements MqttBrokerEndpointProvider {
     return {
       managedByApplication: true,
       listening: this.server?.listening ?? false,
-      host: '0.0.0.0',
+      host: this.config.mqtt.host,
       port: this.listeningPort,
     };
   }

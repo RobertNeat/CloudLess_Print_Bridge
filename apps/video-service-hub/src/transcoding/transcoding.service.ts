@@ -32,8 +32,8 @@ if (ffmpegPath) {
  * "transcode" step or endpoint; the client only ever sees the finished file.
  *
  * - captures: already a single JPEG, no encode needed -- just finalize.
- * - timelapses: JPEG stills joined and encoded at TIMELAPSE_FPS.
- * - recordings / live: MJPEG parts joined and encoded at TRANSCODING_FPS.
+ * - timelapses: JPEG stills joined and encoded at VIDEO_SERVICE_HUB_TIMELAPSE_FPS.
+ * - recordings / live: MJPEG parts joined and encoded at VIDEO_SERVICE_HUB_TRANSCODING_FPS.
  * - audio: WAV parts concatenated (parts share one PCM stream, so a plain
  *   byte-join reproduces a valid WAV once the header is fixed up)
  */

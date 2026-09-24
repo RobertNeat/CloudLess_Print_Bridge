@@ -60,6 +60,14 @@ void acceptOperation(
             sendJson(request, 400, "{\"error\":\"interval_too_short\"}");
             return;
         }
+        // Reject request exeeding per-directory entry budget (MaximumPeriodicCaptureFrames)
+        if (operation.intervalMilliseconds > 0
+            && operation.durationMilliseconds / operation.intervalMilliseconds
+                > MaximumPeriodicCaptureFrames)
+        {
+            sendJson(request, 400, "{\"error\":\"too_many_frames\"}");
+            return;
+        }
     }
     else if (kind == OperationKind::TimedRecording)
     {

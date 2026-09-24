@@ -17,7 +17,23 @@
 namespace video_service_internal
 {
 constexpr uint32_t CameraAcquireTimeoutMilliseconds = 5000;
-constexpr uint32_t MaximumOperationDurationMilliseconds = 3600000;
+// Hardware-side ceiling on every camera-side operation's duration (capture,
+// periodic-capture/timelapse, timed/manual recording -- live has its own,
+// separate MaximumLiveDurationMilliseconds cap below). Independently caps
+// every operation even if the video-service-hub backend's own per-type
+// limits (VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC /
+// VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC) are configured higher. Must not
+// exceed uint32_t's range (~4.29e9 ms, ~49.7 days); periodic-capture is
+// additionally bounded by MaximumPeriodicCaptureFrames below regardless of
+// this value.
+constexpr uint32_t MaximumOperationDurationMilliseconds = 36000000;
+// Periodic-capture-specific ceiling on total frame count (durationMs /
+// intervalMs), independent of MaximumOperationDurationMilliseconds --
+// periodic-capture writes one file per frame into a single flat SD
+// directory, and this device's FAT-formatted SD card has a practical
+// per-directory entry limit of roughly 65,500 short (8.3-style) names. Must
+// stay under that limit.
+constexpr uint32_t MaximumPeriodicCaptureFrames = 60000;
 constexpr uint32_t MaximumLiveDurationMilliseconds = 600000;
 constexpr uint32_t MinimumPeriodicIntervalMilliseconds = 250;
 constexpr uint32_t FrameIntervalMilliseconds = 100;

@@ -75,6 +75,147 @@ describe('MediaRecordDialog', () => {
     expect(submitButton.disabled).toBe(true);
   });
 
+  it('composes default H/M/S values into recording and timelapse totals on submit', async () => {
+    const fixture = TestBed.createComponent(MediaRecordDialog);
+    fixture.componentRef.setInput('sources', sources);
+    fixture.componentRef.setInput('defaultSourceId', 'cam-online');
+    fixture.componentRef.setInput('action', 'recording');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const submittedSpy = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submittedSpy);
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-record-dialog-submit button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(submittedSpy).toHaveBeenCalledWith({
+      action: 'recording',
+      sourceId: 'cam-online',
+      resolution: 'VGA',
+      durationSeconds: 30,
+    });
+  });
+
+  it('composes hours/minutes/seconds into total seconds for the recording duration', async () => {
+    const fixture = TestBed.createComponent(MediaRecordDialog);
+    fixture.componentRef.setInput('sources', sources);
+    fixture.componentRef.setInput('defaultSourceId', 'cam-online');
+    fixture.componentRef.setInput('action', 'recording');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      recordingHours: { set: (value: number | null) => void };
+      recordingMinutes: { set: (value: number | null) => void };
+      recordingSeconds: { set: (value: number | null) => void };
+    };
+    instance.recordingHours.set(1);
+    instance.recordingMinutes.set(2);
+    instance.recordingSeconds.set(3);
+
+    const submittedSpy = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submittedSpy);
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-record-dialog-submit button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(submittedSpy).toHaveBeenCalledWith({
+      action: 'recording',
+      sourceId: 'cam-online',
+      resolution: 'VGA',
+      durationSeconds: 3723,
+    });
+  });
+
+  it('treats blank (null) H/M/S sub-fields as 0 when composing the total', async () => {
+    const fixture = TestBed.createComponent(MediaRecordDialog);
+    fixture.componentRef.setInput('sources', sources);
+    fixture.componentRef.setInput('defaultSourceId', 'cam-online');
+    fixture.componentRef.setInput('action', 'recording');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      recordingHours: { set: (value: number | null) => void };
+      recordingMinutes: { set: (value: number | null) => void };
+      recordingSeconds: { set: (value: number | null) => void };
+    };
+    instance.recordingHours.set(null);
+    instance.recordingMinutes.set(null);
+    instance.recordingSeconds.set(45);
+
+    const submittedSpy = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submittedSpy);
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-record-dialog-submit button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(submittedSpy).toHaveBeenCalledWith({
+      action: 'recording',
+      sourceId: 'cam-online',
+      resolution: 'VGA',
+      durationSeconds: 45,
+    });
+  });
+
+  it('composes timelapse duration and interval independently', async () => {
+    const fixture = TestBed.createComponent(MediaRecordDialog);
+    fixture.componentRef.setInput('sources', sources);
+    fixture.componentRef.setInput('defaultSourceId', 'cam-online');
+    fixture.componentRef.setInput('action', 'timelapse');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const submittedSpy = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submittedSpy);
+    const element = fixture.nativeElement as HTMLElement;
+    (element.querySelector('#media-record-dialog-submit button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(submittedSpy).toHaveBeenCalledWith({
+      action: 'timelapse',
+      sourceId: 'cam-online',
+      resolution: 'VGA',
+      durationSeconds: 60,
+      intervalSeconds: 5,
+    });
+  });
+
+  it('disables submit and shows a hint when the composed duration is 0, without an offline-camera hint', async () => {
+    const fixture = TestBed.createComponent(MediaRecordDialog);
+    fixture.componentRef.setInput('sources', sources);
+    fixture.componentRef.setInput('defaultSourceId', 'cam-online');
+    fixture.componentRef.setInput('action', 'recording');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      recordingHours: { set: (value: number | null) => void };
+      recordingMinutes: { set: (value: number | null) => void };
+      recordingSeconds: { set: (value: number | null) => void };
+    };
+    instance.recordingHours.set(null);
+    instance.recordingMinutes.set(null);
+    instance.recordingSeconds.set(null);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('#media-record-dialog-zero-duration-hint')).not.toBeNull();
+    expect(element.querySelector('#media-record-dialog-hint')).toBeNull();
+    const submitButton = element.querySelector(
+      '#media-record-dialog-submit button',
+    ) as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(true);
+
+    const submittedSpy = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submittedSpy);
+    submitButton.click();
+    fixture.detectChanges();
+    expect(submittedSpy).not.toHaveBeenCalled();
+  });
+
   it('emits a capture request with the chosen source and resolution', async () => {
     const fixture = TestBed.createComponent(MediaRecordDialog);
     fixture.componentRef.setInput('sources', sources);

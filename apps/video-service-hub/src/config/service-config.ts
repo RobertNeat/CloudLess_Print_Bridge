@@ -23,8 +23,17 @@ export type ServiceConfig = {
   };
   timelapse: {
     fps: number;
+    maxDurationMs: number;
+    intervalMaxDurationMs: number;
+  };
+  recording: {
+    maxDurationMs: number;
+  };
+  live: {
+    maxDurationMs: number;
   };
   mqtt: {
+    host: string;
     port: number;
     externalUrl?: string;
     username?: string;
@@ -115,8 +124,8 @@ export function loadServiceConfig(
     ),
     transcoding: {
       fps: readIntegerValue(
-        envValue(environment, 'TRANSCODING_FPS'),
-        'TRANSCODING_FPS',
+        envValue(environment, 'VIDEO_SERVICE_HUB_TRANSCODING_FPS'),
+        'VIDEO_SERVICE_HUB_TRANSCODING_FPS',
         12,
         1,
         240,
@@ -124,14 +133,58 @@ export function loadServiceConfig(
     },
     timelapse: {
       fps: readIntegerValue(
-        envValue(environment, 'TIMELAPSE_FPS'),
-        'TIMELAPSE_FPS',
+        envValue(environment, 'VIDEO_SERVICE_HUB_TIMELAPSE_FPS'),
+        'VIDEO_SERVICE_HUB_TIMELAPSE_FPS',
         12,
         1,
         240,
       ),
+      // Env var is in seconds, converted to ms; 4_294_967 s keeps the ms value within the firmware's uint32_t duration field.
+      maxDurationMs:
+        readIntegerValue(
+          envValue(environment, 'VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC'),
+          'VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC',
+          3_600,
+          1,
+          4_294_967,
+        ) * 1000,
+      // Ceiling for periodic-capture's intervalMs.
+      intervalMaxDurationMs:
+        readIntegerValue(
+          envValue(
+            environment,
+            'VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC',
+          ),
+          'VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC',
+          3_600,
+          1,
+          4_294_967,
+        ) * 1000,
+    },
+    recording: {
+      // Ceiling for timed-recording's durationMs and start-recording's maxDurationMs.
+      maxDurationMs:
+        readIntegerValue(
+          envValue(environment, 'VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC'),
+          'VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC',
+          3_600,
+          1,
+          4_294_967,
+        ) * 1000,
+    },
+    live: {
+      // Ceiling for start-live/start-dynamic-live's maxDurationMs; how long a live session runs before the hub self-reaps it.
+      maxDurationMs:
+        readIntegerValue(
+          envValue(environment, 'VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC'),
+          'VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC',
+          86_400,
+          1,
+          4_294_967,
+        ) * 1000,
     },
     mqtt: {
+      host: envValue(environment, 'VIDEO_SERVICE_HUB_MQTT_HOST') || '0.0.0.0',
       port: readIntegerValue(
         envValue(environment, 'VIDEO_SERVICE_HUB_MQTT_PORT'),
         'VIDEO_SERVICE_HUB_MQTT_PORT',

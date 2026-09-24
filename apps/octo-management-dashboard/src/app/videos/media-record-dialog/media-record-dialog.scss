@@ -9,8 +9,26 @@
   color: var(--semantic-text-muted);
 }
 .media-record-dialog__form p-select,
-.media-record-dialog__form p-inputnumber {
+.media-record-dialog__form > label > p-inputnumber {
   width: 100%;
+}
+.media-record-dialog__hms-group {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--semantic-text-muted);
+}
+.media-record-dialog__hms {
+  display: flex;
+  gap: 0.5rem;
+}
+.media-record-dialog__hms p-inputnumber {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.media-record-dialog__hms p-inputnumber ::ng-deep .p-inputnumber-input {
+  width: 100%;
+  min-width: 0;
 }
 .media-record-dialog__hint {
   margin: 0;
