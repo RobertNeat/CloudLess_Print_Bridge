@@ -42,6 +42,19 @@ export class CameraRegistryApiService {
     );
   }
 
+  async update(cameraId: string, input: Partial<CameraRegistryInput>): Promise<void> {
+    await firstValueFrom(
+      this.http.patch(
+        `${this.config.baseUrl}/api/v1/camera-registry/${encodeURIComponent(cameraId)}`,
+        {
+          baseUrl: input.baseUrl,
+          displayName: input.displayName,
+          locationCode: input.locationCode,
+        },
+      ),
+    );
+  }
+
   async list(): Promise<readonly CameraRegistryEntry[]> {
     const response = await firstValueFrom(
       this.http.get<{ items: CameraRegistryEntry[] }>(

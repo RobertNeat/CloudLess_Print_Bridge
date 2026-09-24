@@ -49,41 +49,132 @@
       }
 
       @if (currentAction === 'recording') {
-        <label
-          >{{ i18n.t('videos.record.recordingDuration') }}
-          <p-inputNumber
-            [ngModel]="durationSeconds()"
-            (ngModelChange)="durationSeconds.set($event)"
-            [min]="1"
-            id="media-record-dialog-recording-duration"
-          />
-        </label>
+        <div
+          class="media-record-dialog__hms-group"
+          role="group"
+          id="media-record-dialog-recording-duration"
+          aria-labelledby="media-record-dialog-recording-duration-label"
+        >
+          <span id="media-record-dialog-recording-duration-label">{{
+            i18n.t('videos.record.recordingDuration')
+          }}</span>
+          <div class="media-record-dialog__hms">
+            <p-inputNumber
+              [ngModel]="recordingHours()"
+              (ngModelChange)="recordingHours.set($event)"
+              [min]="0"
+              [placeholder]="'H'"
+              [ariaLabel]="i18n.t('videos.record.hoursAriaLabel')"
+              inputId="media-record-dialog-recording-duration-hours"
+            />
+            <p-inputNumber
+              [ngModel]="recordingMinutes()"
+              (ngModelChange)="recordingMinutes.set($event)"
+              [min]="0"
+              [placeholder]="'M'"
+              [ariaLabel]="i18n.t('videos.record.minutesAriaLabel')"
+              inputId="media-record-dialog-recording-duration-minutes"
+            />
+            <p-inputNumber
+              [ngModel]="recordingSeconds()"
+              (ngModelChange)="recordingSeconds.set($event)"
+              [min]="0"
+              [placeholder]="'S'"
+              [ariaLabel]="i18n.t('videos.record.secondsAriaLabel')"
+              inputId="media-record-dialog-recording-duration-seconds"
+            />
+          </div>
+        </div>
       }
 
       @if (currentAction === 'timelapse') {
-        <label
-          >{{ i18n.t('videos.record.timelapseDuration') }}
-          <p-inputNumber
-            [ngModel]="durationSeconds()"
-            (ngModelChange)="durationSeconds.set($event)"
-            [min]="1"
-            id="media-record-dialog-timelapse-duration"
-          />
-        </label>
-        <label
-          >{{ i18n.t('videos.record.timelapseInterval') }}
-          <p-inputNumber
-            [ngModel]="intervalSeconds()"
-            (ngModelChange)="intervalSeconds.set($event)"
-            [min]="1"
-            id="media-record-dialog-timelapse-interval"
-          />
-        </label>
+        <div
+          class="media-record-dialog__hms-group"
+          role="group"
+          id="media-record-dialog-timelapse-duration"
+          aria-labelledby="media-record-dialog-timelapse-duration-label"
+        >
+          <span id="media-record-dialog-timelapse-duration-label">{{
+            i18n.t('videos.record.timelapseDuration')
+          }}</span>
+          <div class="media-record-dialog__hms">
+            <p-inputNumber
+              [ngModel]="timelapseDurationHours()"
+              (ngModelChange)="timelapseDurationHours.set($event)"
+              [min]="0"
+              [placeholder]="'H'"
+              [ariaLabel]="i18n.t('videos.record.hoursAriaLabel')"
+              inputId="media-record-dialog-timelapse-duration-hours"
+            />
+            <p-inputNumber
+              [ngModel]="timelapseDurationMinutes()"
+              (ngModelChange)="timelapseDurationMinutes.set($event)"
+              [min]="0"
+              [placeholder]="'M'"
+              [ariaLabel]="i18n.t('videos.record.minutesAriaLabel')"
+              inputId="media-record-dialog-timelapse-duration-minutes"
+            />
+            <p-inputNumber
+              [ngModel]="timelapseDurationSeconds()"
+              (ngModelChange)="timelapseDurationSeconds.set($event)"
+              [min]="0"
+              [placeholder]="'S'"
+              [ariaLabel]="i18n.t('videos.record.secondsAriaLabel')"
+              inputId="media-record-dialog-timelapse-duration-seconds"
+            />
+          </div>
+        </div>
+        <div
+          class="media-record-dialog__hms-group"
+          role="group"
+          id="media-record-dialog-timelapse-interval"
+          aria-labelledby="media-record-dialog-timelapse-interval-label"
+        >
+          <span id="media-record-dialog-timelapse-interval-label">{{
+            i18n.t('videos.record.timelapseInterval')
+          }}</span>
+          <div class="media-record-dialog__hms">
+            <p-inputNumber
+              [ngModel]="timelapseIntervalHours()"
+              (ngModelChange)="timelapseIntervalHours.set($event)"
+              [min]="0"
+              [placeholder]="'H'"
+              [ariaLabel]="i18n.t('videos.record.hoursAriaLabel')"
+              inputId="media-record-dialog-timelapse-interval-hours"
+            />
+            <p-inputNumber
+              [ngModel]="timelapseIntervalMinutes()"
+              (ngModelChange)="timelapseIntervalMinutes.set($event)"
+              [min]="0"
+              [placeholder]="'M'"
+              [ariaLabel]="i18n.t('videos.record.minutesAriaLabel')"
+              inputId="media-record-dialog-timelapse-interval-minutes"
+            />
+            <p-inputNumber
+              [ngModel]="timelapseIntervalSeconds()"
+              (ngModelChange)="timelapseIntervalSeconds.set($event)"
+              [min]="0"
+              [placeholder]="'S'"
+              [ariaLabel]="i18n.t('videos.record.secondsAriaLabel')"
+              inputId="media-record-dialog-timelapse-interval-seconds"
+            />
+          </div>
+        </div>
       }
 
-      @if (!canSubmit()) {
+      @if (!sourceCommandable()) {
         <p class="media-record-dialog__hint" role="status" id="media-record-dialog-hint">
           {{ i18n.t('videos.record.requiresOnlineCamera') }}
+        </p>
+      }
+
+      @if (sourceCommandable() && !durationValid()) {
+        <p
+          class="media-record-dialog__hint"
+          role="status"
+          id="media-record-dialog-zero-duration-hint"
+        >
+          {{ i18n.t('videos.record.zeroDurationHint') }}
         </p>
       }
 

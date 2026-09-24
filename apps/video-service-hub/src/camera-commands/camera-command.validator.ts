@@ -8,19 +8,6 @@ import {
 } from '../common/validation';
 import { cameraCommandPaths, type CameraCommand } from './camera-command.types';
 
-const maxOperationDurationMs = 3_600_000;
-/**
- * 24h. Was 600_000 (10 minutes) until a caller needed to watch a live feed
- * for an entire print — the hub itself has no concept of "how long is
- * reasonable" beyond bounding session lifetime server-side, so this ceiling
- * exists purely to guarantee every live session eventually self-reaps
- * (activeLive entry cleared, viewers ended) even if the client that started
- * it never calls stop-live (tab closed, browser crashed, network dropped).
- * Every caller must always send an explicit maxDurationMs within this
- * ceiling — see CameraCommandApiService.startLive on the frontend.
- */
-const maxLiveDurationMs = 86_400_000;
-
 export function parseCameraCommand(value: string): CameraCommand {
   if (!(value in cameraCommandPaths)) {
     throw new BadRequestException('unsupported camera command');
@@ -36,9 +23,24 @@ export function parseCameraBaseUrl(value: unknown): string {
   }
 }
 
+export type ValidateCommandPayloadOptions = {
+  timelapseMaxDurationMs: number;
+  /** Ceiling for timed-recording's durationMs and start-recording's maxDurationMs. */
+  recordingMaxDurationMs: number;
+  liveMaxDurationMs: number;
+  /** Ceiling for periodic-capture's intervalMs. */
+  intervalMaxDurationMs: number;
+};
+
 export function validateCommandPayload(
   command: CameraCommand,
   input: Record<string, unknown>,
+  {
+    timelapseMaxDurationMs,
+    recordingMaxDurationMs,
+    liveMaxDurationMs,
+    intervalMaxDurationMs,
+  }: ValidateCommandPayloadOptions,
 ): Record<string, unknown> {
   const payload = { ...input };
   delete payload.cameraBaseUrl;
@@ -53,13 +55,14 @@ export function validateCommandPayload(
         payload.intervalMs,
         'intervalMs',
         250,
-        maxOperationDurationMs,
+        // Never exceeds the timelapse duration cap even when that cap is lowered below the interval cap.
+        Math.min(intervalMaxDurationMs, timelapseMaxDurationMs),
       );
       assertInteger(
         payload.durationMs,
         'durationMs',
         1,
-        maxOperationDurationMs,
+        timelapseMaxDurationMs,
       );
       break;
     case 'timed-recording':
@@ -68,7 +71,7 @@ export function validateCommandPayload(
         payload.durationMs,
         'durationMs',
         1,
-        maxOperationDurationMs,
+        recordingMaxDurationMs,
       );
       break;
     case 'start-recording':
@@ -78,13 +81,13 @@ export function validateCommandPayload(
           payload.maxDurationMs,
           'maxDurationMs',
           1,
-          maxOperationDurationMs,
+          recordingMaxDurationMs,
         );
       }
       break;
     case 'start-live':
       validateRequestAndResolution(payload);
-      validateLiveDuration(payload);
+      validateLiveDuration(payload, liveMaxDurationMs);
       assertOptionalBoolean(payload.persist, 'persist');
       break;
     case 'start-dynamic-live':
@@ -92,7 +95,7 @@ export function validateCommandPayload(
       if (payload.resolution !== undefined) {
         assertResolution(payload.resolution);
       }
-      validateLiveDuration(payload);
+      validateLiveDuration(payload, liveMaxDurationMs);
       assertOptionalBoolean(payload.persist, 'persist');
       break;
     case 'stop-recording':
@@ -115,8 +118,11 @@ function validateRequestAndResolution(payload: Record<string, unknown>): void {
   assertResolution(payload.resolution);
 }
 
-function validateLiveDuration(payload: Record<string, unknown>): void {
+function validateLiveDuration(
+  payload: Record<string, unknown>,
+  liveMaxDurationMs: number,
+): void {
   if (payload.maxDurationMs !== undefined) {
-    assertInteger(payload.maxDurationMs, 'maxDurationMs', 1, maxLiveDurationMs);
+    assertInteger(payload.maxDurationMs, 'maxDurationMs', 1, liveMaxDurationMs);
   }
 }

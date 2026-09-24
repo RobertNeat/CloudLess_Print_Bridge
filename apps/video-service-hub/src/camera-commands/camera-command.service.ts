@@ -41,7 +41,12 @@ export class CameraCommandService {
     }
     const command = parseCameraCommand(commandName);
     const cameraBaseUrl = parseCameraBaseUrl(input.cameraBaseUrl);
-    const payload = validateCommandPayload(command, input);
+    const payload = validateCommandPayload(command, input, {
+      timelapseMaxDurationMs: this.config.timelapse.maxDurationMs,
+      recordingMaxDurationMs: this.config.recording.maxDurationMs,
+      liveMaxDurationMs: this.config.live.maxDurationMs,
+      intervalMaxDurationMs: this.config.timelapse.intervalMaxDurationMs,
+    });
     // `persist` is a hub-only directive for the ingest leg (see
     // MediaStorageService.setLivePersistIntent) — the camera firmware has no
     // concept of it, so it must never be forwarded in the outbound POST body.

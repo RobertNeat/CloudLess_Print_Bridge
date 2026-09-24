@@ -30,6 +30,7 @@
             [streamActive]="data.player.active"
             (sourceSelected)="selectSource($event)"
             (addCamera)="openAddCamera()"
+            (editCamera)="openEditCamera($event)"
             (removeCamera)="removeCamera($event)"
           />
           <app-video-player
@@ -97,7 +98,7 @@
 />
 
 <p-dialog
-  [header]="i18n.t('videos.addCamera')"
+  [header]="i18n.t(editingCameraId() ? 'videos.editCamera' : 'videos.addCamera')"
   [modal]="true"
   [closeAriaLabel]="i18n.t('videos.closePreview')"
   [visible]="addCameraOpen()"
@@ -105,9 +106,12 @@
   (visibleChange)="!$event && closeAddCamera()"
   id="add-camera-dialog"
 >
-  <form class="add-camera-form" (ngSubmit)="submitAddCamera()">
+  <form class="add-camera-form" (ngSubmit)="submitCameraForm()">
     <label>
       <span>{{ i18n.t('videos.addCamera.id') }}</span>
+      <!-- Camera ID is read-only in edit mode: it's part of the storage path
+           (storage/captures/<id>/…) on the hub, so changing it would orphan
+           already-captured media for this camera. -->
       <input
         pInputText
         type="text"
@@ -116,6 +120,8 @@
         (ngModelChange)="newCameraId.set($event)"
         name="cameraId"
         id="add-camera-id-input"
+        [readonly]="editingCameraId() !== null"
+        [disabled]="editingCameraId() !== null"
         required
       />
     </label>
@@ -158,7 +164,7 @@
     </label>
     @if (addCameraError()) {
       <p class="add-camera-form__error" role="alert" id="add-camera-error">
-        {{ i18n.t('videos.addCamera.error') }}
+        {{ i18n.t(editingCameraId() ? 'videos.editCamera.error' : 'videos.addCamera.error') }}
       </p>
     }
     <div class="add-camera-form__actions">
@@ -170,7 +176,7 @@
       />
       <p-button
         type="submit"
-        [label]="i18n.t('videos.addCamera.submit')"
+        [label]="i18n.t(editingCameraId() ? 'videos.editCamera.submit' : 'videos.addCamera.submit')"
         [disabled]="!canSubmitAddCamera() || addCameraSubmitting()"
         [loading]="addCameraSubmitting()"
         id="add-camera-submit-button"

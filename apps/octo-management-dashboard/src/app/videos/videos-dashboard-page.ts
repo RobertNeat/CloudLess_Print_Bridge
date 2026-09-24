@@ -64,6 +64,8 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly addCameraOpen = signal(false);
   protected readonly addCameraError = signal(false);
   protected readonly addCameraSubmitting = signal(false);
+  /** Non-null while the add/edit dialog is editing an existing camera (holds its cameraId); null means add mode. */
+  protected readonly editingCameraId = signal<string | null>(null);
   protected readonly newCameraId = signal('');
   protected readonly newCameraBaseUrl = signal('');
   protected readonly newCameraDisplayName = signal('');
@@ -357,6 +359,7 @@ export class VideosDashboardPage implements OnDestroy {
   }
 
   protected openAddCamera(): void {
+    this.editingCameraId.set(null);
     this.newCameraId.set('');
     this.newCameraBaseUrl.set('');
     this.newCameraDisplayName.set('');
@@ -365,27 +368,68 @@ export class VideosDashboardPage implements OnDestroy {
     this.addCameraOpen.set(true);
   }
 
+  protected async openEditCamera(sourceId: string): Promise<void> {
+    // Prefill from the raw registry entry (not the mapped CameraSource) —
+    // CameraSource.name falls back to cameraId when displayName is unset, so
+    // prefilling from it would write the cameraId back as the display name.
+    let baseUrl = '';
+    let displayName = '';
+    let locationCode = '';
+    try {
+      const entries = await this.cameraRegistry.list();
+      const entry = entries.find((candidate) => candidate.cameraId === sourceId);
+      if (entry) {
+        baseUrl = entry.baseUrl;
+        displayName = entry.displayName ?? '';
+        locationCode = entry.locationCode ?? '';
+      }
+    } catch {
+      const source = this.dashboard()?.sources.find((candidate) => candidate.id === sourceId);
+      baseUrl = source?.commandBaseUrl ?? '';
+      locationCode = source?.locationCode ?? '';
+    }
+    if (this.destroyRef.destroyed) return;
+    this.editingCameraId.set(sourceId);
+    this.newCameraId.set(sourceId);
+    this.newCameraBaseUrl.set(baseUrl);
+    this.newCameraDisplayName.set(displayName);
+    this.newCameraLocation.set(locationCode);
+    this.addCameraError.set(false);
+    this.addCameraOpen.set(true);
+  }
+
   protected closeAddCamera(): void {
     this.addCameraOpen.set(false);
+    this.editingCameraId.set(null);
   }
 
   protected canSubmitAddCamera(): boolean {
     return this.newCameraId().trim().length > 0 && this.newCameraBaseUrl().trim().length > 0;
   }
 
-  protected async submitAddCamera(): Promise<void> {
+  protected async submitCameraForm(): Promise<void> {
     if (!this.canSubmitAddCamera() || this.addCameraSubmitting()) return;
     this.addCameraSubmitting.set(true);
     this.addCameraError.set(false);
+    const editingId = this.editingCameraId();
     try {
-      await this.cameraRegistry.register({
-        cameraId: this.newCameraId().trim(),
-        baseUrl: this.newCameraBaseUrl().trim(),
-        displayName: this.newCameraDisplayName().trim() || undefined,
-        locationCode: this.newCameraLocation().trim() || undefined,
-      });
+      if (editingId) {
+        await this.cameraRegistry.update(editingId, {
+          baseUrl: this.newCameraBaseUrl().trim(),
+          displayName: this.newCameraDisplayName().trim(),
+          locationCode: this.newCameraLocation().trim(),
+        });
+      } else {
+        await this.cameraRegistry.register({
+          cameraId: this.newCameraId().trim(),
+          baseUrl: this.newCameraBaseUrl().trim(),
+          displayName: this.newCameraDisplayName().trim() || undefined,
+          locationCode: this.newCameraLocation().trim() || undefined,
+        });
+      }
       if (this.destroyRef.destroyed) return;
       this.addCameraOpen.set(false);
+      this.editingCameraId.set(null);
       await this.loadData();
     } catch {
       if (!this.destroyRef.destroyed) this.addCameraError.set(true);

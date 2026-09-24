@@ -42,9 +42,171 @@ describe('timelapse configuration', () => {
   it('reads a configured fps', () => {
     const config = loadServiceConfig({
       ...baseEnv,
-      TIMELAPSE_FPS: '24',
+      VIDEO_SERVICE_HUB_TIMELAPSE_FPS: '24',
     });
     expect(config.timelapse.fps).toBe(24);
+  });
+
+  it('defaults the max duration to 1 hour', () => {
+    expect(loadServiceConfig(baseEnv).timelapse.maxDurationMs).toBe(3_600_000);
+  });
+
+  it('reads a configured max duration in seconds and converts to ms', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC: '7200',
+    });
+    expect(config.timelapse.maxDurationMs).toBe(7_200_000);
+  });
+
+  it('rejects a non-integer max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC: 'abc',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+
+  it('rejects a zero max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC: '0',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_TIMELAPSE_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+
+  it('defaults the interval max duration to 1 hour', () => {
+    expect(loadServiceConfig(baseEnv).timelapse.intervalMaxDurationMs).toBe(
+      3_600_000,
+    );
+  });
+
+  it('reads a configured interval max duration in seconds and converts to ms', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC: '7200',
+    });
+    expect(config.timelapse.intervalMaxDurationMs).toBe(7_200_000);
+  });
+
+  it('rejects a non-integer interval max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC: 'abc',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+
+  it('rejects a zero interval max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC: '0',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_TIMELAPSE_INTERVAL_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+});
+
+describe('recording configuration', () => {
+  const baseEnv = { VIDEO_SERVICE_HUB_MQTT_PORT: '0' } as NodeJS.ProcessEnv;
+
+  it('defaults the max duration to 1 hour', () => {
+    expect(loadServiceConfig(baseEnv).recording.maxDurationMs).toBe(3_600_000);
+  });
+
+  it('reads a configured max duration in seconds and converts to ms', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC: '7200',
+    });
+    expect(config.recording.maxDurationMs).toBe(7_200_000);
+  });
+
+  it('rejects a non-integer max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC: 'abc',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+
+  it('rejects a zero max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC: '0',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_VIDEO_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+});
+
+describe('live configuration', () => {
+  const baseEnv = { VIDEO_SERVICE_HUB_MQTT_PORT: '0' } as NodeJS.ProcessEnv;
+
+  it('defaults the max duration to 24 hours', () => {
+    expect(loadServiceConfig(baseEnv).live.maxDurationMs).toBe(86_400_000);
+  });
+
+  it('reads a configured max duration in seconds and converts to ms', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC: '7200',
+    });
+    expect(config.live.maxDurationMs).toBe(7_200_000);
+  });
+
+  it('rejects a non-integer max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC: 'abc',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+
+  it('rejects a zero max duration', () => {
+    expect(() =>
+      loadServiceConfig({
+        ...baseEnv,
+        VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC: '0',
+      }),
+    ).toThrow(
+      'VIDEO_SERVICE_HUB_LIVESTREAM_MAX_LENGTH_SEC must be an integer between 1 and 4294967',
+    );
+  });
+});
+
+describe('mqtt host configuration', () => {
+  const baseEnv = { VIDEO_SERVICE_HUB_MQTT_PORT: '0' } as NodeJS.ProcessEnv;
+
+  it('defaults the bind host to 0.0.0.0', () => {
+    expect(loadServiceConfig(baseEnv).mqtt.host).toBe('0.0.0.0');
+  });
+
+  it('reads a configured bind host', () => {
+    const config = loadServiceConfig({
+      ...baseEnv,
+      VIDEO_SERVICE_HUB_MQTT_HOST: '127.0.0.1',
+    });
+    expect(config.mqtt.host).toBe('127.0.0.1');
   });
 });
 

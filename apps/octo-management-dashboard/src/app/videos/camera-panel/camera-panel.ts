@@ -57,10 +57,19 @@ export class CameraPanel {
   readonly streamActive = input.required<boolean>();
   readonly sourceSelected = output<string>();
   readonly addCamera = output<void>();
+  readonly editCamera = output<string>();
   readonly removeCamera = output<string>();
   protected readonly menuSourceId = signal<string | null>(null);
 
   protected readonly sourceMenuItems = computed<MenuItem[]>(() => [
+    {
+      label: this.i18n.t('videos.editCamera'),
+      icon: 'pi pi-pencil',
+      command: () => {
+        const sourceId = this.menuSourceId();
+        if (sourceId) this.editCamera.emit(sourceId);
+      },
+    },
     {
       label: this.i18n.t('videos.removeCamera'),
       icon: 'pi pi-trash',
