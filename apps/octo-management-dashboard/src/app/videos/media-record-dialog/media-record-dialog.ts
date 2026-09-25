@@ -27,10 +27,6 @@ const DIALOG_TITLE_KEY: Record<MediaRecordAction, TranslationKey> = {
   capture: 'videos.record.dialogTitle.capture',
 };
 
-const DEFAULT_TIMELAPSE_INTERVAL_SECONDS = 5;
-const DEFAULT_TIMELAPSE_DURATION_SECONDS = 60;
-const DEFAULT_RECORDING_DURATION_SECONDS = 30;
-const DEFAULT_AUDIO_DURATION_SECONDS = 5;
 const MIN_AUDIO_DURATION_SECONDS = 1;
 const MAX_AUDIO_DURATION_SECONDS = 20;
 const AVAILABLE_RESOLUTIONS = ['QVGA', 'VGA', 'SVGA', 'XGA', 'UXGA'] as const;
@@ -64,7 +60,7 @@ export class MediaRecordDialog {
 
   protected readonly sourceId = signal('');
   protected readonly resolution = signal<string>(AVAILABLE_RESOLUTIONS[1]);
-  protected readonly audioDurationSeconds = signal(DEFAULT_AUDIO_DURATION_SECONDS);
+  protected readonly audioDurationSeconds = signal<number | null>(null);
 
   // Recording duration H/M/S triplet.
   protected readonly recordingHours = signal<number | null>(null);
@@ -76,7 +72,7 @@ export class MediaRecordDialog {
 
   // Timelapse duration H/M/S triplet.
   protected readonly timelapseDurationHours = signal<number | null>(null);
-  protected readonly timelapseDurationMinutes = signal<number | null>(1);
+  protected readonly timelapseDurationMinutes = signal<number | null>(null);
   protected readonly timelapseDurationSeconds = signal<number | null>(null);
   protected readonly timelapseDurationTotalSeconds = computed(() =>
     composeHms(
@@ -89,9 +85,7 @@ export class MediaRecordDialog {
   // Timelapse interval H/M/S triplet.
   protected readonly timelapseIntervalHours = signal<number | null>(null);
   protected readonly timelapseIntervalMinutes = signal<number | null>(null);
-  protected readonly timelapseIntervalSeconds = signal<number | null>(
-    DEFAULT_TIMELAPSE_INTERVAL_SECONDS,
-  );
+  protected readonly timelapseIntervalSeconds = signal<number | null>(null);
   protected readonly timelapseIntervalTotalSeconds = computed(() =>
     composeHms(
       this.timelapseIntervalHours(),
@@ -134,28 +128,19 @@ export class MediaRecordDialog {
     this.sourceId.set(this.defaultSourceId());
     this.resolution.set(AVAILABLE_RESOLUTIONS[1]);
 
-    const [recordingHours, recordingMinutes, recordingSeconds] = splitHms(
-      DEFAULT_RECORDING_DURATION_SECONDS,
-    );
-    this.recordingHours.set(recordingHours);
-    this.recordingMinutes.set(recordingMinutes);
-    this.recordingSeconds.set(recordingSeconds);
+    this.recordingHours.set(null);
+    this.recordingMinutes.set(null);
+    this.recordingSeconds.set(null);
 
-    const [timelapseDurationHours, timelapseDurationMinutes, timelapseDurationSeconds] = splitHms(
-      DEFAULT_TIMELAPSE_DURATION_SECONDS,
-    );
-    this.timelapseDurationHours.set(timelapseDurationHours);
-    this.timelapseDurationMinutes.set(timelapseDurationMinutes);
-    this.timelapseDurationSeconds.set(timelapseDurationSeconds);
+    this.timelapseDurationHours.set(null);
+    this.timelapseDurationMinutes.set(null);
+    this.timelapseDurationSeconds.set(null);
 
-    const [timelapseIntervalHours, timelapseIntervalMinutes, timelapseIntervalSeconds] = splitHms(
-      DEFAULT_TIMELAPSE_INTERVAL_SECONDS,
-    );
-    this.timelapseIntervalHours.set(timelapseIntervalHours);
-    this.timelapseIntervalMinutes.set(timelapseIntervalMinutes);
-    this.timelapseIntervalSeconds.set(timelapseIntervalSeconds);
+    this.timelapseIntervalHours.set(null);
+    this.timelapseIntervalMinutes.set(null);
+    this.timelapseIntervalSeconds.set(null);
 
-    this.audioDurationSeconds.set(DEFAULT_AUDIO_DURATION_SECONDS);
+    this.audioDurationSeconds.set(null);
   });
 
   protected close(): void {
@@ -173,7 +158,7 @@ export class MediaRecordDialog {
           action: 'audio',
           sourceId: source.id,
           durationSeconds: clamp(
-            this.audioDurationSeconds(),
+            this.audioDurationSeconds() ?? MIN_AUDIO_DURATION_SECONDS,
             MIN_AUDIO_DURATION_SECONDS,
             MAX_AUDIO_DURATION_SECONDS,
           ),
@@ -227,13 +212,4 @@ function composeHms(
   return (
     Math.max(0, hours ?? 0) * 3600 + Math.max(0, minutes ?? 0) * 60 + Math.max(0, seconds ?? 0)
   );
-}
-
-/** Splits total seconds into an H/M/S triplet, using null for zero units so placeholders show. */
-function splitHms(totalSeconds: number): [number | null, number | null, number | null] {
-  const safeTotal = Math.max(0, Math.trunc(totalSeconds));
-  const hours = Math.floor(safeTotal / 3600);
-  const minutes = Math.floor((safeTotal % 3600) / 60);
-  const seconds = safeTotal % 60;
-  return [hours || null, minutes || null, seconds || null];
 }

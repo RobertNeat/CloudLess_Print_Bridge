@@ -75,7 +75,7 @@ describe('MediaRecordDialog', () => {
     expect(submitButton.disabled).toBe(true);
   });
 
-  it('composes default H/M/S values into recording and timelapse totals on submit', async () => {
+  it('leaves H/M/S fields blank on open so the submit button starts disabled', async () => {
     const fixture = TestBed.createComponent(MediaRecordDialog);
     fixture.componentRef.setInput('sources', sources);
     fixture.componentRef.setInput('defaultSourceId', 'cam-online');
@@ -83,18 +83,11 @@ describe('MediaRecordDialog', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const submittedSpy = vi.fn();
-    fixture.componentInstance.submitted.subscribe(submittedSpy);
     const element = fixture.nativeElement as HTMLElement;
-    (element.querySelector('#media-record-dialog-submit button') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(submittedSpy).toHaveBeenCalledWith({
-      action: 'recording',
-      sourceId: 'cam-online',
-      resolution: 'VGA',
-      durationSeconds: 30,
-    });
+    const submitButton = element.querySelector(
+      '#media-record-dialog-submit button',
+    ) as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(true);
   });
 
   it('composes hours/minutes/seconds into total seconds for the recording duration', async () => {
@@ -113,6 +106,7 @@ describe('MediaRecordDialog', () => {
     instance.recordingHours.set(1);
     instance.recordingMinutes.set(2);
     instance.recordingSeconds.set(3);
+    fixture.detectChanges();
 
     const submittedSpy = vi.fn();
     fixture.componentInstance.submitted.subscribe(submittedSpy);
@@ -144,6 +138,7 @@ describe('MediaRecordDialog', () => {
     instance.recordingHours.set(null);
     instance.recordingMinutes.set(null);
     instance.recordingSeconds.set(45);
+    fixture.detectChanges();
 
     const submittedSpy = vi.fn();
     fixture.componentInstance.submitted.subscribe(submittedSpy);
@@ -167,6 +162,14 @@ describe('MediaRecordDialog', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
+    const instance = fixture.componentInstance as unknown as {
+      timelapseDurationMinutes: { set: (value: number | null) => void };
+      timelapseIntervalSeconds: { set: (value: number | null) => void };
+    };
+    instance.timelapseDurationMinutes.set(1);
+    instance.timelapseIntervalSeconds.set(5);
+    fixture.detectChanges();
+
     const submittedSpy = vi.fn();
     fixture.componentInstance.submitted.subscribe(submittedSpy);
     const element = fixture.nativeElement as HTMLElement;
@@ -187,17 +190,6 @@ describe('MediaRecordDialog', () => {
     fixture.componentRef.setInput('sources', sources);
     fixture.componentRef.setInput('defaultSourceId', 'cam-online');
     fixture.componentRef.setInput('action', 'recording');
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    const instance = fixture.componentInstance as unknown as {
-      recordingHours: { set: (value: number | null) => void };
-      recordingMinutes: { set: (value: number | null) => void };
-      recordingSeconds: { set: (value: number | null) => void };
-    };
-    instance.recordingHours.set(null);
-    instance.recordingMinutes.set(null);
-    instance.recordingSeconds.set(null);
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -247,7 +239,7 @@ describe('MediaRecordDialog', () => {
     await fixture.whenStable();
 
     const instance = fixture.componentInstance as unknown as {
-      audioDurationSeconds: { set: (value: number) => void };
+      audioDurationSeconds: { set: (value: number | null) => void };
     };
     instance.audioDurationSeconds.set(999);
 
