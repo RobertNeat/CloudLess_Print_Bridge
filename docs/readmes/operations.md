@@ -122,8 +122,10 @@ five stages:
   optionally filtering out vulnerabilities matched by the project's
   `Trivy_exceptions` list before failing the build.
 - `push_image_ghcr.sh` — retags a given local image by SHA to
-  `ghcr.io/<owner>/<image>:<version>` and pushes it, refusing to overwrite an
-  existing release tag that points to a different digest.
+  `ghcr.io/robertneat/cloudless-print-bridge/<image>:<version>` (e.g.
+  `ghcr.io/robertneat/cloudless-print-bridge/mqtt-puppeteer:1.0.0`) and
+  pushes it, refusing to overwrite an existing release tag that points to a
+  different digest.
 - `push_local_image.sh` — pushes an image to the local registry under its
   SHA tag, refusing to silently overwrite an existing immutable tag with
   different content.
@@ -144,3 +146,4 @@ five stages:
   portable, repo-agnostic explanation of how the pipeline product works.
 - `docs/readmes/architecture.md` — cross-service architecture map.
 - `docs/readmes/development.md` — day-to-day dev commands.
+- `docs/readmes/running-ghcr-images.md` — running these published images yourself, without this repo's SSH deploy automation.

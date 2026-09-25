@@ -131,8 +131,10 @@ uruchamia wszystkie pięć etapów:
   opcjonalnie odfiltrowując podatności dopasowane do listy
   `Trivy_exceptions` projektu przed przerwaniem builda.
 - `push_image_ghcr.sh` — przetagowuje wskazany lokalny obraz po SHA na
-  `ghcr.io/<owner>/<image>:<wersja>` i wypycha go, odmawiając nadpisania
-  istniejącego taga wydania wskazującego na inny digest.
+  `ghcr.io/robertneat/cloudless-print-bridge/<image>:<wersja>` (np.
+  `ghcr.io/robertneat/cloudless-print-bridge/mqtt-puppeteer:1.0.0`) i
+  wypycha go, odmawiając nadpisania istniejącego taga wydania wskazującego
+  na inny digest.
 - `push_local_image.sh` — wypycha obraz do lokalnego rejestru pod tagiem
   SHA, odmawiając cichego nadpisania istniejącego niezmiennego taga inną
   zawartością.
@@ -153,3 +155,4 @@ uruchamia wszystkie pięć etapów:
   przenośny, niezależny od repozytorium opis działania produktu pipeline.
 - `docs/readmes/architecture.md` — mapa architektury międzyserwisowej.
 - `docs/readmes/development.md` — codzienne komendy deweloperskie.
+- `docs/readmes/running-ghcr-images_pl.md` — samodzielne uruchamianie tych opublikowanych obrazów, bez automatyzacji SSH deploy tego repo.

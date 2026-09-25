@@ -114,7 +114,9 @@ Dokumentacja przekrojowa znajduje się w [`docs/readmes/`](./docs/readmes/)
 - [docs/readmes/architecture.md](./docs/readmes/architecture.md) — jak poszczególne elementy się komunikują.
 - [docs/readmes/development.md](./docs/readmes/development.md) — codzienne komendy deweloperskie.
 - [docs/readmes/operations.md](./docs/readmes/operations.md) — konfiguracja CI/CD i wdrożenia tego repozytorium.
-- [docs/readmes/env_variables_description.md](./docs/readmes/env_variables_description.md) — pełna lista zmiennych środowiskowych.
+- [docs/readmes/environment-variables_pl.md](./docs/readmes/environment-variables_pl.md) — pełna lista zmiennych środowiskowych.
+- [docs/readmes/running-ghcr-images_pl.md](./docs/readmes/running-ghcr-images_pl.md) — uruchamianie opublikowanych obrazów z GHCR z własnym `.env`, na własnych portach.
+- [docs/readmes/shared-contracts_pl.md](./docs/readmes/shared-contracts_pl.md) — wzorzec współdzielenia typów/DTO/kontraktów między serwisami.
 
 ## Licencja
 

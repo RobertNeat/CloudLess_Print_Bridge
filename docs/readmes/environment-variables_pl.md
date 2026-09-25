@@ -1,5 +1,14 @@
 # Zmienne środowiskowe CloudLess Print Bridge
 
+Polski | [English](environment-variables.md)
+
+Pełna referencja zmiennych na poziomie aplikacji z pliku `.env.example` w
+głównym katalogu repo — co każda z nich konfiguruje i jaką wartość tam
+wpisać. Ten dokument **nie** opisuje zmiennych `*_IMAGE`/`*_HOST_PORT`/
+`*_CONTAINER_PORT` używanych przez `deploy/compose.yml` do wyboru obrazów i
+publikowania portów — te opisuje
+[running-ghcr-images_pl.md](./running-ghcr-images_pl.md).
+
 Plik `.env` należy utworzyć w głównym katalogu repozytorium na podstawie
 `.env.example`. Czasy podawane w nazwach zakończonych `_MS` są wyrażone w
 milisekundach, a limity `_BYTES` w bajtach. Loadery backendów rozwijają również
@@ -76,3 +85,9 @@ odrzucane.
 | `VIDEO_SERVICE_HUB_MQTT_CONNECT_TIMEOUT_MS` | Maksymalny czas zestawiania połączenia MQTT. `10000` oznacza 10 sekund. |
 | `VIDEO_SERVICE_HUB_MQTT_RECONNECT_PERIOD_MS` | Odstęp między próbami ponownego połączenia MQTT. `1000` oznacza 1 sekundę. |
 | `VIDEO_SERVICE_HUB_MQTT_CAMERA_ONLINE_TTL_MS` | Czas od ostatniej wiadomości, przez który kamera jest uznawana za online. `60000` oznacza 60 sekund. |
+
+## Powiązane dokumenty
+
+- [running-ghcr-images_pl.md](./running-ghcr-images_pl.md) — uruchamianie opublikowanych obrazów z GHCR, w tym zmienne obrazu/portów na poziomie compose, których nie opisuje ten dokument.
+- [operations_pl.md](./operations_pl.md) — konfiguracja CI/CD i wdrożeń tego repo.
+- [architecture_pl.md](./architecture_pl.md) — mapa architektury między usługami.

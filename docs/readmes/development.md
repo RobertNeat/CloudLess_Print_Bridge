@@ -3,7 +3,7 @@
 [Polski](development_pl.md) | English
 
 Day-to-day commands for working in this monorepo. For the bigger picture see
-`docs/readmes/architecture.md`; for env vars see `docs/readmes/env_variables_description.md`
+`docs/readmes/architecture.md`; for env vars see `docs/readmes/environment-variables.md`
 and each app's own README.
 
 ## Prerequisites
@@ -129,11 +129,14 @@ under `apps/` is declared exactly once.
 
 Copy `.env.example` at the repo root to `.env` and fill in printer/camera
 specifics. For the full variable reference (auth, per-service vars,
-`${VAR}` interpolation rules) see `docs/readmes/env_variables_description.md`, or
-each app's own README for that service's variables in isolation.
+`${VAR}` interpolation rules) see `docs/readmes/environment-variables.md`, or
+each app's own README for that service's variables in isolation. To run
+this repo from published GHCR images instead of a local dev setup, see
+`docs/readmes/running-ghcr-images.md`.
 
 ## Related docs
 
 - `docs/readmes/architecture.md` — cross-service architecture map.
 - `docs/readmes/operations.md` — CI/CD and deployment configuration for this repo.
-- `docs/readmes/env_variables_description.md` — full environment variable reference.
+- `docs/readmes/environment-variables.md` — full environment variable reference.
+- `docs/readmes/running-ghcr-images.md` — running published GHCR images with your own `.env`.
