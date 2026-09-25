@@ -19,4 +19,5 @@ fi
 
 docker push "$image_ref"
 docker inspect --format='{{index .RepoDigests 0}}' "$image_ref"
+echo "ZOD image registry labels: $(docker image inspect "$image_ref" --format '{{json .Config.Labels}}')"
 
