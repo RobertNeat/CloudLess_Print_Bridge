@@ -16,6 +16,7 @@ import {
   assertResolution,
   requireHeader,
 } from '../common/validation';
+import { JobRegistryService } from '../jobs/job-registry.service';
 import { MediaStorageService } from '../storage/media-storage.service';
 import type { MediaResourceKind } from '../storage/storage.types';
 import { ThumbnailService } from '../thumbnails/thumbnail.service';
@@ -29,6 +30,7 @@ export class CameraIngestController {
     private readonly storage: MediaStorageService,
     private readonly thumbnails: ThumbnailService,
     private readonly transcoding: TranscodingService,
+    private readonly jobs: JobRegistryService,
   ) {}
 
   @Post(':cameraId/captures/:requestId')
@@ -222,7 +224,20 @@ export class CameraIngestController {
     });
   }
 
-  /** Fires eager transcode + thumbnail generation the moment a resource's manifest is complete. Both are best-effort/fire-and-forget from the ingest request's point of view for thumbnails; transcode is awaited since the client should only ever see the finished file. */
+  /**
+   * Fires eager transcode + thumbnail generation the moment a resource's
+   * manifest is complete. Both are best-effort/fire-and-forget from the
+   * ingest request's point of view for thumbnails; transcode is awaited
+   * since the client should only ever see the finished file.
+   *
+   * Also reports job completion to JobRegistryService: for every tracked
+   * kind except captures (which complete on the initial command response,
+   * see CameraCommandService.execute), this is the actual "done" signal --
+   * finalize() having succeeded means the file is fully transcoded and
+   * renamed. jobs.markDone/markFailed silently no-op for any requestId the
+   * registry isn't tracking (untracked commands, or a job whose grace
+   * period already expired), so this is safe to call unconditionally.
+   */
   private async onPartStored(
     kind: MediaResourceKind,
     cameraId: string,
@@ -232,11 +247,15 @@ export class CameraIngestController {
     if (!result.complete) return;
     await this.transcoding
       .finalize(kind, cameraId, requestId)
-      .catch((error: Error) =>
+      .then(() => {
+        this.jobs.markDone(requestId);
+      })
+      .catch((error: Error) => {
         this.logger.error(
           `finalize failed for ${kind}/${cameraId}/${requestId}: ${error.message}`,
-        ),
-      );
+        );
+        this.jobs.markFailed(requestId, error.message);
+      });
     await this.generateThumbnail(kind, cameraId, requestId).catch(
       (error: Error) =>
         this.logger.warn(

@@ -3,6 +3,75 @@
     <button
       pButton
       type="button"
+      icon="pi pi-list-check"
+      severity="secondary"
+      [text]="true"
+      [rounded]="true"
+      [outlined]="jobQueue.activeCount() > 0"
+      [attr.aria-label]="i18n.t('videos.jobs.filterAria')"
+      [attr.aria-expanded]="openFilter() === 'jobs'"
+      aria-controls="video-jobs-popover"
+      id="video-jobs-toggle"
+      (click)="toggle('jobs')"
+    ></button>
+    @if (jobQueue.activeCount() > 0) {
+      <span class="jobs-badge" id="video-jobs-badge">{{ jobQueue.activeCount() }}</span>
+    }
+    @if (openFilter() === 'jobs') {
+      <div id="video-jobs-popover" class="filter-popover filter-popover--jobs" role="group">
+        <label for="video-jobs-source-filter">{{ i18n.t('videos.jobs.sourceFilter') }}</label>
+        <p-select
+          inputId="video-jobs-source-filter"
+          [options]="filters.sources()"
+          [ngModel]="jobSourceId()"
+          (ngModelChange)="jobSourceId.set($event ?? '')"
+          optionLabel="name"
+          optionValue="id"
+          [placeholder]="i18n.t('videos.allCameras')"
+          [showClear]="true"
+        />
+        <ul class="jobs-list" id="video-jobs-list">
+          @for (job of visibleJobs(); track job.requestId) {
+            <li class="jobs-list__item" [class.jobs-list__item--running]="job.status === 'running'">
+              @if (job.status === 'running') {
+                <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+              } @else {
+                <span class="jobs-list__dot" aria-hidden="true"></span>
+              }
+              <span class="jobs-list__name">{{
+                job.expectedFileName || job.cameraName || job.cameraId
+              }}</span>
+              <span class="jobs-list__status">{{
+                job.status === 'running'
+                  ? i18n.t('videos.jobs.running')
+                  : i18n.t('videos.jobs.waiting')
+              }}</span>
+              @if (job.status === 'queued') {
+                <button
+                  type="button"
+                  class="jobs-list__cancel"
+                  [attr.aria-label]="i18n.t('videos.jobs.cancel')"
+                  [attr.id]="'video-jobs-cancel-' + job.requestId"
+                  (click)="cancelJob(job.requestId)"
+                >
+                  <i class="pi pi-times" aria-hidden="true"></i>
+                </button>
+              }
+            </li>
+          } @empty {
+            <li class="jobs-list__empty" id="video-jobs-empty">
+              {{ i18n.t('videos.jobs.empty') }}
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+
+  <div class="filter-control">
+    <button
+      pButton
+      type="button"
       icon="pi pi-calendar"
       severity="secondary"
       [text]="true"

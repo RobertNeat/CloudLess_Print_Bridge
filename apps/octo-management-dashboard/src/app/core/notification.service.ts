@@ -13,23 +13,24 @@ export class NotificationService {
   private readonly messages = inject(MessageService);
   private readonly i18n = inject(I18nService);
 
-  info(key: TranslationKey, params?: TranslationParams): void {
-    this.show('info', key, params);
+  info(key: TranslationKey, params?: TranslationParams, life?: number): void {
+    this.show('info', key, params, life);
   }
 
-  warn(key: TranslationKey, params?: TranslationParams): void {
-    this.show('warn', key, params);
+  warn(key: TranslationKey, params?: TranslationParams, life?: number): void {
+    this.show('warn', key, params, life);
   }
 
-  error(key: TranslationKey, params?: TranslationParams): void {
-    this.show('error', key, params);
+  error(key: TranslationKey, params?: TranslationParams, life?: number): void {
+    this.show('error', key, params, life);
   }
 
   private show(
     severity: 'info' | 'warn' | 'error',
     key: TranslationKey,
     params?: TranslationParams,
+    life = 4000,
   ): void {
-    this.messages.add({ severity, detail: this.i18n.t(key, params), life: 4000 });
+    this.messages.add({ severity, detail: this.i18n.t(key, params), life });
   }
 }

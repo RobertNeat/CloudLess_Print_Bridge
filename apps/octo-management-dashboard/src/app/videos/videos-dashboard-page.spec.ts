@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { MessageService } from 'primeng/api';
 import { I18nService } from '../core/i18n.service';
 import { CameraCommandApiService } from './backend/camera-command-api.service';
+import { JobQueueApiService } from './backend/job-queue-api.service';
+import type { JobDto } from './backend/job-queue.models';
+import { JobQueueStore } from './job-queue.store';
 import { VideoFiltersService } from './video-filters.service';
 import { VIDEOS_REPOSITORY } from './videos-dashboard.ports';
 import type { MediaItem, VideosDashboardData } from './videos-dashboard.models';
@@ -56,6 +59,10 @@ describe('VideosDashboardPage', () => {
     TestBed.configureTestingModule({
       providers: [
         MessageService,
+        {
+          provide: JobQueueApiService,
+          useValue: { list: vi.fn().mockResolvedValue([]), cancel: vi.fn() },
+        },
         {
           provide: VIDEOS_REPOSITORY,
           useValue: {
@@ -122,6 +129,10 @@ describe('VideosDashboardPage', () => {
       providers: [
         MessageService,
         {
+          provide: JobQueueApiService,
+          useValue: { list: vi.fn().mockResolvedValue([]), cancel: vi.fn() },
+        },
+        {
           provide: VIDEOS_REPOSITORY,
           useValue: {
             load: async () => data,
@@ -158,6 +169,10 @@ describe('VideosDashboardPage', () => {
       providers: [
         MessageService,
         {
+          provide: JobQueueApiService,
+          useValue: { list: vi.fn().mockResolvedValue([]), cancel: vi.fn() },
+        },
+        {
           provide: VIDEOS_REPOSITORY,
           useValue: {
             load: async () => data,
@@ -189,24 +204,28 @@ describe('VideosDashboardPage', () => {
 });
 
 describe('VideosDashboardPage record dialog', () => {
-  const capturedItem: MediaItem = {
-    id: 'capture:second:capture-second-1',
-    kind: 'image',
-    name: '000000.jpg',
-    sourceId: 'second',
-    requestId: 'capture-second-1',
-    capturedAt: '2026-08-03T10:05:00Z',
-    thumbnailUrl: '/images/live_preview.png',
+  const queuedJob: JobDto = {
+    requestId: '',
+    cameraId: 'second',
+    kind: 'captures',
+    command: 'capture',
+    status: 'running',
+    createdAt: '2026-08-03T10:05:00Z',
+    expectedFileName: 'capture-Second.jpg',
   };
 
   let captureImage: ReturnType<typeof vi.fn>;
   let refreshMedia: ReturnType<typeof vi.fn>;
+  let jobList: ReturnType<typeof vi.fn>;
+  let jobCancel: ReturnType<typeof vi.fn>;
   let addSpy: ReturnType<typeof vi.fn>;
 
   function configure(): void {
     TestBed.resetTestingModule();
     captureImage = vi.fn().mockResolvedValue(undefined);
     refreshMedia = vi.fn().mockResolvedValue([] as MediaItem[]);
+    jobList = vi.fn().mockResolvedValue([] as JobDto[]);
+    jobCancel = vi.fn().mockResolvedValue(queuedJob);
     TestBed.configureTestingModule({
       providers: [
         MessageService,
@@ -218,6 +237,10 @@ describe('VideosDashboardPage record dialog', () => {
             startTimedRecording: vi.fn().mockResolvedValue(undefined),
             recordAudio: vi.fn().mockResolvedValue(undefined),
           },
+        },
+        {
+          provide: JobQueueApiService,
+          useValue: { list: jobList, cancel: jobCancel },
         },
         {
           provide: VIDEOS_REPOSITORY,
@@ -242,91 +265,85 @@ describe('VideosDashboardPage record dialog', () => {
     fixture.detectChanges();
   }
 
-  it('dispatches to the dialog-selected source, not the globally-selected one, and clears the spinner once the file appears', async () => {
+  it('dispatches to the dialog-selected source, not the globally-selected one, shows a queued toast with the filename, and never disables the button', async () => {
     configure();
-    vi.useFakeTimers();
-    try {
-      const fixture = TestBed.createComponent(VideosDashboardPage);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
+    // Resolve list() with a job matching whatever requestId captureImage was actually called with, since it's generated at dispatch time (client-id + Date.now()).
+    jobList.mockImplementation(async () => {
+      const requestId = captureImage.mock.calls[0]?.[3] as string | undefined;
+      return requestId ? [{ ...queuedJob, requestId }] : [];
+    });
 
-      const element = fixture.nativeElement as HTMLElement;
-      // Globally-selected source is "online"; explicitly pick "second" in the dialog instead.
-      openDialogFor(element, fixture, 'media-capture-button');
-      const sourceSelect = element.querySelector('#media-record-dialog-source') as HTMLElement & {
-        value?: unknown;
-      };
-      expect(sourceSelect).not.toBeNull();
+    const fixture = TestBed.createComponent(VideosDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-      const instance = fixture.componentInstance as unknown as {
-        submitRecordDialog: (request: unknown) => void;
-      };
-      instance.submitRecordDialog({ action: 'capture', sourceId: 'second', resolution: 'VGA' });
-      fixture.detectChanges();
-      await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    // Globally-selected source is "online"; explicitly pick "second" in the dialog instead.
+    openDialogFor(element, fixture, 'media-capture-button');
+    const sourceSelect = element.querySelector('#media-record-dialog-source') as HTMLElement & {
+      value?: unknown;
+    };
+    expect(sourceSelect).not.toBeNull();
 
-      expect(captureImage).toHaveBeenCalledWith(
-        'second',
-        'http://camera-second',
-        'VGA',
-        expect.stringContaining('capture-second-'),
-      );
+    const instance = fixture.componentInstance as unknown as {
+      submitRecordDialog: (request: unknown) => void;
+    };
+    instance.submitRecordDialog({ action: 'capture', sourceId: 'second', resolution: 'VGA' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-      // Button spins while the poll hasn't found the file yet.
-      let captureButton = element.querySelector(
-        '#media-capture-button button',
-      ) as HTMLButtonElement;
-      expect(captureButton.className).toContain('p-button-loading');
+    expect(captureImage).toHaveBeenCalledWith(
+      'second',
+      'http://camera-second',
+      'VGA',
+      expect.stringContaining('capture-second-'),
+    );
 
-      const requestId = captureImage.mock.calls[0][3] as string;
-      refreshMedia.mockResolvedValue([{ ...capturedItem, requestId }]);
-
-      await vi.advanceTimersByTimeAsync(2000);
-      await Promise.resolve();
-      fixture.detectChanges();
-
-      captureButton = element.querySelector('#media-capture-button button') as HTMLButtonElement;
-      expect(captureButton.className).not.toContain('p-button-loading');
-      expect(element.querySelectorAll('.media-card').length).toBeGreaterThan(0);
-      expect(addSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'info' }));
-    } finally {
-      vi.useRealTimers();
-    }
+    // Button is never disabled/loading -- the same action can be retriggered immediately.
+    const captureButton = element.querySelector(
+      '#media-capture-button button',
+    ) as HTMLButtonElement;
+    expect(captureButton.className).not.toContain('p-button-loading');
+    expect(captureButton.disabled).toBe(false);
+    expect(addSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'info',
+        detail: expect.stringContaining('capture-Second.jpg'),
+      }),
+    );
   });
 
-  it('clears the spinner and shows a warning toast when the poll times out without the file appearing', async () => {
+  it('falls back to a generic queued toast when the job lookup finds no expectedFileName', async () => {
     configure();
-    vi.useFakeTimers();
-    try {
-      const fixture = TestBed.createComponent(VideosDashboardPage);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
+    jobList.mockResolvedValue([]);
+    const fixture = TestBed.createComponent(VideosDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-      const element = fixture.nativeElement as HTMLElement;
-      const instance = fixture.componentInstance as unknown as {
-        submitRecordDialog: (request: unknown) => void;
-      };
-      instance.submitRecordDialog({ action: 'capture', sourceId: 'online', resolution: 'VGA' });
-      fixture.detectChanges();
-      await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const instance = fixture.componentInstance as unknown as {
+      submitRecordDialog: (request: unknown) => void;
+    };
+    instance.submitRecordDialog({ action: 'capture', sourceId: 'online', resolution: 'VGA' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-      await vi.advanceTimersByTimeAsync(35_000);
-      await Promise.resolve();
-      fixture.detectChanges();
-
-      const captureButton = element.querySelector(
-        '#media-capture-button button',
-      ) as HTMLButtonElement;
-      expect(captureButton.className).not.toContain('p-button-loading');
-      expect(addSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn' }));
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(addSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'info', detail: 'Recording job queued' }),
+    );
+    const captureButton = element.querySelector(
+      '#media-capture-button button',
+    ) as HTMLButtonElement;
+    expect(captureButton.disabled).toBe(false);
   });
 
-  it('shows an error toast and clears the spinner when the command itself fails', async () => {
+  it('shows an error toast when the command itself fails, and the button stays enabled', async () => {
     configure();
     captureImage.mockRejectedValueOnce(new Error('camera unreachable'));
 
@@ -348,12 +365,33 @@ describe('VideosDashboardPage record dialog', () => {
       '#media-capture-button button',
     ) as HTMLButtonElement;
     expect(captureButton.className).not.toContain('p-button-loading');
+    expect(captureButton.disabled).toBe(false);
     expect(addSpy).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error' }));
   });
 
-  it('only spins the button for the action that was submitted', async () => {
+  it('allows immediately re-opening the dialog for the same action right after a dispatch', async () => {
     configure();
-    refreshMedia.mockResolvedValue([]);
+    const fixture = TestBed.createComponent(VideosDashboardPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const instance = fixture.componentInstance as unknown as {
+      submitRecordDialog: (request: unknown) => void;
+    };
+    instance.submitRecordDialog({ action: 'capture', sourceId: 'online', resolution: 'VGA' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // No client-side lock -- the dialog opens again immediately for the same action.
+    openDialogFor(element, fixture, 'media-capture-button');
+    expect(element.querySelector('#media-record-dialog-source')).not.toBeNull();
+  });
+
+  it('refreshes the media grid once a job the page dispatched turns up done on a poll', async () => {
+    configure();
     vi.useFakeTimers();
     try {
       const fixture = TestBed.createComponent(VideosDashboardPage);
@@ -361,20 +399,26 @@ describe('VideosDashboardPage record dialog', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const element = fixture.nativeElement as HTMLElement;
       const instance = fixture.componentInstance as unknown as {
         submitRecordDialog: (request: unknown) => void;
+        jobQueue: { setPanelOpen: (open: boolean) => void };
       };
       instance.submitRecordDialog({ action: 'capture', sourceId: 'online', resolution: 'VGA' });
       fixture.detectChanges();
       await fixture.whenStable();
+      fixture.detectChanges();
 
-      const captureButton = element.querySelector(
-        '#media-capture-button button',
-      ) as HTMLButtonElement;
-      const audioButton = element.querySelector('#media-audio-toggle button') as HTMLButtonElement;
-      expect(captureButton.className).toContain('p-button-loading');
-      expect(audioButton.className).not.toContain('p-button-loading');
+      const requestId = captureImage.mock.calls[0][3] as string;
+      refreshMedia.mockClear();
+      jobList.mockResolvedValue([{ ...queuedJob, requestId, status: 'done' }]);
+
+      // Open the popover so the page's poll loop actually fetches on its next tick.
+      instance.jobQueue.setPanelOpen(true);
+      await vi.advanceTimersByTimeAsync(2500);
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(refreshMedia).toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

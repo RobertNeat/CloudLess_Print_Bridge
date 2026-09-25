@@ -27,7 +27,6 @@ export class MediaLibrary {
   private readonly theme = inject(ThemeService);
   readonly items = input.required<readonly MediaItem[]>();
   readonly canRecord = input(false);
-  readonly pendingActions = input<ReadonlySet<MediaRecordAction>>(new Set());
   readonly itemOpened = output<MediaItem>();
   readonly recordRequested = output<MediaRecordAction>();
 
@@ -100,10 +99,6 @@ export class MediaLibrary {
     return this.itemsByKind()[kind];
   }
 
-  protected isPending(action: MediaRecordAction): boolean {
-    return this.pendingActions().has(action);
-  }
-
   protected dateLabel(value: string): string {
     return this.i18n.formatShortDate(value);
   }
@@ -125,7 +120,7 @@ export class MediaLibrary {
   }
 
   protected requestRecord(action: MediaRecordAction): void {
-    if (!this.canRecord() || this.isPending(action)) return;
+    if (!this.canRecord()) return;
     this.recordRequested.emit(action);
   }
 }

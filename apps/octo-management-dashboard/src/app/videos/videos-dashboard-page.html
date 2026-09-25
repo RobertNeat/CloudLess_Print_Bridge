@@ -55,7 +55,6 @@
           <app-media-library
             [items]="filteredMedia()"
             [canRecord]="hasCommandableSource()"
-            [pendingActions]="pendingActions()"
             (itemOpened)="openMedia($event)"
             (recordRequested)="openRecordDialog($event)"
           />

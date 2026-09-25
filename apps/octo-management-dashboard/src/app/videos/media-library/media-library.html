@@ -15,7 +15,6 @@
           [icon]="section.buttonIcon"
           [label]="i18n.t(section.buttonLabelKey)"
           [disabled]="!canRecord()"
-          [loading]="isPending(section.action)"
           [attr.id]="section.buttonId"
           (onClick)="requestRecord(section.action)"
         />

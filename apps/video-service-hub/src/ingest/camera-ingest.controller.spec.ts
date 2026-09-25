@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import type { CameraRegistryService } from '../camera-registry/camera-registry.service';
 import { loadServiceConfig } from '../config/service-config';
+import { JobRegistryService } from '../jobs/job-registry.service';
 import { MediaStorageService } from '../storage/media-storage.service';
 import { ThumbnailService } from '../thumbnails/thumbnail.service';
 import { TranscodingService } from '../transcoding/transcoding.service';
@@ -46,6 +47,7 @@ describe('CameraIngestController (eager finalize + thumbnail generation on compl
   let storageRoot: string;
   let storage: MediaStorageService;
   let transcoding: TranscodingService;
+  let jobs: JobRegistryService;
   let controller: CameraIngestController;
 
   beforeEach(async () => {
@@ -57,10 +59,12 @@ describe('CameraIngestController (eager finalize + thumbnail generation on compl
     storage = new MediaStorageService(config, fakeRegistry());
     await storage.initialize();
     transcoding = new TranscodingService(config, storage);
+    jobs = new JobRegistryService(fakeRegistry());
     controller = new CameraIngestController(
       storage,
       new ThumbnailService(),
       transcoding,
+      jobs,
     );
   });
 
@@ -213,5 +217,66 @@ describe('CameraIngestController (eager finalize + thumbnail generation on compl
     expect(
       existsSync(storage.audioThumbnailPath('camera-1', 'audio-1', 'light')),
     ).toBe(true);
+  }, 30_000);
+
+  it('marks a tracked job done once ingest finalizes the resource, not on the initial command response', async () => {
+    jobs.enqueue({
+      requestId: 'audio-tracked',
+      cameraId: 'camera-1',
+      kind: 'audio',
+      command: 'record-audio',
+      start: jest.fn(),
+      expectedDurationMs: 60_000,
+    });
+    expect(
+      jobs
+        .list({ cameraId: 'camera-1' })
+        .find((job) => job.requestId === 'audio-tracked')?.status,
+    ).toBe('running');
+
+    const wav = Buffer.from(TINY_WAV_BASE64, 'base64');
+    await controller.audioPart(
+      requestFrom(wav),
+      'camera-1',
+      'audio-tracked',
+      '0',
+      '1',
+      '2',
+      undefined,
+      'audio/wav',
+    );
+
+    expect(
+      jobs
+        .list({ cameraId: 'camera-1' })
+        .find((job) => job.requestId === 'audio-tracked')?.status,
+    ).toBe('done');
+  }, 30_000);
+
+  it('marks a tracked capture job done only after ingest finalizes, even though the command response comes first', async () => {
+    jobs.enqueue({
+      requestId: 'capture-tracked',
+      cameraId: 'camera-1',
+      kind: 'captures',
+      command: 'capture',
+      start: jest.fn(),
+      expectedDurationMs: 60_000,
+    });
+
+    const jpeg = Buffer.from(TINY_JPEG_BASE64, 'base64');
+    await controller.capture(
+      requestFrom(jpeg),
+      'camera-1',
+      'capture-tracked',
+      'VGA',
+      undefined,
+      'image/jpeg',
+    );
+
+    expect(
+      jobs
+        .list({ cameraId: 'camera-1' })
+        .find((job) => job.requestId === 'capture-tracked')?.status,
+    ).toBe('done');
   }, 30_000);
 });
