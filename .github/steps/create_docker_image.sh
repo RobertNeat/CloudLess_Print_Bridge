@@ -8,6 +8,23 @@ set -euo pipefail
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "A lowercase full commit SHA is required" >&2; exit 2; }
 jq -e 'type == "object"' <<< "$PROJECT_JSON" >/dev/null
 
+# ZOD image registry properties, sourced from the committed .env.example
+# (the only env file that reaches CI — .env / .env.deploy are gitignored).
+env_file=.env.example
+test -f "$env_file"
+image_property() {
+  local key="$1"
+  local value
+  value="$(grep -m1 "^${key}=" "$env_file" | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//')"
+  [ -n "$value" ] || { echo "$key is missing from $env_file" >&2; exit 2; }
+  printf '%s' "$value"
+}
+IMAGE_TITLE="$(image_property IMAGE_TITLE)"
+IMAGE_DESCRIPTION="$(image_property IMAGE_DESCRIPTION)"
+IMAGE_VENDOR="$(image_property IMAGE_VENDOR)"
+IMAGE_LICENSES="$(image_property IMAGE_LICENSES)"
+IMAGE_SOURCE="$(image_property IMAGE_SOURCE)"
+
 json_string() {
   jq -er "$1 | select(type == \"string\" and length > 0)" <<< "$PROJECT_JSON"
 }
@@ -42,5 +59,10 @@ DOCKER_BUILDKIT=1 docker build --pull \
   --build-arg "START_COMMAND=$START_COMMAND" \
   --build-arg "APP_PORT=$APP_PORT" \
   --label "org.opencontainers.image.revision=$SHA" \
+  --label "org.opencontainers.image.title=$IMAGE_TITLE" \
+  --label "org.opencontainers.image.description=$IMAGE_DESCRIPTION" \
+  --label "org.opencontainers.image.vendor=$IMAGE_VENDOR" \
+  --label "org.opencontainers.image.licenses=$IMAGE_LICENSES" \
+  --label "org.opencontainers.image.source=$IMAGE_SOURCE" \
   --tag "$image_ref" \
   .

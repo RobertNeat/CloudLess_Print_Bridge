@@ -25,4 +25,5 @@ fi
 docker tag "$source_image" "$destination"
 docker push "$destination"
 echo "$destination@$source_digest"
+echo "ZOD image registry labels: $(docker image inspect "$destination" --format '{{json .Config.Labels}}')"
 
