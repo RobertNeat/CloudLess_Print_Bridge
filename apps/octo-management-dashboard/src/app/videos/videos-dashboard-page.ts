@@ -4,12 +4,13 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SplitterModule } from 'primeng/splitter';
-import { I18nService, type TranslationKey } from '../core/i18n.service';
+import { I18nService } from '../core/i18n.service';
 import { NotificationService } from '../core/notification.service';
 import { CameraCommandApiService } from './backend/camera-command-api.service';
 import { CameraRegistryApiService } from './backend/camera-registry-api.service';
 import { LiveStreamApiService } from './backend/live-stream-api.service';
 import { CameraPanel } from './camera-panel/camera-panel';
+import { JobQueueStore } from './job-queue.store';
 import { MediaLibrary } from './media-library/media-library';
 import { MediaPreview } from './media-preview/media-preview';
 import { MediaRecordDialog } from './media-record-dialog/media-record-dialog';
@@ -24,11 +25,13 @@ import { VIDEOS_REPOSITORY } from './videos-dashboard.ports';
 import type { CameraSource, MediaItem, VideosDashboardData } from './videos-dashboard.models';
 
 const SOURCE_POLL_INTERVAL_MS = 10_000;
-const MEDIA_POLL_INTERVAL_MS = 2000;
-/** Extra slack on top of the requested action duration, to cover transcode/upload/network latency after the camera stops recording. */
-const MEDIA_POLL_SLACK_MS = 15_000;
-/** Capture has no duration of its own — just enough for the camera to shoot and upload one frame, plus slack for real-hardware latency observed in practice. */
-const CAPTURE_POLL_TIMEOUT_MS = 30_000;
+/**
+ * Job-queue poll cadence while the popover is open or jobs are active — fast
+ * enough to feel live without hammering the hub. While the popover is closed
+ * and nothing is active, polling is skipped entirely (see the tick logic in
+ * the constructor) rather than merely slowed, since there's nothing to show.
+ */
+const JOB_POLL_INTERVAL_MS = 2500;
 
 @Component({
   selector: 'app-videos-dashboard-page',
@@ -53,6 +56,7 @@ export class VideosDashboardPage implements OnDestroy {
   private readonly cameraRegistry = inject(CameraRegistryApiService);
   private readonly liveStream = inject(LiveStreamApiService);
   private readonly notifications = inject(NotificationService);
+  protected readonly jobQueue = inject(JobQueueStore);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(I18nService);
   protected readonly filters = inject(VideoFiltersService);
@@ -71,7 +75,6 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly newCameraDisplayName = signal('');
   protected readonly newCameraLocation = signal('');
   protected readonly recordDialogAction = signal<MediaRecordAction | null>(null);
-  protected readonly pendingActions = signal<ReadonlySet<MediaRecordAction>>(new Set());
   /**
    * The tokened live-stream URL for the currently-active preview, resolved
    * once start-live has actually been dispatched (see applyStreamActive) —
@@ -82,6 +85,9 @@ export class VideosDashboardPage implements OnDestroy {
   protected readonly liveStreamUrl = signal('');
   private activeLiveRequestId: string | null = null;
   private readonly sourcePollHandle: ReturnType<typeof setInterval>;
+  private readonly jobPollHandle: ReturnType<typeof setInterval>;
+  /** requestIds whose completion (done job -> refreshMedia) has already been handled, so a stale/repeated poll tick doesn't refresh media over and over. Cleared once a requestId leaves the store entirely (terminal grace period elapsed). */
+  private readonly handledJobRequestIds = new Set<string>();
 
   protected readonly selectedSource = computed(() => {
     const data = this.dashboard();
@@ -120,11 +126,51 @@ export class VideosDashboardPage implements OnDestroy {
   constructor() {
     void this.loadData();
     this.sourcePollHandle = setInterval(() => void this.refreshSources(), SOURCE_POLL_INTERVAL_MS);
+    this.jobPollHandle = setInterval(() => void this.pollJobsTick(), JOB_POLL_INTERVAL_MS);
+    void this.pollJobsTick();
   }
 
   ngOnDestroy(): void {
     this.filters.reset();
     clearInterval(this.sourcePollHandle);
+    clearInterval(this.jobPollHandle);
+  }
+
+  /**
+   * Skips the fetch entirely (not just slows it) while the popover is closed
+   * and there's nothing active — the badge only needs to update once
+   * something *becomes* active, which a job-in-flight guarantees eventually
+   * happens on a subsequent tick anyway (dispatchRecordRequest also forces
+   * one immediate refresh right after a command is sent).
+   */
+  private async pollJobsTick(): Promise<void> {
+    if (!this.jobQueue.panelOpen() && this.jobQueue.activeCount() === 0) return;
+    await this.jobQueue.refresh();
+    if (this.destroyRef.destroyed) return;
+    this.reactToJobCompletions();
+  }
+
+  /**
+   * Detects jobs that finished since the last poll (status 'done', not yet
+   * handled) and triggers a media refresh so the grid updates without the
+   * old per-request pollForMedia() loop. A job leaving the store entirely
+   * (terminal grace period elapsed) also clears its handled-marker so the
+   * set doesn't grow unbounded.
+   */
+  private reactToJobCompletions(): void {
+    const seen = new Set<string>();
+    let shouldRefreshMedia = false;
+    for (const job of this.jobQueue.jobs()) {
+      seen.add(job.requestId);
+      if (job.status === 'done' && !this.handledJobRequestIds.has(job.requestId)) {
+        this.handledJobRequestIds.add(job.requestId);
+        shouldRefreshMedia = true;
+      }
+    }
+    for (const requestId of [...this.handledJobRequestIds]) {
+      if (!seen.has(requestId)) this.handledJobRequestIds.delete(requestId);
+    }
+    if (shouldRefreshMedia) void this.refreshMedia();
   }
 
   protected openMedia(item: MediaItem): void {
@@ -232,7 +278,6 @@ export class VideosDashboardPage implements OnDestroy {
   }
 
   protected openRecordDialog(action: MediaRecordAction): void {
-    if (this.pendingActions().has(action)) return;
     this.recordDialogAction.set(action);
   }
 
@@ -248,14 +293,14 @@ export class VideosDashboardPage implements OnDestroy {
   }
 
   /**
-   * Dispatches the camera command, then polls refreshMedia() for the file
-   * this specific request produced (matched by requestId, which round-trips
-   * from client-generated id -> command payload -> stored media item) rather
-   * than guessing a fixed timer — the earlier `setTimeout(loadData, duration
-   * + slack)` approach both raced real encode/upload latency and blew away
-   * the live player/selected-source state on every capture via the full
-   * reload. The button's own spinner (pendingActions) clears only once the
-   * file is actually observed, or the poll times out with an error toast.
+   * Dispatches the camera command and immediately returns — no client-side
+   * pending/spinner lock and no polling-for-completion here anymore. The
+   * backend's own per-camera job queue (see JobRegistryService in
+   * video-service-hub) now serializes concurrent requests for the same
+   * camera, so the same action/source can be triggered again right away; the
+   * new job-queue popover (JobQueueStore, surfaced via VideoSearch) is where
+   * the user tracks in-flight/queued work, and reactToJobCompletions() is
+   * what refreshes the media grid once a job finishes.
    */
   private async dispatchRecordRequest(
     source: CameraSource,
@@ -264,20 +309,32 @@ export class VideosDashboardPage implements OnDestroy {
     if (!source.commandBaseUrl) return;
     const action = request.action;
     const requestId = `${requestIdPrefix(action)}-${source.id}-${Date.now()}`;
-    this.setPending(action, true);
     try {
       await this.dispatchCommand(source.id, source.commandBaseUrl, request, requestId);
-      const found = await this.pollForMedia(requestId, pollTimeoutMs(request));
       if (this.destroyRef.destroyed) return;
-      if (found) {
-        this.notifications.info(startedMessageKey(action));
-      } else {
-        this.notifications.warn('videos.record.timedOut');
-      }
+      await this.notifyQueued(requestId);
     } catch {
       if (!this.destroyRef.destroyed) this.notifications.error('videos.record.commandError');
-    } finally {
-      if (!this.destroyRef.destroyed) this.setPending(action, false);
+    }
+  }
+
+  /**
+   * Looks up the just-dispatched job by requestId to grab its
+   * expectedFileName for the toast — the job is registered synchronously by
+   * JobRegistryService.enqueue() before the command POST even resolves, so a
+   * single refresh right after dispatch is enough to find it. Falls back to
+   * a generic message if the lookup fails or the job isn't found (e.g. an
+   * untracked command, or it already finished+got pruned in the interim).
+   */
+  private async notifyQueued(requestId: string): Promise<void> {
+    await this.jobQueue.refresh();
+    if (this.destroyRef.destroyed) return;
+    this.reactToJobCompletions();
+    const job = this.jobQueue.findByRequestId(requestId);
+    if (job?.expectedFileName) {
+      this.notifications.info('videos.record.queued', { fileName: job.expectedFileName }, 4000);
+    } else {
+      this.notifications.info('videos.record.queuedGeneric', undefined, 4000);
     }
   }
 
@@ -320,38 +377,6 @@ export class VideosDashboardPage implements OnDestroy {
           requestId,
         );
     }
-  }
-
-  /** Polls refreshMedia() until an item with this requestId shows up, or the timeout elapses. Merges into `dashboard` as it goes so the grid updates the moment the file appears, same as any other successful refresh. */
-  private async pollForMedia(requestId: string, timeoutMs: number): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      if (this.destroyRef.destroyed) return false;
-      let media: readonly MediaItem[];
-      try {
-        media = await this.repository.refreshMedia();
-      } catch {
-        media = [];
-      }
-      if (this.destroyRef.destroyed) return false;
-      const found = media.some((item) => item.requestId === requestId);
-      if (found || media.length > 0) {
-        this.dashboard.update((data) => (data ? { ...data, media: [...media] } : data));
-        this.loadingError.set(false);
-      }
-      if (found) return true;
-      if (Date.now() >= deadline) return false;
-      await delay(Math.min(MEDIA_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())));
-    }
-  }
-
-  private setPending(action: MediaRecordAction, pending: boolean): void {
-    this.pendingActions.update((current) => {
-      const next = new Set(current);
-      if (pending) next.add(action);
-      else next.delete(action);
-      return next;
-    });
   }
 
   protected retryLoad(): void {
@@ -483,34 +508,4 @@ function requestIdPrefix(action: MediaRecordAction): string {
     case 'audio':
       return 'audio';
   }
-}
-
-function pollTimeoutMs(request: MediaRecordRequest): number {
-  switch (request.action) {
-    case 'capture':
-      return CAPTURE_POLL_TIMEOUT_MS;
-    case 'timelapse':
-      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
-    case 'recording':
-      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
-    case 'audio':
-      return request.durationSeconds * 1000 + MEDIA_POLL_SLACK_MS;
-  }
-}
-
-function startedMessageKey(action: MediaRecordAction): TranslationKey {
-  switch (action) {
-    case 'capture':
-      return 'videos.record.captureStarted';
-    case 'timelapse':
-      return 'videos.record.timelapseStarted';
-    case 'recording':
-      return 'videos.record.recordingStarted';
-    case 'audio':
-      return 'videos.record.audioStarted';
-  }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 }
