@@ -122,7 +122,9 @@ the published GitHub Pages wiki):
 - [docs/readmes/architecture.md](./docs/readmes/architecture.md) — how the pieces talk to each other.
 - [docs/readmes/development.md](./docs/readmes/development.md) — day-to-day dev-cycle commands.
 - [docs/readmes/operations.md](./docs/readmes/operations.md) — this repo's CI/CD and deployment configuration.
-- [docs/readmes/env_variables_description.md](./docs/readmes/env_variables_description.md) — full environment variable reference.
+- [docs/readmes/environment-variables.md](./docs/readmes/environment-variables.md) — full environment variable reference.
+- [docs/readmes/running-ghcr-images.md](./docs/readmes/running-ghcr-images.md) — running published GHCR images with your own `.env`, on your own ports.
+- [docs/readmes/shared-contracts.md](./docs/readmes/shared-contracts.md) — pattern for sharing types/DTOs/contracts across services.
 
 ## License
 

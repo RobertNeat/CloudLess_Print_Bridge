@@ -88,12 +88,9 @@ Istnieje jako jedyne źródło prawdy, dzięki czemu:
   wyłącznie mapper produkujący dany DTO.
 
 Zobacz `packages/printer-contracts/README.md` po listę eksportowanych typów
-oraz `packages/README.md` po przegląd katalogu pakietów. Uwaga: pliki
-`docs/readmes/shared-objects.md` i `docs/dependency-management.md` w tym repo opisują
-wcześniejszą, bardziej ogólną nazwę pakietu (`shared-contracts`) i
-przykładowy układ plików sprzed powstania faktycznego pakietu
-`printer-contracts` — opis w tym pliku jest tym zgodnym z tym, co istnieje
-dzisiaj.
+oraz `packages/README.md` po przegląd katalogu pakietów. Po ogólny wzorzec
+tego, co warto współdzielić jako kontrakt (a czego nie), zobacz
+[shared-contracts_pl.md](./shared-contracts_pl.md).
 
 ## Zasada "cloudless" / wyłącznie LAN
 
@@ -115,6 +112,8 @@ zaostrzenia CORS — to celowa granica zakresu, a nie przeoczenie.
   `apps/video-service-hub/docs/service_architecture.md`,
   `apps/video-service-hub/docs/rest_endpoints.md` — wnętrze huba kamer.
 - `packages/printer-contracts/README.md` — eksportowane DTO.
-- `docs/readmes/env_variables_description.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/shared-contracts_pl.md` — ogólny wzorzec współdzielenia typów/DTO/kontraktów między serwisami.
+- `docs/readmes/environment-variables_pl.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/running-ghcr-images_pl.md` — uruchamianie opublikowanych obrazów z GHCR z własnym `.env`.
 - `docs/readmes/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
 - `docs/readmes/development.md` — codzienne komendy deweloperskie.

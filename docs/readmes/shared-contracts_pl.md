@@ -1,6 +1,15 @@
 # Współdzielenie typów, DTO i kontraktów
 
-Ten dokument opisuje sposób współdzielenia typów danych pomiędzy usługami NestJS oraz aplikacją Angular w repozytorium **CloudLess Print Bridge**.
+Polski | [English](shared-contracts.md)
+
+Ogólny wzorzec współdzielenia typów danych pomiędzy usługami NestJS oraz
+aplikacją Angular w repozytorium **CloudLess Print Bridge**, ilustrowany na
+przykładzie realnego pakietu `packages/printer-contracts`
+(`@cloudless/printer-contracts`) — zobacz
+[architecture_pl.md](./architecture_pl.md#dlaczego-istnieje-printer-contracts)
+po dokładny opis tego, co ten pakiet faktycznie eksportuje dzisiaj. Ten
+dokument opisuje regułę ogólną (jak podejmować decyzje o współdzieleniu
+kontraktów), nie inwentarz aktualnych eksportów.
 
 ## Cel
 
@@ -14,129 +23,62 @@ Współdzielone kontrakty powinny zapewniać:
 
 Współdzielić należy przede wszystkim kontrakty komunikacyjne, a nie wewnętrzną implementację usług.
 
-## Zalecana lokalizacja
+## Lokalizacja w tym repo
 
 ```text
 packages/
-└── shared-contracts/
+└── printer-contracts/
     ├── src/
-    │   ├── camera/
-    │   ├── files/
-    │   ├── printer/
-    │   ├── video/
-    │   └── index.ts
+    │   └── ...
     ├── package.json
     └── tsconfig.json
 ```
 
-Przykładowe pliki:
+Pakiet nazywa się `@cloudless/printer-contracts` i zawiera transportowo
+niezależne DTO domeny drukarki (m.in. zmerdżowany model stanu drukarki,
+sloty AMS, zewnętrzny szpul, typy pozycji/obwiedni maszyny, wyniki komend).
+Zasady poniżej stosuj analogicznie, gdyby powstał kolejny pakiet
+współdzielony w `packages/` — nie każdy przyszły pakiet musi nazywać się
+tak samo.
 
-```text
-packages/shared-contracts/src/
-├── camera/
-│   ├── camera-status.ts
-│   └── camera-summary.ts
-├── files/
-│   ├── remote-file.ts
-│   └── storage-status.ts
-├── printer/
-│   ├── printer-command.ts
-│   └── printer-status.ts
-├── video/
-│   ├── recording-info.ts
-│   └── stream-status.ts
-└── index.ts
-```
-
-## Nazwa pakietu
-
-`packages/shared-contracts/package.json`:
-
-```json
-{
-  "name": "@cloudless/shared-contracts",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "clean": "rimraf dist"
-  }
-}
-```
-
-Przykładowy `tsconfig.json`:
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "composite": true
-  },
-  "include": ["src/**/*.ts"]
-}
-```
-
-## Eksporty publiczne
-
-`src/index.ts` powinien eksportować wyłącznie publiczne kontrakty:
-
-```ts
-export * from "./camera/camera-status";
-export * from "./camera/camera-summary";
-export * from "./files/remote-file";
-export * from "./files/storage-status";
-export * from "./printer/printer-command";
-export * from "./printer/printer-status";
-export * from "./video/recording-info";
-export * from "./video/stream-status";
-```
-
-Aplikacje nie powinny importować plików przez wewnętrzne ścieżki pakietu.
+`src/index.ts` powinien eksportować wyłącznie publiczne kontrakty. Aplikacje
+nie powinny importować plików przez wewnętrzne ścieżki pakietu.
 
 Poprawnie:
 
 ```ts
-import type { PrinterStatus } from "@cloudless/shared-contracts";
+import type { PrinterDomainModelDto } from "@cloudless/printer-contracts";
 ```
 
 Niepoprawnie:
 
 ```ts
-import type { PrinterStatus } from "../../../packages/shared-contracts/src/printer/printer-status";
+import type { PrinterDomainModelDto } from "../../../packages/printer-contracts/src/printer/printer-domain-model.dto";
 ```
 
 ## Instalacja pakietu w aplikacjach
 
 ```bash
-pnpm --filter @cloudless/video-service-hub   add @cloudless/shared-contracts@workspace:*
+pnpm --filter @cloudless/video-service-hub   add @cloudless/printer-contracts@workspace:*
 ```
 
 ```bash
-pnpm --filter @cloudless/ftps-remote-manager   add @cloudless/shared-contracts@workspace:*
+pnpm --filter @cloudless/ftps-remote-manager   add @cloudless/printer-contracts@workspace:*
 ```
 
 ```bash
-pnpm --filter @cloudless/mqtt-puppeteer   add @cloudless/shared-contracts@workspace:*
+pnpm --filter @cloudless/mqtt-puppeteer   add @cloudless/printer-contracts@workspace:*
 ```
 
 ```bash
-pnpm --filter @cloudless/octo-management-dashboard   add @cloudless/shared-contracts@workspace:*
+pnpm --filter @cloudless/octo-management-dashboard   add @cloudless/printer-contracts@workspace:*
 ```
 
 Pakiet należy dodawać tylko do tych aplikacji, które faktycznie go używają.
 
 ## Co można współdzielić
 
-Dobre kandydaty:
+Dobre kandydaci:
 
 - interfejsy odpowiedzi HTTP,
 - typy payloadów MQTT,
@@ -168,7 +110,7 @@ export interface PrinterStatus {
 
 ## Czego nie współdzielić
 
-Nie należy umieszczać w `shared-contracts`:
+Nie należy umieszczać w `printer-contracts` (ani w żadnym przyszłym pakiecie współdzielonym):
 
 - encji ORM,
 - modeli Prisma lub TypeORM używanych bezpośrednio,
@@ -207,7 +149,7 @@ Takiej klasy nie należy bezpośrednio importować do Angulara, ponieważ:
 Zalecany podział:
 
 ```ts
-// shared-contracts
+// printer-contracts
 export interface CreateCameraRequest {
   name: string;
   streamUrl: string;
@@ -228,7 +170,7 @@ export class CreateCameraDto implements CreateCameraRequest {
 Angular korzysta z interfejsu:
 
 ```ts
-import type { CreateCameraRequest } from "@cloudless/shared-contracts";
+import type { CreateCameraRequest } from "@cloudless/printer-contracts";
 ```
 
 Backend zachowuje walidację w swojej warstwie wejściowej.
@@ -287,7 +229,7 @@ export const printerStatusSchema = z.object({
 export type PrinterStatus = z.infer<typeof printerStatusSchema>;
 ```
 
-W takim przypadku `zod` staje się zależnością pakietu `shared-contracts`.
+W takim przypadku `zod` staje się zależnością pakietu.
 
 Schematy runtime są szczególnie przydatne dla:
 
@@ -346,7 +288,7 @@ import { SomeDto } from "../../video-service-hub/src/...";
 Poprawnie:
 
 ```ts
-import type { CameraSummary } from "@cloudless/shared-contracts";
+import type { CameraSummary } from "@cloudless/printer-contracts";
 ```
 
 Jeżeli kontrakt jest używany tylko przez dwie usługi, nadal warto umieścić go w wydzielonym pakiecie zamiast tworzyć zależność aplikacja-do-aplikacji.
@@ -357,7 +299,7 @@ Dla kontraktów HTTP można rozważyć dwa podejścia.
 
 ### Podejście ręczne
 
-Typy są definiowane w `shared-contracts`, a DTO NestJS je implementują.
+Typy są definiowane w pakiecie współdzielonym, a DTO NestJS je implementują.
 
 Zalety:
 
@@ -425,17 +367,21 @@ Zmiany niekompatybilne powinny być skoordynowane pomiędzy usługą produkując
 
 ## Zalecany kierunek dla projektu
 
-Na początku:
-
-- utworzyć `packages/shared-contracts`,
+- utrzymywać `packages/printer-contracts` jako źródło prawdy dla modelu domeny drukarki,
 - współdzielić proste interfejsy i typy,
 - pozostawić klasy DTO z dekoratorami w aplikacjach NestJS,
 - implementować wspólne interfejsy przez klasy DTO,
 - walidować komunikaty MQTT schematami runtime,
 - używać `workspace:*` do zależności lokalnych.
 
-Po ustabilizowaniu API:
+Po dalszym ustabilizowaniu API warto rozważyć:
 
-- generować specyfikację OpenAPI,
-- generować klienta TypeScript dla Angulara,
-- automatycznie sprawdzać kompatybilność kontraktów w CI.
+- generowanie specyfikacji OpenAPI,
+- generowanie klienta TypeScript dla Angulara,
+- automatyczne sprawdzanie kompatybilności kontraktów w CI.
+
+## Powiązane dokumenty
+
+- [architecture_pl.md](./architecture_pl.md) — dlaczego `printer-contracts` istnieje i co dokładnie eksportuje dzisiaj.
+- `packages/printer-contracts/README.md` — lista eksportowanych typów.
+- `packages/README.md` — katalog `packages/` jako całość.

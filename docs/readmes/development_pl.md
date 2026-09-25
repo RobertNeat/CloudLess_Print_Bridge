@@ -4,7 +4,7 @@
 
 Codzienne komendy pracy w tym monorepo. Szerszy obraz jest w
 `docs/readmes/architecture.md`; zmienne środowiskowe są w
-`docs/readmes/env_variables_description.md` oraz w README każdej aplikacji.
+`docs/readmes/environment-variables_pl.md` oraz w README każdej aplikacji.
 
 ## Wymagania
 
@@ -133,11 +133,14 @@ zadeklarowany dokładnie raz.
 
 Skopiuj `.env.example` z głównego katalogu repo do `.env` i uzupełnij dane
 drukarki/kamery. Pełny opis zmiennych (uwierzytelnianie, zmienne per serwis,
-zasady interpolacji `${VAR}`) jest w `docs/readmes/env_variables_description.md`,
-albo w README każdej aplikacji dla zmiennych tego serwisu z osobna.
+zasady interpolacji `${VAR}`) jest w `docs/readmes/environment-variables_pl.md`,
+albo w README każdej aplikacji dla zmiennych tego serwisu z osobna. Aby
+uruchomić to repo z opublikowanych obrazów GHCR zamiast lokalnego
+środowiska deweloperskiego, zobacz `docs/readmes/running-ghcr-images_pl.md`.
 
 ## Powiązane dokumenty
 
 - `docs/readmes/architecture.md` — mapa architektury międzyserwisowej.
 - `docs/readmes/operations.md` — konfiguracja CI/CD i wdrożenia tego repozytorium.
-- `docs/readmes/env_variables_description.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/environment-variables_pl.md` — pełny opis zmiennych środowiskowych.
+- `docs/readmes/running-ghcr-images_pl.md` — uruchamianie opublikowanych obrazów z GHCR z własnym `.env`.
